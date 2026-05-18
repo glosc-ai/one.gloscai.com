@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
+import { PAYMENT_TYPES } from './constants'
 import type {
   RedemptionRequest,
   PaymentRequest,
@@ -28,6 +29,8 @@ import type {
   AmountResponse,
   PaymentResponse,
   StripePaymentResponse,
+  OfficialPaymentResponse,
+  OfficialPaymentStatusResponse,
   AffiliateCodeResponse,
   AffiliateTransferResponse,
   BillingHistoryResponse,
@@ -94,6 +97,30 @@ export async function calculateStripeAmount(
 }
 
 /**
+ * Calculate payment amount for official Alipay
+ */
+export async function calculateAlipayAmount(
+  request: AmountRequest
+): Promise<AmountResponse> {
+  const res = await api.post('/api/user/alipay/amount', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
+ * Calculate payment amount for official WeChat Pay
+ */
+export async function calculateWeChatPayAmount(
+  request: AmountRequest
+): Promise<AmountResponse> {
+  const res = await api.post('/api/user/wechat-pay/amount', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
  * Request regular payment
  */
 export async function requestPayment(
@@ -116,6 +143,55 @@ export async function requestStripePayment(
 ): Promise<StripePaymentResponse> {
   const res = await api.post('/api/user/stripe/pay', request, {
     skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
+ * Request official Alipay payment
+ */
+export async function requestAlipayPayment(
+  request: PaymentRequest
+): Promise<OfficialPaymentResponse> {
+  const res = await api.post('/api/user/alipay/pay', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
+ * Request official WeChat Pay payment
+ */
+export async function requestWeChatPayPayment(
+  request: PaymentRequest
+): Promise<OfficialPaymentResponse> {
+  const res = await api.post('/api/user/wechat-pay/pay', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
+ * Query official Alipay or WeChat Pay payment status
+ */
+export async function getOfficialPaymentStatus(
+  orderId: string,
+  paymentType: string
+): Promise<OfficialPaymentStatusResponse> {
+  const endpoint =
+    paymentType === PAYMENT_TYPES.ALIPAY_OFFICIAL
+      ? '/api/user/alipay/status'
+      : paymentType === PAYMENT_TYPES.WECHAT_PAY_OFFICIAL
+        ? '/api/user/wechat-pay/status'
+        : ''
+  if (!endpoint) {
+    return { success: false, message: 'Payment request failed' }
+  }
+
+  const params = new URLSearchParams({ order_id: orderId })
+  const res = await api.get(`${endpoint}?${params.toString()}`, {
+    skipBusinessError: true,
+    disableDuplicate: true,
   } as Record<string, unknown>)
   return res.data
 }

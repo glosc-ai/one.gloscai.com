@@ -51,6 +51,10 @@ import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { AmountDiscountVisualEditor } from './amount-discount-visual-editor'
 import { AmountOptionsVisualEditor } from './amount-options-visual-editor'
+import {
+  ChinaPaymentSettingsSection,
+  type ChinaPaymentSettingsValues,
+} from './china-payment-settings-section'
 import { CreemProductsVisualEditor } from './creem-products-visual-editor'
 import { PaymentMethodsVisualEditor } from './payment-methods-visual-editor'
 import {
@@ -147,6 +151,7 @@ type PaymentComplianceDefaults = {
 
 type PaymentSettingsSectionProps = {
   defaultValues: PaymentFormValues
+  chinaDefaultValues: ChinaPaymentSettingsValues
   waffoDefaultValues: WaffoSettingsValues
   waffoPancakeDefaultValues: WaffoPancakeSettingsValues
   complianceDefaults: PaymentComplianceDefaults
@@ -154,6 +159,7 @@ type PaymentSettingsSectionProps = {
 
 export function PaymentSettingsSection({
   defaultValues,
+  chinaDefaultValues,
   waffoDefaultValues,
   waffoPancakeDefaultValues,
   complianceDefaults,
@@ -1465,6 +1471,10 @@ export function PaymentSettingsSection({
           </Button>
         </form>
       </Form>
+
+      <Separator />
+
+      <ChinaPaymentSettingsSection defaultValues={chinaDefaultValues} />
 
       <Separator />
 

@@ -3,6 +3,7 @@ package controller
 import (
 	"strings"
 
+	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 )
@@ -116,4 +117,47 @@ func isEpayWebhookConfigured() bool {
 
 func isEpayWebhookEnabled() bool {
 	return isEpayTopUpEnabled()
+}
+
+func hasPaymentNotifyAddress(customNotifyUrl string) bool {
+	return strings.TrimSpace(customNotifyUrl) != "" || strings.TrimSpace(service.GetCallbackAddress()) != ""
+}
+
+func isAlipayTopUpEnabled() bool {
+	if !isPaymentComplianceConfirmed() {
+		return false
+	}
+	return setting.AlipayEnabled && isAlipayWebhookConfigured()
+}
+
+func isAlipayWebhookConfigured() bool {
+	return strings.TrimSpace(setting.AlipayAppId) != "" &&
+		strings.TrimSpace(setting.AlipayPrivateKey) != "" &&
+		strings.TrimSpace(setting.AlipayPublicKey) != "" &&
+		hasPaymentNotifyAddress(setting.AlipayNotifyUrl)
+}
+
+func isAlipayWebhookEnabled() bool {
+	return isAlipayTopUpEnabled()
+}
+
+func isWeChatPayTopUpEnabled() bool {
+	if !isPaymentComplianceConfirmed() {
+		return false
+	}
+	return setting.WeChatPayEnabled && isWeChatPayWebhookConfigured()
+}
+
+func isWeChatPayWebhookConfigured() bool {
+	return strings.TrimSpace(setting.WeChatPayAppId) != "" &&
+		strings.TrimSpace(setting.WeChatPayMchId) != "" &&
+		strings.TrimSpace(setting.WeChatPayApiV3Key) != "" &&
+		strings.TrimSpace(setting.WeChatPayMerchantSerialNo) != "" &&
+		strings.TrimSpace(setting.WeChatPayMerchantPrivateKey) != "" &&
+		strings.TrimSpace(setting.WeChatPayPlatformPublicKey) != "" &&
+		hasPaymentNotifyAddress(setting.WeChatPayNotifyUrl)
+}
+
+func isWeChatPayWebhookEnabled() bool {
+	return isWeChatPayTopUpEnabled()
 }

@@ -159,6 +159,38 @@ const BILLING_SECTIONS = [
           CreemTestMode: settings.CreemTestMode,
           CreemProducts: settings.CreemProducts,
         }}
+        chinaDefaultValues={{
+          AlipayEnabled: settings.AlipayEnabled ?? false,
+          AlipayAppId: settings.AlipayAppId ?? '',
+          AlipayPrivateKey: settings.AlipayPrivateKey ?? '',
+          AlipayPublicKey: settings.AlipayPublicKey ?? '',
+          AlipayGateway:
+            settings.AlipayGateway ?? 'https://openapi.alipay.com/gateway.do',
+          AlipayProduct: settings.AlipayProduct ?? 'page',
+          AlipayNotifyUrl: settings.AlipayNotifyUrl ?? '',
+          AlipayReturnUrl: settings.AlipayReturnUrl ?? '',
+          AlipayUnitPrice: settings.AlipayUnitPrice ?? 7.3,
+          AlipayMinTopUp: settings.AlipayMinTopUp ?? 1,
+          WeChatPayEnabled: settings.WeChatPayEnabled ?? false,
+          WeChatPayAppId: settings.WeChatPayAppId ?? '',
+          WeChatPayMchId: settings.WeChatPayMchId ?? '',
+          WeChatPayApiV3Key: settings.WeChatPayApiV3Key ?? '',
+          WeChatPayMerchantSerialNo:
+            settings.WeChatPayMerchantSerialNo ?? '',
+          WeChatPayMerchantPrivateKey:
+            settings.WeChatPayMerchantPrivateKey ?? '',
+          WeChatPayPlatformPublicKey:
+            settings.WeChatPayPlatformPublicKey ?? '',
+          WeChatPayPlatformSerialNo:
+            settings.WeChatPayPlatformSerialNo ?? '',
+          WeChatPayApiBase:
+            settings.WeChatPayApiBase ?? 'https://api.mch.weixin.qq.com',
+          WeChatPayTradeType: settings.WeChatPayTradeType ?? 'NATIVE',
+          WeChatPayNotifyUrl: settings.WeChatPayNotifyUrl ?? '',
+          WeChatPayReturnUrl: settings.WeChatPayReturnUrl ?? '',
+          WeChatPayUnitPrice: settings.WeChatPayUnitPrice ?? 7.3,
+          WeChatPayMinTopUp: settings.WeChatPayMinTopUp ?? 1,
+        }}
         waffoDefaultValues={{
           WaffoEnabled: settings.WaffoEnabled ?? false,
           WaffoApiKey: settings.WaffoApiKey ?? '',

@@ -39,6 +39,14 @@ export type PaymentResponse = ApiResponse<Record<string, unknown>> & {
   url?: string
 }
 export type StripePaymentResponse = ApiResponse<{ pay_link: string }>
+export type OfficialPaymentResponse = ApiResponse<{
+  pay_form?: string
+  pay_url?: string
+  iframe_url?: string
+  qr_code?: string
+  order_id?: string
+}>
+export type OfficialPaymentStatusResponse = ApiResponse<OfficialPaymentStatus>
 export type AffiliateCodeResponse = ApiResponse<string>
 export type AffiliateTransferResponse = ApiResponse
 export type CreemPaymentResponse = ApiResponse<{ checkout_url: string }>
@@ -95,6 +103,8 @@ export interface PaymentMethod {
   min_topup?: number
   /** Optional icon URL provided by backend (preferred over built-in icons) */
   icon?: string
+  /** Optional backend payment provider identifier */
+  provider?: string
 }
 
 /**
@@ -119,12 +129,20 @@ export interface TopupInfo {
   enable_online_topup: boolean
   /** Whether Stripe topup is enabled */
   enable_stripe_topup: boolean
+  /** Whether official Alipay topup is enabled */
+  enable_alipay_topup?: boolean
+  /** Whether official WeChat Pay topup is enabled */
+  enable_wechat_pay_topup?: boolean
   /** Available payment methods */
   pay_methods: PaymentMethod[]
   /** Minimum topup amount for online topup */
   min_topup: number
   /** Minimum topup amount for Stripe */
   stripe_min_topup: number
+  /** Minimum topup amount for official Alipay */
+  alipay_min_topup?: number
+  /** Minimum topup amount for official WeChat Pay */
+  wechat_pay_min_topup?: number
   /** Preset amount options */
   amount_options: number[]
   /** Discount rates by amount */
@@ -242,7 +260,13 @@ export interface UserWalletData {
 /**
  * Topup record status
  */
-export type TopupStatus = 'success' | 'pending' | 'expired'
+export type TopupStatus = 'success' | 'pending' | 'failed' | 'expired'
+
+export interface OfficialPaymentStatus {
+  order_id: string
+  status: TopupStatus
+  paid: boolean
+}
 
 /**
  * Topup billing record

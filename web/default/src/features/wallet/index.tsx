@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { getSelf } from '@/lib/api'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
@@ -27,6 +28,7 @@ import { BillingHistoryDialog } from './components/dialogs/billing-history-dialo
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
 import { PaymentConfirmDialog } from './components/dialogs/payment-confirm-dialog'
 import { TransferDialog } from './components/dialogs/transfer-dialog'
+import { PaymentQrDialog } from './components/payment-qr-dialog'
 import { RechargeFormCard } from './components/recharge-form-card'
 import { SubscriptionPlansCard } from './components/subscription-plans-card'
 import { WalletStatsCard } from './components/wallet-stats-card'
@@ -90,6 +92,9 @@ export function Wallet(props: WalletProps) {
     processing,
     calculatePaymentAmount,
     processPayment,
+    qrPayment,
+    clearQrPayment,
+    checkQrPaymentStatus,
   } = usePayment()
   const {
     affiliateLink,
@@ -122,6 +127,56 @@ export function Wallet(props: WalletProps) {
   useEffect(() => {
     fetchUser()
   }, [fetchUser])
+
+  useEffect(() => {
+    if (!qrPayment?.orderId) return
+
+    let stopped = false
+    let timeoutId: number | undefined
+    let attempts = 0
+
+    const scheduleNext = () => {
+      if (stopped || attempts >= 120) return
+      const delay = attempts < 20 ? 2500 : 5000
+      timeoutId = window.setTimeout(poll, delay)
+    }
+
+    const poll = async () => {
+      if (stopped) return
+      attempts += 1
+      try {
+        const result = await checkQrPaymentStatus()
+        if (stopped || !result) {
+          scheduleNext()
+          return
+        }
+        if (result.paid || result.status === 'success') {
+          clearQrPayment()
+          toast.success(t('Order completed successfully'))
+          await fetchUser()
+          return
+        }
+        if (result.status === 'failed' || result.status === 'expired') {
+          clearQrPayment()
+          toast.error(t('Payment request failed'))
+          await fetchUser()
+          return
+        }
+      } catch (error) {
+        if (!stopped && error instanceof Error && attempts === 1) {
+          toast.error(error.message)
+        }
+      }
+      scheduleNext()
+    }
+
+    scheduleNext()
+
+    return () => {
+      stopped = true
+      if (timeoutId) window.clearTimeout(timeoutId)
+    }
+  }, [qrPayment?.orderId, checkQrPaymentStatus, clearQrPayment, fetchUser, t])
 
   useEffect(() => {
     if (props.initialShowHistory) {
@@ -360,6 +415,18 @@ export function Wallet(props: WalletProps) {
         onConfirm={handleCreemConfirm}
         product={selectedCreemProduct}
         processing={creemProcessing}
+      />
+
+      <PaymentQrDialog
+        open={!!qrPayment}
+        qrCode={qrPayment?.qrCode}
+        iframeUrl={qrPayment?.iframeUrl}
+        amount={paymentAmount}
+        orderId={qrPayment?.orderId}
+        paymentType={qrPayment?.paymentType}
+        onOpenChange={(open) => {
+          if (!open) clearQrPayment()
+        }}
       />
     </>
   )

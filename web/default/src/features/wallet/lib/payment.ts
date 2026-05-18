@@ -69,10 +69,31 @@ export function submitPaymentForm(
 }
 
 /**
+ * Open and submit an HTML payment form returned by an official gateway.
+ */
+export function submitHtmlPaymentForm(html: string): void {
+  const target = isSafariBrowser() ? window : window.open('', '_blank')
+  if (!target) {
+    return
+  }
+  target.document.open()
+  target.document.write(html)
+  target.document.close()
+}
+
+/**
  * Check if payment method is Stripe
  */
 export function isStripePayment(paymentType: string): boolean {
   return paymentType === PAYMENT_TYPES.STRIPE
+}
+
+export function isOfficialAlipayPayment(paymentType: string): boolean {
+  return paymentType === PAYMENT_TYPES.ALIPAY_OFFICIAL
+}
+
+export function isOfficialWeChatPayPayment(paymentType: string): boolean {
+  return paymentType === PAYMENT_TYPES.WECHAT_PAY_OFFICIAL
 }
 
 /**
@@ -122,8 +143,23 @@ export function getMinTopupAmount(topupInfo: TopupInfo | null): number {
     return DEFAULT_MIN_TOPUP
   }
 
+  const methodMinimums = (topupInfo.pay_methods || [])
+    .map((method) => Number(method.min_topup || 0))
+    .filter((amount) => Number.isFinite(amount) && amount > 0)
+  if (methodMinimums.length > 0) {
+    return Math.min(...methodMinimums)
+  }
+
   if (topupInfo.enable_online_topup) {
     return topupInfo.min_topup
+  }
+
+  if (topupInfo.enable_alipay_topup) {
+    return topupInfo.alipay_min_topup || DEFAULT_MIN_TOPUP
+  }
+
+  if (topupInfo.enable_wechat_pay_topup) {
+    return topupInfo.wechat_pay_min_topup || DEFAULT_MIN_TOPUP
   }
 
   if (topupInfo.enable_stripe_topup) {
