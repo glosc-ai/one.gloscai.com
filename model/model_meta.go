@@ -82,6 +82,18 @@ func (mi *Model) Update() error {
 		Updates(mi).Error
 }
 
+func BatchUpdateModelVendor(ids []int, vendorID int, icon *string) (int64, error) {
+	updates := map[string]interface{}{
+		"vendor_id":    vendorID,
+		"updated_time": common.GetTimestamp(),
+	}
+	if icon != nil {
+		updates["icon"] = *icon
+	}
+	result := DB.Model(&Model{}).Where("id IN ?", ids).Updates(updates)
+	return result.RowsAffected, result.Error
+}
+
 func (mi *Model) Delete() error {
 	return DB.Delete(mi).Error
 }

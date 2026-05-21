@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { type Table } from '@tanstack/react-table'
-import { Power, PowerOff, Trash2, Copy } from 'lucide-react'
+import { Power, PowerOff, Trash2, Copy, Building2, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
@@ -32,6 +32,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Tooltip,
   TooltipContent,
@@ -42,19 +51,26 @@ import {
   handleBatchEnableModels,
   handleBatchDisableModels,
   handleBatchDeleteModels,
+  handleBatchUpdateModelVendor,
 } from '../lib'
-import type { Model } from '../types'
+import type { Model, Vendor } from '../types'
 
 interface DataTableBulkActionsProps<TData> {
   table: Table<TData>
+  vendors: Vendor[]
 }
 
 export function DataTableBulkActions<TData>({
   table,
+  vendors,
 }: DataTableBulkActionsProps<TData>) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showVendorDialog, setShowVendorDialog] = useState(false)
+  const [selectedVendorId, setSelectedVendorId] = useState<string>('')
+  const [modelIcon, setModelIcon] = useState('')
+  const [isUpdatingVendor, setIsUpdatingVendor] = useState(false)
 
   const selectedRows = table.getFilteredSelectedRowModel().rows
   const selectedIds = selectedRows.reduce<number[]>((ids, row) => {
@@ -86,6 +102,40 @@ export function DataTableBulkActions<TData>({
       setShowDeleteConfirm(false)
       handleClearSelection()
     })
+  }
+
+  const handleVendorChange = (value: string | null) => {
+    const nextVendorId = value ?? ''
+    setSelectedVendorId(nextVendorId)
+    const selectedVendor = vendors.find(
+      (vendor) => String(vendor.id) === nextVendorId
+    )
+    setModelIcon(selectedVendor?.icon?.trim() || '')
+  }
+
+  const handleUpdateVendor = async () => {
+    if (!selectedVendorId) {
+      toast.error(t('Please select a vendor'))
+      return
+    }
+
+    setIsUpdatingVendor(true)
+    try {
+      await handleBatchUpdateModelVendor(
+        selectedIds,
+        Number(selectedVendorId),
+        modelIcon.trim(),
+        queryClient,
+        () => {
+          setShowVendorDialog(false)
+          setSelectedVendorId('')
+          setModelIcon('')
+          handleClearSelection()
+        }
+      )
+    } finally {
+      setIsUpdatingVendor(false)
+    }
   }
 
   const handleCopyNames = async () => {
@@ -168,6 +218,29 @@ export function DataTableBulkActions<TData>({
           <TooltipTrigger
             render={
               <Button
+                variant='outline'
+                size='icon'
+                onClick={() => setShowVendorDialog(true)}
+                className='size-8'
+                aria-label={t('Update selected models vendor')}
+                title={t('Update selected models vendor')}
+              />
+            }
+          >
+            <Building2 />
+            <span className='sr-only'>
+              {t('Update selected models vendor')}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{t('Update selected models vendor')}</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
                 variant='destructive'
                 size='icon'
                 onClick={() => setShowDeleteConfirm(true)}
@@ -206,6 +279,85 @@ export function DataTableBulkActions<TData>({
             </Button>
             <Button variant='destructive' onClick={handleDeleteAll}>
               {t('Delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showVendorDialog}
+        onOpenChange={(open) => {
+          setShowVendorDialog(open)
+          if (!open) {
+            setSelectedVendorId('')
+            setModelIcon('')
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t('Update')} {t('Vendor')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('Choose a vendor for {{count}} selected model(s).', {
+                count: selectedIds.length,
+              })}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className='flex flex-col gap-2'>
+            <label className='text-sm font-medium'>{t('Vendor')}</label>
+            <Select
+              items={[
+                { value: '0', label: t('None') },
+                ...vendors.map((vendor) => ({
+                  value: String(vendor.id),
+                  label: vendor.name,
+                })),
+              ]}
+              onValueChange={handleVendorChange}
+              value={selectedVendorId || undefined}
+            >
+              <SelectTrigger className='w-full'>
+                <SelectValue placeholder={t('Select vendor')} />
+              </SelectTrigger>
+              <SelectContent alignItemWithTrigger={false}>
+                <SelectGroup>
+                  <SelectItem value='0'>{t('None')}</SelectItem>
+                  {vendors.map((vendor) => (
+                    <SelectItem key={vendor.id} value={String(vendor.id)}>
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className='flex flex-col gap-2'>
+            <label className='text-sm font-medium'>{t('Icon')}</label>
+            <Input
+              value={modelIcon}
+              onChange={(event) => setModelIcon(event.target.value)}
+              placeholder={t('@lobehub/icons key')}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => setShowVendorDialog(false)}
+              disabled={isUpdatingVendor}
+            >
+              {t('Cancel')}
+            </Button>
+            <Button
+              onClick={handleUpdateVendor}
+              disabled={!selectedVendorId || isUpdatingVendor}
+            >
+              {isUpdatingVendor && <Loader2 className='animate-spin' />}
+              {t('Update')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -13,6 +13,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type batchUpdateModelVendorRequest struct {
+	Ids      []int   `json:"ids"`
+	VendorID *int    `json:"vendor_id"`
+	Icon     *string `json:"icon"`
+}
+
 // GetAllModelsMeta 获取模型列表（分页）
 func GetAllModelsMeta(c *gin.Context) {
 
@@ -142,6 +148,36 @@ func UpdateModelMeta(c *gin.Context) {
 	}
 	model.RefreshPricing()
 	common.ApiSuccess(c, &m)
+}
+
+func BatchUpdateModelVendor(c *gin.Context) {
+	var req batchUpdateModelVendorRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if len(req.Ids) == 0 {
+		common.ApiErrorMsg(c, "请选择至少一个模型")
+		return
+	}
+	if req.VendorID == nil || *req.VendorID < 0 {
+		common.ApiErrorMsg(c, "缺少供应商 ID")
+		return
+	}
+	if *req.VendorID > 0 {
+		if _, err := model.GetVendorByID(*req.VendorID); err != nil {
+			common.ApiErrorMsg(c, "供应商不存在")
+			return
+		}
+	}
+
+	updatedCount, err := model.BatchUpdateModelVendor(req.Ids, *req.VendorID, req.Icon)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	model.RefreshPricing()
+	common.ApiSuccess(c, gin.H{"updated_count": updatedCount})
 }
 
 // DeleteModelMeta 删除模型

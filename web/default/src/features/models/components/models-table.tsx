@@ -254,7 +254,7 @@ export function ModelsTable() {
           },
         ],
       }}
-      bulkActions={<DataTableBulkActions table={table} />}
+      bulkActions={<DataTableBulkActions table={table} vendors={vendors} />}
     />
   )
 }

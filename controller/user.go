@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -543,6 +544,19 @@ func GetUserModels(c *gin.Context) {
 			}
 		}
 	}
+	models, err = model.FilterModelNamesByMetaStatus(models)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	sort.Slice(models, func(leftIndex, rightIndex int) bool {
+		left := strings.ToLower(models[leftIndex])
+		right := strings.ToLower(models[rightIndex])
+		if left == right {
+			return models[leftIndex] < models[rightIndex]
+		}
+		return left < right
+	})
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

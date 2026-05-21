@@ -129,6 +129,14 @@ export interface GetModelResponse {
   data?: Model
 }
 
+export interface BatchUpdateModelVendorResponse {
+  success: boolean
+  message?: string
+  data?: {
+    updated_count?: number
+  }
+}
+
 /**
  * Get vendors response
  */

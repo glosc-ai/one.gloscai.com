@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -24,6 +25,18 @@ type listModelsResponse struct {
 	Success bool               `json:"success"`
 	Data    []dto.OpenAIModels `json:"data"`
 	Object  string             `json:"object"`
+}
+
+type userModelsResponse struct {
+	Success bool     `json:"success"`
+	Data    []string `json:"data"`
+}
+
+type batchUpdateVendorResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		UpdatedCount int64 `json:"updated_count"`
+	} `json:"data"`
 }
 
 func setupModelListControllerTestDB(t *testing.T) *gorm.DB {
@@ -146,12 +159,125 @@ func decodeListModelsResponse(t *testing.T, recorder *httptest.ResponseRecorder)
 	return ids
 }
 
+func decodeUserModelsResponse(t *testing.T, recorder *httptest.ResponseRecorder) []string {
+	t.Helper()
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var payload userModelsResponse
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	return payload.Data
+}
+
 func pricingByModelName(pricings []model.Pricing) map[string]model.Pricing {
 	byName := make(map[string]model.Pricing, len(pricings))
 	for _, pricing := range pricings {
 		byName[pricing.ModelName] = pricing
 	}
 	return byName
+}
+
+func TestGetUserModelsFiltersDisabledModelsAndSorts(t *testing.T) {
+	db := setupModelListControllerTestDB(t)
+	require.NoError(t, db.Create(&model.User{
+		Id:       1002,
+		Username: "playground-model-user",
+		Password: "password",
+		Group:    "default",
+		Status:   common.UserStatusEnabled,
+	}).Error)
+	require.NoError(t, db.Create(&[]model.Ability{
+		{Group: "default", Model: "zeta-custom", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "beta-disabled", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "alpha-enabled", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "blocked-model", ChannelId: 1, Enabled: true},
+	}).Error)
+	require.NoError(t, (&model.Model{
+		ModelName: "beta-disabled",
+		Status:    0,
+		NameRule:  model.NameRuleExact,
+	}).Insert())
+	require.NoError(t, (&model.Model{
+		ModelName: "blocked-",
+		Status:    0,
+		NameRule:  model.NameRulePrefix,
+	}).Insert())
+	require.NoError(t, (&model.Model{
+		ModelName: "alpha-enabled",
+		Status:    1,
+		NameRule:  model.NameRuleExact,
+	}).Insert())
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/user/models", nil)
+	ctx.Set("id", 1002)
+
+	GetUserModels(ctx)
+
+	require.Equal(t, []string{"alpha-enabled", "zeta-custom"}, decodeUserModelsResponse(t, recorder))
+}
+
+func TestBatchUpdateModelVendor(t *testing.T) {
+	db := setupModelListControllerTestDB(t)
+	vendor := model.Vendor{Name: "batch-vendor", Icon: "OpenAI", Status: 1}
+	require.NoError(t, vendor.Insert())
+
+	firstModel := model.Model{ModelName: "batch-vendor-alpha", Icon: "old-icon", Status: 1}
+	secondModel := model.Model{ModelName: "batch-vendor-beta", Icon: "old-icon", Status: 1}
+	require.NoError(t, firstModel.Insert())
+	require.NoError(t, secondModel.Insert())
+
+	body, err := common.Marshal(gin.H{
+		"ids":       []int{firstModel.Id, secondModel.Id},
+		"vendor_id": vendor.Id,
+		"icon":      vendor.Icon,
+	})
+	require.NoError(t, err)
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPut, "/api/models/batch_vendor", bytes.NewReader(body))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	BatchUpdateModelVendor(ctx)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var payload batchUpdateVendorResponse
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	require.Equal(t, int64(2), payload.Data.UpdatedCount)
+
+	var updatedModels []model.Model
+	require.NoError(t, db.Where("id IN ?", []int{firstModel.Id, secondModel.Id}).Find(&updatedModels).Error)
+	require.Len(t, updatedModels, 2)
+	for _, updatedModel := range updatedModels {
+		require.Equal(t, vendor.Id, updatedModel.VendorID)
+		require.Equal(t, vendor.Icon, updatedModel.Icon)
+	}
+
+	clearBody, err := common.Marshal(gin.H{
+		"ids":       []int{firstModel.Id, secondModel.Id},
+		"vendor_id": 0,
+		"icon":      "",
+	})
+	require.NoError(t, err)
+
+	clearRecorder := httptest.NewRecorder()
+	clearCtx, _ := gin.CreateTestContext(clearRecorder)
+	clearCtx.Request = httptest.NewRequest(http.MethodPut, "/api/models/batch_vendor", bytes.NewReader(clearBody))
+	clearCtx.Request.Header.Set("Content-Type", "application/json")
+
+	BatchUpdateModelVendor(clearCtx)
+
+	require.Equal(t, http.StatusOK, clearRecorder.Code)
+	updatedModels = nil
+	require.NoError(t, db.Where("id IN ?", []int{firstModel.Id, secondModel.Id}).Find(&updatedModels).Error)
+	require.Len(t, updatedModels, 2)
+	for _, updatedModel := range updatedModels {
+		require.Zero(t, updatedModel.VendorID)
+		require.Empty(t, updatedModel.Icon)
+	}
 }
 
 func TestListModelsIncludesTieredBillingModel(t *testing.T) {
@@ -224,6 +350,7 @@ func TestListModelsTokenLimitIncludesTieredBillingModel(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
 	ctx.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
+	common.SetContextKey(ctx, constant.ContextKeyUserGroup, "default")
 	common.SetContextKey(ctx, constant.ContextKeyTokenModelLimitEnabled, true)
 	common.SetContextKey(ctx, constant.ContextKeyTokenModelLimit, map[string]bool{
 		"zz-token-tiered-visible-model":      true,

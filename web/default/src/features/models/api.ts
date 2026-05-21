@@ -21,6 +21,7 @@ import type {
   GetModelsParams,
   GetModelsResponse,
   GetModelResponse,
+  BatchUpdateModelVendorResponse,
   GetVendorsResponse,
   GetVendorResponse,
   Model,
@@ -97,6 +98,18 @@ export async function updateModelStatus(
   status: number
 ): Promise<{ success: boolean; message?: string }> {
   const res = await api.put('/api/models/?status_only=true', { id, status })
+  return res.data
+}
+
+/**
+ * Batch update selected models' vendor and optional icon
+ */
+export async function batchUpdateModelVendor(data: {
+  ids: number[]
+  vendor_id: number
+  icon?: string
+}): Promise<BatchUpdateModelVendorResponse> {
+  const res = await api.put('/api/models/batch_vendor', data)
   return res.data
 }
 

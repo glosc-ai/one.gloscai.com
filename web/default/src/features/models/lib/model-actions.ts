@@ -19,7 +19,11 @@ For commercial licensing, please contact support@quantumnous.com
 import { type QueryClient } from '@tanstack/react-query'
 import i18next from 'i18next'
 import { toast } from 'sonner'
-import { updateModelStatus, deleteModel as deleteModelAPI } from '../api'
+import {
+  updateModelStatus,
+  deleteModel as deleteModelAPI,
+  batchUpdateModelVendor,
+} from '../api'
 import { modelsQueryKeys } from './query-keys'
 
 // ============================================================================
@@ -267,5 +271,48 @@ export async function handleBatchDisableModels(
     }
   } catch (error: unknown) {
     toast.error((error as Error)?.message || i18next.t('Batch disable failed'))
+  }
+}
+
+/**
+ * Batch update model vendor and icon
+ */
+export async function handleBatchUpdateModelVendor(
+  ids: number[],
+  vendorId: number,
+  icon: string,
+  queryClient?: QueryClient,
+  onSuccess?: () => void
+): Promise<void> {
+  if (ids.length === 0) {
+    toast.error(i18next.t('Please select at least one model'))
+    return
+  }
+
+  try {
+    const response = await batchUpdateModelVendor({
+      ids,
+      vendor_id: vendorId,
+      icon,
+    })
+
+    if (response.success) {
+      const updatedCount = response.data?.updated_count ?? ids.length
+      toast.success(
+        i18next.t('Successfully updated vendor for {{count}} model(s)', {
+          count: updatedCount,
+        })
+      )
+      queryClient?.invalidateQueries({ queryKey: modelsQueryKeys.lists() })
+      onSuccess?.()
+    } else {
+      toast.error(
+        response.message || i18next.t('Failed to update model vendors')
+      )
+    }
+  } catch (error: unknown) {
+    toast.error(
+      (error as Error)?.message || i18next.t('Failed to update model vendors')
+    )
   }
 }
