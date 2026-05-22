@@ -268,6 +268,12 @@ func ListModels(c *gin.Context, modelType int) {
 		}
 	}
 
+	userModelNames, err = model.FilterModelNamesByMetaStatus(userModelNames)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
 	ownerByModel := map[string]string{}
 	if len(ownerGroups) > 0 {
 		ownerByModel = getPreferredModelOwners(userModelNames, ownerGroups)
@@ -287,6 +293,15 @@ func ListModels(c *gin.Context, modelType int) {
 				DisplayName: model.Id,
 				Type:        "model",
 			}
+		}
+		if len(useranthropicModels) == 0 {
+			c.JSON(200, gin.H{
+				"data":     useranthropicModels,
+				"first_id": "",
+				"has_more": false,
+				"last_id":  "",
+			})
+			return
 		}
 		c.JSON(200, gin.H{
 			"data":     useranthropicModels,

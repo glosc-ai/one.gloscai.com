@@ -143,6 +143,16 @@ func withSelfUseModeDisabled(t *testing.T) {
 	})
 }
 
+func withSelfUseModeEnabled(t *testing.T) {
+	t.Helper()
+
+	original := operation_setting.SelfUseModeEnabled
+	operation_setting.SelfUseModeEnabled = true
+	t.Cleanup(func() {
+		operation_setting.SelfUseModeEnabled = original
+	})
+}
+
 func decodeListModelsResponse(t *testing.T, recorder *httptest.ResponseRecorder) map[string]struct{} {
 	t.Helper()
 
@@ -216,6 +226,53 @@ func TestGetUserModelsFiltersDisabledModelsAndSorts(t *testing.T) {
 	GetUserModels(ctx)
 
 	require.Equal(t, []string{"alpha-enabled", "zeta-custom"}, decodeUserModelsResponse(t, recorder))
+}
+
+func TestListModelsFiltersDisabledModelMetadata(t *testing.T) {
+	withSelfUseModeEnabled(t)
+
+	db := setupModelListControllerTestDB(t)
+	require.NoError(t, db.Create(&model.User{
+		Id:       1003,
+		Username: "v1-model-list-user",
+		Password: "password",
+		Group:    "default",
+		Status:   common.UserStatusEnabled,
+	}).Error)
+	require.NoError(t, db.Create(&[]model.Ability{
+		{Group: "default", Model: "alpha-enabled", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "beta-disabled", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "blocked-model", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "zeta-custom", ChannelId: 1, Enabled: true},
+	}).Error)
+	require.NoError(t, (&model.Model{
+		ModelName: "beta-disabled",
+		Status:    0,
+		NameRule:  model.NameRuleExact,
+	}).Insert())
+	require.NoError(t, (&model.Model{
+		ModelName: "blocked-",
+		Status:    0,
+		NameRule:  model.NameRulePrefix,
+	}).Insert())
+	require.NoError(t, (&model.Model{
+		ModelName: "alpha-enabled",
+		Status:    1,
+		NameRule:  model.NameRuleExact,
+	}).Insert())
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
+	ctx.Set("id", 1003)
+
+	ListModels(ctx, constant.ChannelTypeOpenAI)
+
+	ids := decodeListModelsResponse(t, recorder)
+	require.Contains(t, ids, "alpha-enabled")
+	require.Contains(t, ids, "zeta-custom")
+	require.NotContains(t, ids, "beta-disabled")
+	require.NotContains(t, ids, "blocked-model")
 }
 
 func TestBatchUpdateModelVendor(t *testing.T) {
@@ -346,6 +403,7 @@ func TestListModelsTokenLimitIncludesTieredBillingModel(t *testing.T) {
 		"zz-token-tiered-visible-model":    `tier("base", p * 1 + c * 2)`,
 		"zz-token-tiered-empty-expr-model": "",
 	})
+	setupModelListControllerTestDB(t)
 
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
