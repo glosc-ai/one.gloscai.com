@@ -39,6 +39,23 @@ type batchUpdateVendorResponse struct {
 	} `json:"data"`
 }
 
+type getModelsMetaResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Items []model.Model `json:"items"`
+		Total int64         `json:"total"`
+	} `json:"data"`
+}
+
+type addMissingModelsResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		CreatedModels int      `json:"created_models"`
+		SkippedModels []string `json:"skipped_models"`
+		CreatedList   []string `json:"created_list"`
+	} `json:"data"`
+}
+
 func setupModelListControllerTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
@@ -335,6 +352,101 @@ func TestBatchUpdateModelVendor(t *testing.T) {
 		require.Zero(t, updatedModel.VendorID)
 		require.Empty(t, updatedModel.Icon)
 	}
+}
+
+func TestGetAllModelsMetaFiltersStatusSyncAndPrice(t *testing.T) {
+	withSelfUseModeDisabled(t)
+	withTieredBillingConfig(t, map[string]string{
+		"priced-enabled-sync": "tiered_expr",
+	}, map[string]string{
+		"priced-enabled-sync": `tier("default", 1)`,
+	})
+
+	setupModelListControllerTestDB(t)
+	records := []*model.Model{
+		{ModelName: "priced-enabled-sync", Status: 1, SyncOfficial: 1, NameRule: model.NameRuleExact},
+		{ModelName: "unpriced-disabled-sync", Status: 0, SyncOfficial: 1, NameRule: model.NameRuleExact},
+		{ModelName: "unpriced-enabled-nosync", Status: 1, SyncOfficial: 0, NameRule: model.NameRuleExact},
+		{ModelName: "unpriced-enabled-sync", Status: 1, SyncOfficial: 1, NameRule: model.NameRuleExact},
+	}
+	for _, record := range records {
+		require.NoError(t, record.Insert())
+	}
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/models/?status=enabled&sync_official=yes&has_price=configured", nil)
+
+	GetAllModelsMeta(ctx)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var payload getModelsMetaResponse
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	require.Equal(t, int64(1), payload.Data.Total)
+	require.Len(t, payload.Data.Items, 1)
+	require.Equal(t, "priced-enabled-sync", payload.Data.Items[0].ModelName)
+	require.True(t, payload.Data.Items[0].HasPrice)
+
+	disabledRecorder := httptest.NewRecorder()
+	disabledCtx, _ := gin.CreateTestContext(disabledRecorder)
+	disabledCtx.Request = httptest.NewRequest(http.MethodGet, "/api/models/?status=disabled", nil)
+
+	GetAllModelsMeta(disabledCtx)
+
+	require.Equal(t, http.StatusOK, disabledRecorder.Code)
+	payload = getModelsMetaResponse{}
+	require.NoError(t, common.Unmarshal(disabledRecorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	require.Equal(t, int64(1), payload.Data.Total)
+	require.Equal(t, "unpriced-disabled-sync", payload.Data.Items[0].ModelName)
+
+	noSyncRecorder := httptest.NewRecorder()
+	noSyncCtx, _ := gin.CreateTestContext(noSyncRecorder)
+	noSyncCtx.Request = httptest.NewRequest(http.MethodGet, "/api/models/?sync_official=no", nil)
+
+	GetAllModelsMeta(noSyncCtx)
+
+	require.Equal(t, http.StatusOK, noSyncRecorder.Code)
+	payload = getModelsMetaResponse{}
+	require.NoError(t, common.Unmarshal(noSyncRecorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	require.Equal(t, int64(1), payload.Data.Total)
+	require.Equal(t, "unpriced-enabled-nosync", payload.Data.Items[0].ModelName)
+}
+
+func TestAddMissingModelsCreatesDisabledMetadata(t *testing.T) {
+	db := setupModelListControllerTestDB(t)
+	require.NoError(t, db.Create(&[]model.Ability{
+		{Group: "default", Model: "missing-add-alpha", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "missing-add-existing", ChannelId: 1, Enabled: true},
+	}).Error)
+	require.NoError(t, (&model.Model{
+		ModelName:    "missing-add-existing",
+		Status:       1,
+		SyncOfficial: 1,
+		NameRule:     model.NameRuleExact,
+	}).Insert())
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/models/missing", nil)
+
+	AddMissingModels(ctx)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var payload addMissingModelsResponse
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	require.Equal(t, 1, payload.Data.CreatedModels)
+	require.Equal(t, []string{"missing-add-alpha"}, payload.Data.CreatedList)
+	require.Empty(t, payload.Data.SkippedModels)
+
+	var inserted model.Model
+	require.NoError(t, db.Where("model_name = ?", "missing-add-alpha").First(&inserted).Error)
+	require.Equal(t, 0, inserted.Status)
+	require.Equal(t, 1, inserted.SyncOfficial)
+	require.Equal(t, model.NameRuleExact, inserted.NameRule)
 }
 
 func TestListModelsIncludesTieredBillingModel(t *testing.T) {

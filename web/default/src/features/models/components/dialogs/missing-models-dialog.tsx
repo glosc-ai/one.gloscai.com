@@ -17,9 +17,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, Loader2, Plus, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Button } from '@/components/ui/button'
 import {
@@ -38,9 +39,9 @@ import {
 } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
 import { StatusBadge } from '@/components/status-badge'
-import { getMissingModels } from '../../api'
+import { addMissingModels, getMissingModels } from '../../api'
 import { DEFAULT_PAGE_SIZE } from '../../constants'
-import { modelsQueryKeys } from '../../lib'
+import { modelsQueryKeys, vendorsQueryKeys } from '../../lib'
 import type { Model } from '../../types'
 import { useModels } from '../models-provider'
 
@@ -55,9 +56,11 @@ export function MissingModelsDialog({
 }: MissingModelsDialogProps) {
   const { t } = useTranslation()
   const { setOpen, setCurrentRow } = useModels()
+  const queryClient = useQueryClient()
   const isMobile = useIsMobile()
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [isAdding, setIsAdding] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: modelsQueryKeys.missing(),
@@ -71,6 +74,47 @@ export function MissingModelsDialog({
   const handleConfigureModel = (modelName: string) => {
     setCurrentRow({ model_name: modelName } as unknown as Model)
     setOpen('create-model')
+  }
+
+  const handleAddMissingModels = async () => {
+    setIsAdding(true)
+    try {
+      const response = await addMissingModels()
+      if (!response.success) {
+        toast.error(response.message || t('Failed to add missing models'))
+        return
+      }
+
+      const createdCount = response.data?.created_models || 0
+      const skippedCount = response.data?.skipped_models?.length || 0
+
+      toast.success(
+        t('Added {{count}} missing model(s). They are disabled by default.', {
+          count: createdCount,
+        })
+      )
+      if (skippedCount > 0) {
+        toast.warning(
+          t('Skipped {{count}} model(s) that could not be added.', {
+            count: skippedCount,
+          })
+        )
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: modelsQueryKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: modelsQueryKeys.missing() }),
+        queryClient.invalidateQueries({ queryKey: vendorsQueryKeys.lists() }),
+      ])
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t('Failed to add missing models')
+      )
+    } finally {
+      setIsAdding(false)
+    }
   }
 
   useEffect(() => {
@@ -120,7 +164,7 @@ export function MissingModelsDialog({
         className='flex max-h-[85vh] max-w-2xl flex-col gap-3 p-4'
         initialFocus={!isMobile}
       >
-        <DialogHeader className='flex-shrink-0 text-start'>
+        <DialogHeader className='flex-none text-start'>
           <DialogTitle>{t('Missing Models')}</DialogTitle>
           <DialogDescription>
             {t('Models that are being used but not configured in the system')}
@@ -140,23 +184,38 @@ export function MissingModelsDialog({
           </div>
         ) : (
           <div className='flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto'>
-            <div className='flex flex-shrink-0 items-center justify-between gap-3'>
+            <div className='flex flex-none flex-wrap items-center justify-between gap-3'>
               <div className='text-muted-foreground text-sm whitespace-nowrap'>
                 {t('Showing')} {displayStart}-{displayEnd} {t('of')}{' '}
                 {totalItems}
               </div>
-              <div className='relative w-48'>
-                <Search className='text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
-                <Input
-                  value={searchTerm}
-                  onChange={(event) => {
-                    setSearchTerm(event.target.value)
-                    setCurrentPage(1)
-                  }}
-                  placeholder={t('Search models...')}
-                  className='pl-9'
-                  aria-label={t('Search missing models')}
-                />
+              <div className='flex flex-wrap items-center justify-end gap-2'>
+                <Button
+                  size='sm'
+                  className='gap-1'
+                  onClick={handleAddMissingModels}
+                  disabled={isAdding || missingModels.length === 0}
+                >
+                  {isAdding ? (
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                  ) : (
+                    <Plus className='h-4 w-4' />
+                  )}
+                  {t('Add Missing Models')}
+                </Button>
+                <div className='relative w-48'>
+                  <Search className='text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
+                  <Input
+                    value={searchTerm}
+                    onChange={(event) => {
+                      setSearchTerm(event.target.value)
+                      setCurrentPage(1)
+                    }}
+                    placeholder={t('Search models...')}
+                    className='pl-9'
+                    aria-label={t('Search missing models')}
+                  />
+                </div>
               </div>
             </div>
 
@@ -173,7 +232,7 @@ export function MissingModelsDialog({
                 </EmptyHeader>
               </Empty>
             ) : (
-              <div className='flex-shrink-0 rounded-lg border'>
+              <div className='flex-none rounded-lg border'>
                 <div className='divide-y'>
                   {paginatedModels.map((modelName) => (
                     <div
@@ -189,11 +248,11 @@ export function MissingModelsDialog({
                       </div>
                       <Button
                         size='sm'
-                        className='flex-shrink-0 gap-1'
+                        className='flex-none gap-1'
                         onClick={() => handleConfigureModel(modelName)}
                       >
                         <Plus className='h-4 w-4' />
-                        Configure
+                        {t('Configure')}
                       </Button>
                     </div>
                   ))}

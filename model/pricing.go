@@ -77,6 +77,54 @@ func GetPricing() []Pricing {
 	return pricingMap
 }
 
+func HasModelBillingConfig(modelName string) bool {
+	if _, ok := ratio_setting.GetModelPrice(modelName, false); ok {
+		return true
+	}
+	if _, ok, _ := ratio_setting.GetModelRatio(modelName); ok {
+		return true
+	}
+	if billing_setting.GetBillingMode(modelName) != billing_setting.BillingModeTieredExpr {
+		return false
+	}
+	expression, ok := billing_setting.GetBillingExpr(modelName)
+	return ok && strings.TrimSpace(expression) != ""
+}
+
+func ModelMetaHasBillingConfig(modelMeta *Model, pricingItems []Pricing) bool {
+	if modelMeta == nil || strings.TrimSpace(modelMeta.ModelName) == "" {
+		return false
+	}
+	if HasModelBillingConfig(modelMeta.ModelName) {
+		return true
+	}
+	if modelMeta.NameRule == NameRuleExact {
+		return false
+	}
+	for _, pricingItem := range pricingItems {
+		if !matchesModelNameRule(modelMeta, pricingItem.ModelName) {
+			continue
+		}
+		if HasModelBillingConfig(pricingItem.ModelName) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchesModelNameRule(modelMeta *Model, modelName string) bool {
+	switch modelMeta.NameRule {
+	case NameRulePrefix:
+		return strings.HasPrefix(modelName, modelMeta.ModelName)
+	case NameRuleSuffix:
+		return strings.HasSuffix(modelName, modelMeta.ModelName)
+	case NameRuleContains:
+		return strings.Contains(modelName, modelMeta.ModelName)
+	default:
+		return modelName == modelMeta.ModelName
+	}
+}
+
 func InvalidatePricingCache() {
 	updatePricingLock.Lock()
 	defer updatePricingLock.Unlock()

@@ -19,7 +19,14 @@ For commercial licensing, please contact support@quantumnous.com
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { type Row } from '@tanstack/react-table'
-import { MoreHorizontal, Pencil, Power, PowerOff, Trash2 } from 'lucide-react'
+import {
+  BadgeDollarSign,
+  MoreHorizontal,
+  Pencil,
+  Power,
+  PowerOff,
+  Trash2,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
@@ -61,6 +68,10 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     handleToggleModelStatus(model.id, model.status, queryClient)
   }
 
+  const handleConfigurePricing = () => {
+    window.open('/system-settings/billing/model-pricing', '_blank')
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -82,6 +93,15 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             <Pencil size={16} />
           </DropdownMenuShortcut>
         </DropdownMenuItem>
+
+        {!model.has_price && (
+          <DropdownMenuItem onClick={handleConfigurePricing}>
+            {t('Configure Pricing')}
+            <DropdownMenuShortcut>
+              <BadgeDollarSign size={16} />
+            </DropdownMenuShortcut>
+          </DropdownMenuItem>
+        )}
 
         <DropdownMenuSeparator />
 

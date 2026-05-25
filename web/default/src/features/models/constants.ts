@@ -99,6 +99,18 @@ export function getSyncStatusOptions(t: TFunction) {
 }
 
 // ============================================================================
+// Pricing Status Options
+// ============================================================================
+
+export function getPriceStatusOptions(t: TFunction) {
+  return [
+    { label: t('All Pricing Status'), value: 'all' },
+    { label: t('Price Configured'), value: 'configured' },
+    { label: t('Price Not Configured'), value: 'unconfigured' },
+  ] as const
+}
+
+// ============================================================================
 // Deployment Status
 // ============================================================================
 

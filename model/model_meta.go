@@ -38,10 +38,19 @@ type Model struct {
 	BoundChannels []BoundChannel `json:"bound_channels,omitempty" gorm:"-"`
 	EnableGroups  []string       `json:"enable_groups,omitempty" gorm:"-"`
 	QuotaTypes    []int          `json:"quota_types,omitempty" gorm:"-"`
+	HasPrice      bool           `json:"has_price" gorm:"-"`
 	NameRule      int            `json:"name_rule" gorm:"default:0"`
 
 	MatchedModels []string `json:"matched_models,omitempty" gorm:"-"`
 	MatchedCount  int      `json:"matched_count,omitempty" gorm:"-"`
+}
+
+type ModelsMetaFilter struct {
+	Keyword      string
+	Vendor       string
+	Status       *int
+	SyncOfficial *int
+	HasPrice     *bool
 }
 
 func (mi *Model) Insert() error {
@@ -120,6 +129,67 @@ func GetAllModels(offset int, limit int) ([]*Model, error) {
 	var models []*Model
 	err := DB.Order("id DESC").Offset(offset).Limit(limit).Find(&models).Error
 	return models, err
+}
+
+func applyModelsMetaFilters(db *gorm.DB, filter ModelsMetaFilter) *gorm.DB {
+	if filter.Keyword != "" {
+		like := "%" + filter.Keyword + "%"
+		db = db.Where("model_name LIKE ? OR description LIKE ? OR tags LIKE ?", like, like, like)
+	}
+	if filter.Vendor != "" {
+		if vendorID, err := strconv.Atoi(filter.Vendor); err == nil {
+			db = db.Where("models.vendor_id = ?", vendorID)
+		} else {
+			db = db.Joins("JOIN vendors ON vendors.id = models.vendor_id").Where("vendors.name LIKE ?", "%"+filter.Vendor+"%")
+		}
+	}
+	if filter.Status != nil {
+		db = db.Where("models.status = ?", *filter.Status)
+	}
+	if filter.SyncOfficial != nil {
+		db = db.Where("models.sync_official = ?", *filter.SyncOfficial)
+	}
+	return db
+}
+
+func ListModelsMeta(filter ModelsMetaFilter, offset int, limit int) ([]*Model, int64, error) {
+	db := applyModelsMetaFilters(DB.Model(&Model{}), filter)
+
+	if filter.HasPrice == nil {
+		var total int64
+		if err := db.Count(&total).Error; err != nil {
+			return nil, 0, err
+		}
+		var models []*Model
+		if err := db.Order("models.id DESC").Offset(offset).Limit(limit).Find(&models).Error; err != nil {
+			return nil, 0, err
+		}
+		return models, total, nil
+	}
+
+	var candidates []*Model
+	if err := db.Order("models.id DESC").Find(&candidates).Error; err != nil {
+		return nil, 0, err
+	}
+
+	pricingItems := GetPricing()
+	filtered := make([]*Model, 0, len(candidates))
+	for _, modelMeta := range candidates {
+		modelMeta.HasPrice = ModelMetaHasBillingConfig(modelMeta, pricingItems)
+		if modelMeta.HasPrice == *filter.HasPrice {
+			filtered = append(filtered, modelMeta)
+		}
+	}
+
+	total := int64(len(filtered))
+	if offset >= len(filtered) {
+		return []*Model{}, total, nil
+	}
+	end := offset + limit
+	if limit <= 0 || end > len(filtered) {
+		end = len(filtered)
+	}
+	return filtered[offset:end], total, nil
 }
 
 func GetBoundChannelsByModelsMap(modelNames []string) (map[string][]BoundChannel, error) {
@@ -205,25 +275,5 @@ func GetPreferredModelOwnerChannelTypes(modelNames []string, groups []string) (m
 }
 
 func SearchModels(keyword string, vendor string, offset int, limit int) ([]*Model, int64, error) {
-	var models []*Model
-	db := DB.Model(&Model{})
-	if keyword != "" {
-		like := "%" + keyword + "%"
-		db = db.Where("model_name LIKE ? OR description LIKE ? OR tags LIKE ?", like, like, like)
-	}
-	if vendor != "" {
-		if vid, err := strconv.Atoi(vendor); err == nil {
-			db = db.Where("models.vendor_id = ?", vid)
-		} else {
-			db = db.Joins("JOIN vendors ON vendors.id = models.vendor_id").Where("vendors.name LIKE ?", "%"+vendor+"%")
-		}
-	}
-	var total int64
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-	if err := db.Order("models.id DESC").Offset(offset).Limit(limit).Find(&models).Error; err != nil {
-		return nil, 0, err
-	}
-	return models, total, nil
+	return ListModelsMeta(ModelsMetaFilter{Keyword: keyword, Vendor: vendor}, offset, limit)
 }

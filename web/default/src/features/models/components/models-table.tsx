@@ -33,6 +33,7 @@ import { getModels, searchModels, getVendors } from '../api'
 import {
   DEFAULT_PAGE_SIZE,
   getModelStatusOptions,
+  getPriceStatusOptions,
   getSyncStatusOptions,
 } from '../constants'
 import { modelsQueryKeys, vendorsQueryKeys } from '../lib'
@@ -77,6 +78,7 @@ export function ModelsTable() {
       { columnId: 'status', searchKey: 'status', type: 'array' },
       { columnId: 'vendor_id', searchKey: 'vendor', type: 'array' },
       { columnId: 'sync_official', searchKey: 'sync', type: 'array' },
+      { columnId: 'has_price', searchKey: 'price', type: 'array' },
     ],
   })
 
@@ -88,6 +90,8 @@ export function ModelsTable() {
   const syncFilter =
     (columnFilters.find((f) => f.id === 'sync_official')?.value as string[]) ||
     []
+  const priceFilter =
+    (columnFilters.find((f) => f.id === 'has_price')?.value as string[]) || []
 
   // Fetch vendors for filter
   const { data: vendorsData } = useQuery({
@@ -131,6 +135,10 @@ export function ModelsTable() {
         syncFilter.length > 0 && !syncFilter.includes('all')
           ? syncFilter[0]
           : undefined,
+      has_price:
+        priceFilter.length > 0 && !priceFilter.includes('all')
+          ? priceFilter[0]
+          : undefined,
       p: pagination.pageIndex + 1,
       page_size: pagination.pageSize,
     }),
@@ -147,6 +155,10 @@ export function ModelsTable() {
             syncFilter.length > 0 && !syncFilter.includes('all')
               ? syncFilter[0]
               : undefined,
+          has_price:
+            priceFilter.length > 0 && !priceFilter.includes('all')
+              ? priceFilter[0]
+              : undefined,
           p: pagination.pageIndex + 1,
           page_size: pagination.pageSize,
         })
@@ -159,6 +171,10 @@ export function ModelsTable() {
           sync_official:
             syncFilter.length > 0 && !syncFilter.includes('all')
               ? syncFilter[0]
+              : undefined,
+          has_price:
+            priceFilter.length > 0 && !priceFilter.includes('all')
+              ? priceFilter[0]
               : undefined,
           p: pagination.pageIndex + 1,
           page_size: pagination.pageSize,
@@ -250,6 +266,12 @@ export function ModelsTable() {
             columnId: 'sync_official',
             title: t('Official Sync'),
             options: [...getSyncStatusOptions(t)],
+            singleSelect: true,
+          },
+          {
+            columnId: 'has_price',
+            title: t('Pricing'),
+            options: [...getPriceStatusOptions(t)],
             singleSelect: true,
           },
         ],

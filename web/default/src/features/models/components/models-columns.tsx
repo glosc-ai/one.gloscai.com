@@ -17,9 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { type ColumnDef } from '@tanstack/react-table'
+import { Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatTimestampToDate } from '@/lib/format'
 import { getLobeIcon } from '@/lib/lobe-icon'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Tooltip,
@@ -543,6 +545,70 @@ export function useModelsColumns(vendors: Vendor[] = []): ColumnDef<Model>[] {
       enableSorting: false,
     },
 
+    // Pricing column
+    {
+      accessorKey: 'has_price',
+      meta: { label: t('Pricing'), mobileHidden: true },
+      header: t('Pricing'),
+      cell: ({ row }) => {
+        const hasPrice = Boolean(row.original.has_price)
+        if (hasPrice) {
+          return (
+            <StatusBadge
+              label={t('Price Configured')}
+              variant='success'
+              size='sm'
+              copyable={false}
+            />
+          )
+        }
+
+        return (
+          <div className='flex items-center gap-2'>
+            <StatusBadge
+              label={t('Price Not Configured')}
+              variant='warning'
+              size='sm'
+              copyable={false}
+            />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant='ghost'
+                      size='icon'
+                      className='h-7 w-7'
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        window.open(
+                          '/system-settings/billing/model-pricing',
+                          '_blank'
+                        )
+                      }}
+                      aria-label={t('Configure Pricing')}
+                    />
+                  }
+                >
+                  <Settings className='h-4 w-4' />
+                </TooltipTrigger>
+                <TooltipContent>{t('Configure Pricing')}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        )
+      },
+      filterFn: (row, id, value) => {
+        if (!value || value.length === 0 || value.includes('all')) return true
+        const hasPrice = Boolean(row.getValue(id))
+        if (value.includes('configured')) return hasPrice
+        if (value.includes('unconfigured')) return !hasPrice
+        return false
+      },
+      size: 190,
+      enableSorting: false,
+    },
+
     // Created Time column
     {
       accessorKey: 'created_time',
@@ -553,7 +619,7 @@ export function useModelsColumns(vendors: Vendor[] = []): ColumnDef<Model>[] {
       cell: ({ row }) => {
         const timestamp = row.getValue('created_time') as number
         return (
-          <div className='min-w-[140px] font-mono text-sm'>
+          <div className='min-w-35 font-mono text-sm'>
             {formatTimestampToDate(timestamp)}
           </div>
         )
@@ -571,7 +637,7 @@ export function useModelsColumns(vendors: Vendor[] = []): ColumnDef<Model>[] {
       cell: ({ row }) => {
         const timestamp = row.getValue('updated_time') as number
         return (
-          <div className='min-w-[140px] font-mono text-sm'>
+          <div className='min-w-35 font-mono text-sm'>
             {formatTimestampToDate(timestamp)}
           </div>
         )

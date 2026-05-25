@@ -19,19 +19,70 @@ type batchUpdateModelVendorRequest struct {
 	Icon     *string `json:"icon"`
 }
 
+func parseModelIntFilter(raw string, enabledValues map[string]struct{}, disabledValues map[string]struct{}) *int {
+	value := strings.ToLower(strings.TrimSpace(raw))
+	if value == "" || value == "all" {
+		return nil
+	}
+	if _, ok := enabledValues[value]; ok {
+		parsed := 1
+		return &parsed
+	}
+	if _, ok := disabledValues[value]; ok {
+		parsed := 0
+		return &parsed
+	}
+	return nil
+}
+
+func parseModelBoolFilter(raw string) *bool {
+	value := strings.ToLower(strings.TrimSpace(raw))
+	switch value {
+	case "set", "configured", "yes", "true", "1":
+		parsed := true
+		return &parsed
+	case "unset", "unconfigured", "no", "false", "0":
+		parsed := false
+		return &parsed
+	default:
+		return nil
+	}
+}
+
+func getModelsMetaFilter(c *gin.Context) model.ModelsMetaFilter {
+	priceFilter := c.Query("has_price")
+	if strings.TrimSpace(priceFilter) == "" {
+		priceFilter = c.Query("price_configured")
+	}
+
+	return model.ModelsMetaFilter{
+		Keyword: c.Query("keyword"),
+		Vendor:  c.Query("vendor"),
+		Status: parseModelIntFilter(
+			c.Query("status"),
+			map[string]struct{}{"enabled": {}, "enable": {}, "true": {}, "1": {}},
+			map[string]struct{}{"disabled": {}, "disable": {}, "false": {}, "0": {}},
+		),
+		SyncOfficial: parseModelIntFilter(
+			c.Query("sync_official"),
+			map[string]struct{}{"yes": {}, "sync": {}, "official": {}, "true": {}, "1": {}},
+			map[string]struct{}{"no": {}, "none": {}, "false": {}, "0": {}},
+		),
+		HasPrice: parseModelBoolFilter(priceFilter),
+	}
+}
+
 // GetAllModelsMeta 获取模型列表（分页）
 func GetAllModelsMeta(c *gin.Context) {
 
 	pageInfo := common.GetPageQuery(c)
-	modelsMeta, err := model.GetAllModels(pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	modelsMeta, total, err := model.ListModelsMeta(getModelsMetaFilter(c), pageInfo.GetStartIdx(), pageInfo.GetPageSize())
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
 	// 批量填充附加字段，提升列表接口性能
 	enrichModels(modelsMeta)
-	var total int64
-	model.DB.Model(&model.Model{}).Count(&total)
 
 	// 统计供应商计数（全部数据，不受分页影响）
 	vendorCounts, _ := model.GetVendorModelCounts()
@@ -50,11 +101,9 @@ func GetAllModelsMeta(c *gin.Context) {
 // SearchModelsMeta 搜索模型列表
 func SearchModelsMeta(c *gin.Context) {
 
-	keyword := c.Query("keyword")
-	vendor := c.Query("vendor")
 	pageInfo := common.GetPageQuery(c)
 
-	modelsMeta, total, err := model.SearchModels(keyword, vendor, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	modelsMeta, total, err := model.ListModelsMeta(getModelsMetaFilter(c), pageInfo.GetStartIdx(), pageInfo.GetPageSize())
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -238,12 +287,18 @@ func enrichModels(models []*model.Model) {
 		}
 	}
 
+	// 4) 一次性读取定价缓存，内存匹配所有规则模型
+	var pricings []model.Pricing
+	if len(ruleIndices) > 0 {
+		pricings = model.GetPricing()
+	}
+	for _, modelMeta := range models {
+		modelMeta.HasPrice = model.ModelMetaHasBillingConfig(modelMeta, pricings)
+	}
+
 	if len(ruleIndices) == 0 {
 		return
 	}
-
-	// 4) 一次性读取定价缓存，内存匹配所有规则模型
-	pricings := model.GetPricing()
 
 	// 为全部规则模型收集匹配名集合、端点并集、分组并集、配额集合
 	matchedNamesByIdx := make(map[int][]string)

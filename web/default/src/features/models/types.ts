@@ -50,6 +50,7 @@ export interface Model {
   bound_channels?: BoundChannel[]
   enable_groups?: string[]
   quota_types?: number[]
+  has_price?: boolean
   matched_models?: string[]
   matched_count?: number
 }
@@ -91,6 +92,7 @@ export interface GetModelsParams {
   vendor?: string // vendor ID to filter by
   status?: string // filter by status
   sync_official?: string // filter by sync_official status
+  has_price?: string // filter by pricing configuration status
 }
 
 /**
@@ -101,6 +103,7 @@ export interface SearchModelsParams {
   vendor?: string // vendor ID to filter by
   status?: string // filter by status
   sync_official?: string // filter by sync_official status
+  has_price?: string // filter by pricing configuration status
   p?: number
   page_size?: number
 }
@@ -217,6 +220,16 @@ export interface MissingModelsResponse {
   success: boolean
   message?: string
   data?: string[]
+}
+
+export interface AddMissingModelsResponse {
+  success: boolean
+  message?: string
+  data?: {
+    created_models?: number
+    skipped_models?: string[]
+    created_list?: string[]
+  }
 }
 
 /**
