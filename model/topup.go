@@ -3,6 +3,8 @@ package model
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -22,6 +24,28 @@ type TopUp struct {
 	CreateTime      int64   `json:"create_time"`
 	CompleteTime    int64   `json:"complete_time"`
 	Status          string  `json:"status"`
+}
+
+type TopUpLog struct {
+	Id              int     `json:"id"`
+	UserId          int     `json:"user_id"`
+	Username        string  `json:"username"`
+	Amount          int64   `json:"amount"`
+	Money           float64 `json:"money"`
+	TradeNo         string  `json:"trade_no"`
+	PaymentMethod   string  `json:"payment_method"`
+	PaymentProvider string  `json:"payment_provider"`
+	CreateTime      int64   `json:"create_time"`
+	CompleteTime    int64   `json:"complete_time"`
+	Status          string  `json:"status"`
+}
+
+type TopUpLogFilter struct {
+	Keyword       string
+	PaymentMethod string
+	Status        string
+	StartTime     int64
+	EndTime       int64
 }
 
 const (
@@ -232,6 +256,88 @@ func GetAllTopUps(pageInfo *common.PageInfo) (topups []*TopUp, total int64, err 
 	}
 
 	return topups, total, nil
+}
+
+func applyTopUpLogFilters(query *gorm.DB, filter TopUpLogFilter) (*gorm.DB, error) {
+	keyword := strings.TrimSpace(filter.Keyword)
+	if keyword != "" {
+		patternKeyword := keyword
+		if !strings.Contains(keyword, "%") {
+			patternKeyword = "%" + keyword + "%"
+		}
+		pattern, perr := sanitizeLikePattern(patternKeyword)
+		if perr != nil {
+			return nil, perr
+		}
+
+		if id, parseErr := strconv.Atoi(keyword); parseErr == nil {
+			query = query.Where(
+				"(top_ups.trade_no LIKE ? ESCAPE '!' OR users.username LIKE ? ESCAPE '!' OR top_ups.id = ? OR top_ups.user_id = ?)",
+				pattern,
+				pattern,
+				id,
+				id,
+			)
+		} else {
+			query = query.Where(
+				"(top_ups.trade_no LIKE ? ESCAPE '!' OR users.username LIKE ? ESCAPE '!')",
+				pattern,
+				pattern,
+			)
+		}
+	}
+
+	if paymentMethod := strings.TrimSpace(filter.PaymentMethod); paymentMethod != "" {
+		query = query.Where("top_ups.payment_method = ?", paymentMethod)
+	}
+	if status := strings.TrimSpace(filter.Status); status != "" {
+		query = query.Where("top_ups.status = ?", status)
+	}
+	if filter.StartTime > 0 {
+		query = query.Where("top_ups.create_time >= ?", filter.StartTime)
+	}
+	if filter.EndTime > 0 {
+		query = query.Where("top_ups.create_time <= ?", filter.EndTime)
+	}
+
+	return query, nil
+}
+
+func GetAllTopUpLogs(filter TopUpLogFilter, pageInfo *common.PageInfo) (logs []*TopUpLog, total int64, err error) {
+	tx := DB.Begin()
+	if tx.Error != nil {
+		return nil, 0, tx.Error
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	query := tx.Model(&TopUp{}).Joins("LEFT JOIN users ON users.id = top_ups.user_id")
+	query, err = applyTopUpLogFilters(query, filter)
+	if err != nil {
+		tx.Rollback()
+		return nil, 0, err
+	}
+
+	if err = query.Count(&total).Error; err != nil {
+		tx.Rollback()
+		common.SysError("failed to count topup logs: " + err.Error())
+		return nil, 0, errors.New("获取支付日志失败")
+	}
+
+	if err = query.Select("top_ups.id, top_ups.user_id, COALESCE(users.username, '') AS username, top_ups.amount, top_ups.money, top_ups.trade_no, top_ups.payment_method, top_ups.payment_provider, top_ups.create_time, top_ups.complete_time, top_ups.status").Order("top_ups.id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&logs).Error; err != nil {
+		tx.Rollback()
+		common.SysError("failed to query topup logs: " + err.Error())
+		return nil, 0, errors.New("获取支付日志失败")
+	}
+
+	if err = tx.Commit().Error; err != nil {
+		return nil, 0, err
+	}
+
+	return logs, total, nil
 }
 
 // searchTopUpCountHardLimit 搜索充值记录时 COUNT 的安全上限，

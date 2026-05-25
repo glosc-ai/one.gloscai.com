@@ -130,6 +130,19 @@ export const STATIC_I18N_KEYS = [
   'Quota must be a positive number',
   'Successfully created {{count}} redemption codes',
 
+  // Payment logs
+  'Payment Logs',
+  'No Payment Logs Found',
+  'No payment logs available. Try adjusting your search or filters.',
+  'Filter by username, order number or ID...',
+  'Review payment records and statuses.',
+  'Pending',
+  'Success',
+  'Failed',
+  'Creem',
+  'Waffo',
+  'Waffo Pancake',
+
   // Home page (constants-driven labels)
   'Cost Tracking',
   'Model Access',

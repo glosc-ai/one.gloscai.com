@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import {
   Activity,
+  Bot,
   Box,
   CreditCard,
   FileText,
@@ -27,6 +28,7 @@ import {
   ListTodo,
   MessageSquare,
   Radio,
+  ReceiptText,
   Settings,
   Ticket,
   User,
@@ -135,6 +137,16 @@ export function useSidebarData(): SidebarData {
             title: t('Redemption Codes'),
             url: '/redemption-codes',
             icon: Ticket,
+          },
+          {
+            title: t('Payment Logs'),
+            url: '/payment-logs',
+            icon: ReceiptText,
+          },
+          {
+            title: t('Model Call Logs'),
+            url: '/model-call-logs',
+            icon: Bot,
           },
           {
             title: t('Subscription Management'),

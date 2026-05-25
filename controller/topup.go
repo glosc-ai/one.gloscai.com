@@ -517,25 +517,27 @@ func GetUserTopUps(c *gin.Context) {
 // GetAllTopUps 管理员获取全平台充值记录
 func GetAllTopUps(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)
-	keyword := c.Query("keyword")
+	filter := model.TopUpLogFilter{
+		Keyword:       c.Query("keyword"),
+		PaymentMethod: c.Query("payment_method"),
+		Status:        c.Query("status"),
+		StartTime:     int64(common.String2Int(c.Query("start_time"))),
+		EndTime:       int64(common.String2Int(c.Query("end_time"))),
+	}
 
 	var (
-		topups []*model.TopUp
-		total  int64
-		err    error
+		logs  []*model.TopUpLog
+		total int64
+		err   error
 	)
-	if keyword != "" {
-		topups, total, err = model.SearchAllTopUps(keyword, pageInfo)
-	} else {
-		topups, total, err = model.GetAllTopUps(pageInfo)
-	}
+	logs, total, err = model.GetAllTopUpLogs(filter, pageInfo)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
 
 	pageInfo.SetTotal(int(total))
-	pageInfo.SetItems(topups)
+	pageInfo.SetItems(logs)
 	common.ApiSuccess(c, pageInfo)
 }
 

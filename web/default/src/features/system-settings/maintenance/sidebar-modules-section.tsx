@@ -134,9 +134,17 @@ export function SidebarModulesSection({
         title: t('Models'),
         description: t('Manage catalog visibility and pricing.'),
       },
+      model_call: {
+        title: t('Model Call Logs'),
+        description: t('Review user model calls and costs.'),
+      },
       redemption: {
         title: t('Redeem codes'),
         description: t('Create and review invite or credit codes.'),
+      },
+      payment: {
+        title: t('Payment Logs'),
+        description: t('Review payment records and statuses.'),
       },
       user: {
         title: t('Users'),

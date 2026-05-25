@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -17,27 +19,47 @@ import (
 )
 
 type Log struct {
-	Id               int    `json:"id" gorm:"index:idx_created_at_id,priority:1;index:idx_user_id_id,priority:2"`
-	UserId           int    `json:"user_id" gorm:"index;index:idx_user_id_id,priority:1"`
-	CreatedAt        int64  `json:"created_at" gorm:"bigint;index:idx_created_at_id,priority:2;index:idx_created_at_type"`
-	Type             int    `json:"type" gorm:"index:idx_created_at_type"`
-	Content          string `json:"content"`
-	Username         string `json:"username" gorm:"index;index:index_username_model_name,priority:2;default:''"`
-	TokenName        string `json:"token_name" gorm:"index;default:''"`
-	ModelName        string `json:"model_name" gorm:"index;index:index_username_model_name,priority:1;default:''"`
-	Quota            int    `json:"quota" gorm:"default:0"`
-	PromptTokens     int    `json:"prompt_tokens" gorm:"default:0"`
-	CompletionTokens int    `json:"completion_tokens" gorm:"default:0"`
-	UseTime          int    `json:"use_time" gorm:"default:0"`
-	IsStream         bool   `json:"is_stream"`
-	ChannelId        int    `json:"channel" gorm:"index"`
-	ChannelName      string `json:"channel_name" gorm:"->"`
-	TokenId          int    `json:"token_id" gorm:"default:0;index"`
-	Group            string `json:"group" gorm:"index"`
-	Ip               string `json:"ip" gorm:"index;default:''"`
+	Id                int    `json:"id" gorm:"index:idx_created_at_id,priority:1;index:idx_user_id_id,priority:2"`
+	UserId            int    `json:"user_id" gorm:"index;index:idx_user_id_id,priority:1"`
+	CreatedAt         int64  `json:"created_at" gorm:"bigint;index:idx_created_at_id,priority:2;index:idx_created_at_type"`
+	Type              int    `json:"type" gorm:"index:idx_created_at_type"`
+	Content           string `json:"content"`
+	Username          string `json:"username" gorm:"index;index:index_username_model_name,priority:2;default:''"`
+	TokenName         string `json:"token_name" gorm:"index;default:''"`
+	ModelName         string `json:"model_name" gorm:"index;index:index_username_model_name,priority:1;default:''"`
+	Quota             int    `json:"quota" gorm:"default:0"`
+	PromptTokens      int    `json:"prompt_tokens" gorm:"default:0"`
+	CompletionTokens  int    `json:"completion_tokens" gorm:"default:0"`
+	UseTime           int    `json:"use_time" gorm:"default:0"`
+	IsStream          bool   `json:"is_stream"`
+	ChannelId         int    `json:"channel" gorm:"index"`
+	ChannelName       string `json:"channel_name" gorm:"->"`
+	TokenId           int    `json:"token_id" gorm:"default:0;index"`
+	Group             string `json:"group" gorm:"index"`
+	Ip                string `json:"ip" gorm:"index;default:''"`
 	RequestId         string `json:"request_id,omitempty" gorm:"type:varchar(64);index:idx_logs_request_id;default:''"`
 	UpstreamRequestId string `json:"upstream_request_id,omitempty" gorm:"type:varchar(128);index:idx_logs_upstream_request_id;default:''"`
 	Other             string `json:"other"`
+}
+
+type ModelCallLog struct {
+	Id               int    `json:"id"`
+	UserId           int    `json:"user_id"`
+	Username         string `json:"username"`
+	ModelName        string `json:"model_name"`
+	PromptTokens     int    `json:"prompt_tokens"`
+	CompletionTokens int    `json:"completion_tokens"`
+	TotalTokens      int    `json:"total_tokens"`
+	Quota            int    `json:"quota"`
+	Status           string `json:"status"`
+	CreatedAt        int64  `json:"created_at"`
+}
+
+type ModelCallLogFilter struct {
+	Keyword        string
+	Status         string
+	StartTimestamp int64
+	EndTimestamp   int64
 }
 
 // don't use iota, avoid change log type value
@@ -50,6 +72,18 @@ const (
 	LogTypeError   = 5
 	LogTypeRefund  = 6
 )
+
+const (
+	ModelCallLogStatusSuccess = "success"
+	ModelCallLogStatusFailed  = "failed"
+)
+
+func escapeLikeContainsPattern(input string) string {
+	input = strings.ReplaceAll(input, "!", "!!")
+	input = strings.ReplaceAll(input, "%", "!%")
+	input = strings.ReplaceAll(input, `_`, `!_`)
+	return "%" + input + "%"
+}
 
 func formatUserLogs(logs []*Log, startIdx int) {
 	for i := range logs {
@@ -385,6 +419,83 @@ func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName
 	}
 
 	return logs, total, err
+}
+
+func applyModelCallLogFilters(query *gorm.DB, filter ModelCallLogFilter) *gorm.DB {
+	query = query.Where("logs.type IN ?", []int{LogTypeConsume, LogTypeError})
+
+	switch strings.TrimSpace(filter.Status) {
+	case ModelCallLogStatusSuccess:
+		query = query.Where("logs.type = ?", LogTypeConsume)
+	case ModelCallLogStatusFailed:
+		query = query.Where("logs.type = ?", LogTypeError)
+	}
+
+	keyword := strings.TrimSpace(filter.Keyword)
+	if keyword != "" {
+		pattern := escapeLikeContainsPattern(keyword)
+		if id, parseErr := strconv.Atoi(keyword); parseErr == nil {
+			query = query.Where(
+				"(logs.username LIKE ? ESCAPE '!' OR logs.model_name LIKE ? ESCAPE '!' OR logs.request_id LIKE ? ESCAPE '!' OR logs.id = ? OR logs.user_id = ?)",
+				pattern,
+				pattern,
+				pattern,
+				id,
+				id,
+			)
+		} else {
+			query = query.Where(
+				"(logs.username LIKE ? ESCAPE '!' OR logs.model_name LIKE ? ESCAPE '!' OR logs.request_id LIKE ? ESCAPE '!')",
+				pattern,
+				pattern,
+				pattern,
+			)
+		}
+	}
+	if filter.StartTimestamp > 0 {
+		query = query.Where("logs.created_at >= ?", filter.StartTimestamp)
+	}
+	if filter.EndTimestamp > 0 {
+		query = query.Where("logs.created_at <= ?", filter.EndTimestamp)
+	}
+
+	return query
+}
+
+func GetModelCallLogs(filter ModelCallLogFilter, pageInfo *common.PageInfo) (callLogs []*ModelCallLog, total int64, err error) {
+	query := applyModelCallLogFilters(LOG_DB.Model(&Log{}), filter)
+	if err = query.Count(&total).Error; err != nil {
+		common.SysError("failed to count model call logs: " + err.Error())
+		return nil, 0, errors.New("获取模型调用记录失败")
+	}
+
+	var logs []*Log
+	if err = query.Order("logs.id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&logs).Error; err != nil {
+		common.SysError("failed to query model call logs: " + err.Error())
+		return nil, 0, errors.New("获取模型调用记录失败")
+	}
+
+	callLogs = make([]*ModelCallLog, 0, len(logs))
+	for _, log := range logs {
+		status := ModelCallLogStatusSuccess
+		if log.Type == LogTypeError {
+			status = ModelCallLogStatusFailed
+		}
+		callLogs = append(callLogs, &ModelCallLog{
+			Id:               log.Id,
+			UserId:           log.UserId,
+			Username:         log.Username,
+			ModelName:        log.ModelName,
+			PromptTokens:     log.PromptTokens,
+			CompletionTokens: log.CompletionTokens,
+			TotalTokens:      log.PromptTokens + log.CompletionTokens,
+			Quota:            log.Quota,
+			Status:           status,
+			CreatedAt:        log.CreatedAt,
+		})
+	}
+
+	return callLogs, total, nil
 }
 
 const logSearchCountLimit = 10000

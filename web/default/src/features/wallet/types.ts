@@ -281,6 +281,8 @@ export interface TopupRecord {
   id: number
   /** User ID */
   user_id: number
+  /** Username, returned for admin payment log queries */
+  username?: string
   /** Topup amount (quota) */
   amount: number
   /** Payment amount (actual money paid) */
@@ -289,6 +291,8 @@ export interface TopupRecord {
   trade_no: string
   /** Payment method type */
   payment_method: string
+  /** Backend payment provider identifier */
+  payment_provider?: string
   /** Creation timestamp */
   create_time: number
   /** Completion timestamp */
