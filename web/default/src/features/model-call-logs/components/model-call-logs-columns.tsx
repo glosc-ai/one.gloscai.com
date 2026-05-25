@@ -114,16 +114,18 @@ export function useModelCallLogsColumns(): ColumnDef<ModelCallLog>[] {
         const status = row.getValue('status') as string
         const log = row.original
         const config = getModelCallLogStatusConfig(status)
+        const errorMessage = log.error_message || log.error_code
+        const hasErrorInfo = status === 'failed' && Boolean(errorMessage)
         const badge = (
           <StatusBadge
             label={t(config.labelKey)}
             variant={config.variant}
             copyable={false}
-            className={log.error_code ? 'cursor-help' : undefined}
+            className={hasErrorInfo ? 'cursor-help' : undefined}
           />
         )
 
-        if (status !== 'failed' || !log.error_code) {
+        if (!hasErrorInfo) {
           return badge
         }
 
@@ -131,11 +133,18 @@ export function useModelCallLogsColumns(): ColumnDef<ModelCallLog>[] {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger render={badge} />
-              <TooltipContent>
-                <span>
-                  {t('Error Code')}:{' '}
-                  <span className='font-mono'>{log.error_code}</span>
-                </span>
+              <TooltipContent className='max-w-sm items-start'>
+                <div className='flex flex-col gap-1'>
+                  <span className='wrap-break-word whitespace-pre-wrap'>
+                    {errorMessage}
+                  </span>
+                  {log.error_code && log.error_message && (
+                    <span className='text-background/70 text-[11px]'>
+                      {t('Error Code')}:{' '}
+                      <span className='font-mono'>{log.error_code}</span>
+                    </span>
+                  )}
+                </div>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

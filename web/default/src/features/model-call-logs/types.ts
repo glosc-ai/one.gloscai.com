@@ -11,6 +11,7 @@ export const modelCallLogSchema = z.object({
   quota: z.number().default(0),
   status: z.string(),
   error_code: z.string().optional().default(''),
+  error_message: z.string().optional().default(''),
   created_at: z.number(),
 })
 

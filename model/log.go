@@ -53,6 +53,7 @@ type ModelCallLog struct {
 	Quota            int    `json:"quota"`
 	Status           string `json:"status"`
 	ErrorCode        string `json:"error_code"`
+	ErrorMessage     string `json:"error_message"`
 	CreatedAt        int64  `json:"created_at"`
 }
 
@@ -498,9 +499,11 @@ func GetModelCallLogs(filter ModelCallLogFilter, pageInfo *common.PageInfo) (cal
 	for _, log := range logs {
 		status := ModelCallLogStatusSuccess
 		errorCode := ""
+		errorMessage := ""
 		if log.Type == LogTypeError {
 			status = ModelCallLogStatusFailed
 			errorCode = getModelCallLogErrorCode(log)
+			errorMessage = strings.TrimSpace(log.Content)
 		}
 		callLogs = append(callLogs, &ModelCallLog{
 			Id:               log.Id,
@@ -513,6 +516,7 @@ func GetModelCallLogs(filter ModelCallLogFilter, pageInfo *common.PageInfo) (cal
 			Quota:            log.Quota,
 			Status:           status,
 			ErrorCode:        errorCode,
+			ErrorMessage:     errorMessage,
 			CreatedAt:        log.CreatedAt,
 		})
 	}
