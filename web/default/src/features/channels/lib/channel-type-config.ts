@@ -134,6 +134,17 @@ export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
       baseUrl: 'Default: https://api.replicate.com',
     },
   },
+  58: {
+    id: 58,
+    name: CHANNEL_TYPES[58],
+    icon: 'Github',
+    defaultBaseUrl: 'https://api.individual.githubcopilot.com',
+    hints: {
+      key: 'GitHub OAuth token with an active Copilot subscription',
+      models: 'Use model IDs from GitHub Copilot',
+      baseUrl: 'Default: https://api.individual.githubcopilot.com',
+    },
+  },
 }
 
 /**

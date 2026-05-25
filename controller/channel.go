@@ -1011,9 +1011,11 @@ func FetchModels(c *gin.Context) {
 		baseURL = constant.ChannelBaseURLs[req.Type]
 	}
 
-	// remove line breaks and extra spaces.
+	// remove line breaks and extra spaces for single-line key formats.
 	key := strings.TrimSpace(req.Key)
-	key = strings.Split(key, "\n")[0]
+	if req.Type != constant.ChannelTypeGitHubCopilot {
+		key = strings.Split(key, "\n")[0]
+	}
 
 	if req.Type == constant.ChannelTypeOllama {
 		models, err := ollama.FetchOllamaModels(baseURL, key)
@@ -1043,6 +1045,23 @@ func FetchModels(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
 				"message": fmt.Sprintf("获取Gemini模型失败: %s", err.Error()),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    models,
+		})
+		return
+	}
+
+	if req.Type == constant.ChannelTypeGitHubCopilot {
+		models, err := service.FetchGitHubCopilotModels(c.Request.Context(), baseURL, key, "")
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": fmt.Sprintf("获取GitHub Copilot模型失败: %s", err.Error()),
 			})
 			return
 		}

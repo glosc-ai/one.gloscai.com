@@ -27,6 +27,8 @@ import {
 } from '@douyinfe/semi-illustrations';
 import { useTranslation } from 'react-i18next';
 import MarkdownRenderer from '../markdown/MarkdownRenderer';
+import { useActualTheme } from '../../../context/Theme';
+import './documentRenderer.css';
 
 // Check whether content is a URL.
 const isUrl = (content) => {
@@ -70,6 +72,7 @@ const sanitizeHtml = (html) => {
  */
 const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
   const { t } = useTranslation();
+  const actualTheme = useActualTheme() || 'light';
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -141,7 +144,7 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
   // 显示加载状态
   if (loading) {
     return (
-      <div className='flex justify-center items-center min-h-screen'>
+      <div className='document-renderer-page flex justify-center items-center'>
         <Spin size='large' />
       </div>
     );
@@ -150,7 +153,7 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
   // 如果没有内容，显示空状态
   if (!content || content.trim() === '') {
     return (
-      <div className='flex justify-center items-center min-h-screen bg-gray-50'>
+      <div className='document-renderer-page flex justify-center items-center'>
         <Empty
           title={t('管理员未设置' + title + '内容')}
           image={
@@ -168,13 +171,13 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
   // 如果是 URL，显示链接卡片
   if (isUrl(content)) {
     return (
-      <div className='flex justify-center items-center min-h-screen bg-gray-50 p-4'>
+      <div className='document-renderer-page flex justify-center items-center p-4'>
         <Card className='max-w-md w-full'>
           <div className='text-center'>
             <Title heading={4} className='mb-4'>
               {title}
             </Title>
-            <p className='text-gray-600 mb-4'>
+            <p className='mb-4' style={{ color: 'var(--semi-color-text-2)' }}>
               {t('管理员设置了外部链接，点击下方按钮访问')}
             </p>
             <a
@@ -196,9 +199,9 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
   // 如果是 HTML 内容，直接渲染
   if (isHtmlContent(content)) {
     return (
-      <div className='min-h-screen bg-gray-50'>
-        <div className='max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8'>
-          <div className='bg-white rounded-lg shadow-sm p-8'>
+      <div className='document-renderer-page'>
+        <div className='document-renderer-shell'>
+          <div className='document-renderer-html-card'>
             <Title heading={2} className='text-center mb-8'>
               {title}
             </Title>
@@ -214,15 +217,26 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
 
   // 其他内容统一使用 Markdown 渲染器
   return (
-    <div className='min-h-screen bg-gray-50'>
-      <div className='max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8'>
-        <div className='bg-white rounded-lg shadow-sm p-8'>
-          <Title heading={2} className='text-center mb-8'>
-            {title}
-          </Title>
-          <div className='prose prose-lg max-w-none'>
-            <MarkdownRenderer content={content} />
+    <div className='document-renderer-page'>
+      <div className='document-renderer-shell'>
+        <div className='document-renderer-card' data-github-theme={actualTheme}>
+          <div className='document-renderer-title'>
+            <Title
+              heading={2}
+              className='text-center !m-0'
+              style={{
+                color: actualTheme === 'dark' ? '#f0f6fc' : '#1f2328',
+              }}
+            >
+              {title}
+            </Title>
           </div>
+          <MarkdownRenderer
+            content={content}
+            githubStyle
+            githubTheme={actualTheme}
+            className='document-markdown-body markdown-body'
+          />
         </div>
       </div>
     </div>

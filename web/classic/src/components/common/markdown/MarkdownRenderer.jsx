@@ -20,6 +20,8 @@ For commercial licensing, please contact support@quantumnous.com
 import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github.css';
+import githubMarkdownLightCss from 'github-markdown-css/github-markdown-light.css?inline';
+import githubMarkdownDarkCss from 'github-markdown-css/github-markdown-dark.css?inline';
 import './markdown.css';
 import RemarkMath from 'remark-math';
 import RemarkBreaks from 'remark-breaks';
@@ -384,6 +386,7 @@ function _MarkdownContent(props) {
     className,
     animated = false,
     previousContentLength = 0,
+    githubStyle = false,
   } = props;
 
   const escapedContent = useMemo(() => {
@@ -414,218 +417,276 @@ function _MarkdownContent(props) {
     <ReactMarkdown
       remarkPlugins={[RemarkMath, RemarkGfm, RemarkBreaks]}
       rehypePlugins={rehypePluginsBase}
-      components={{
-        pre: PreCode,
-        code: CustomCode,
-        p: (pProps) => (
-          <p
-            {...pProps}
-            dir='auto'
-            style={{
-              lineHeight: '1.6',
-              color: isUserMessage ? 'white' : 'inherit',
-            }}
-          />
-        ),
-        a: (aProps) => {
-          const href = aProps.href || '';
-          if (/\.(aac|mp3|opus|wav)$/.test(href)) {
-            return (
-              <figure style={{ margin: '12px 0' }}>
-                <audio controls src={href} style={{ width: '100%' }}></audio>
-              </figure>
-            );
-          }
-          if (/\.(3gp|3g2|webm|ogv|mpeg|mp4|avi)$/.test(href)) {
-            return (
-              <video
-                controls
-                style={{ width: '100%', maxWidth: '100%', margin: '12px 0' }}
-              >
-                <source src={href} />
-              </video>
-            );
-          }
-          const isInternal = /^\/#/i.test(href);
-          const target = isInternal ? '_self' : (aProps.target ?? '_blank');
-          return (
-            <a
-              {...aProps}
-              target={target}
-              style={{
-                color: isUserMessage ? '#87CEEB' : 'var(--semi-color-primary)',
-                textDecoration: 'none',
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.textDecoration = 'underline';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.textDecoration = 'none';
-              }}
-            />
-          );
-        },
-        h1: (props) => (
-          <h1
-            {...props}
-            style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              margin: '20px 0 12px 0',
-              color: isUserMessage ? 'white' : 'var(--semi-color-text-0)',
-            }}
-          />
-        ),
-        h2: (props) => (
-          <h2
-            {...props}
-            style={{
-              fontSize: '20px',
-              fontWeight: 'bold',
-              margin: '18px 0 10px 0',
-              color: isUserMessage ? 'white' : 'var(--semi-color-text-0)',
-            }}
-          />
-        ),
-        h3: (props) => (
-          <h3
-            {...props}
-            style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
-              margin: '16px 0 8px 0',
-              color: isUserMessage ? 'white' : 'var(--semi-color-text-0)',
-            }}
-          />
-        ),
-        h4: (props) => (
-          <h4
-            {...props}
-            style={{
-              fontSize: '16px',
-              fontWeight: 'bold',
-              margin: '14px 0 6px 0',
-              color: isUserMessage ? 'white' : 'var(--semi-color-text-0)',
-            }}
-          />
-        ),
-        h5: (props) => (
-          <h5
-            {...props}
-            style={{
-              fontSize: '14px',
-              fontWeight: 'bold',
-              margin: '12px 0 4px 0',
-              color: isUserMessage ? 'white' : 'var(--semi-color-text-0)',
-            }}
-          />
-        ),
-        h6: (props) => (
-          <h6
-            {...props}
-            style={{
-              fontSize: '13px',
-              fontWeight: 'bold',
-              margin: '10px 0 4px 0',
-              color: isUserMessage ? 'white' : 'var(--semi-color-text-0)',
-            }}
-          />
-        ),
-        blockquote: (props) => (
-          <blockquote
-            {...props}
-            style={{
-              borderLeft: isUserMessage
-                ? '4px solid rgba(255, 255, 255, 0.5)'
-                : '4px solid var(--semi-color-primary)',
-              paddingLeft: '16px',
-              margin: '12px 0',
-              backgroundColor: isUserMessage
-                ? 'rgba(255, 255, 255, 0.1)'
-                : 'var(--semi-color-fill-0)',
-              padding: '8px 16px',
-              borderRadius: '0 4px 4px 0',
-              fontStyle: 'italic',
-              color: isUserMessage ? 'white' : 'inherit',
-            }}
-          />
-        ),
-        ul: (props) => (
-          <ul
-            {...props}
-            style={{
-              margin: '8px 0',
-              paddingLeft: '20px',
-              color: isUserMessage ? 'white' : 'inherit',
-            }}
-          />
-        ),
-        ol: (props) => (
-          <ol
-            {...props}
-            style={{
-              margin: '8px 0',
-              paddingLeft: '20px',
-              color: isUserMessage ? 'white' : 'inherit',
-            }}
-          />
-        ),
-        li: (props) => (
-          <li
-            {...props}
-            style={{
-              margin: '4px 0',
-              lineHeight: '1.6',
-              color: isUserMessage ? 'white' : 'inherit',
-            }}
-          />
-        ),
-        table: (props) => (
-          <div style={{ overflow: 'auto', margin: '12px 0' }}>
-            <table
-              {...props}
-              style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                border: isUserMessage
-                  ? '1px solid rgba(255, 255, 255, 0.3)'
-                  : '1px solid var(--semi-color-border)',
-                borderRadius: '6px',
-                overflow: 'hidden',
-              }}
-            />
-          </div>
-        ),
-        th: (props) => (
-          <th
-            {...props}
-            style={{
-              padding: '8px 12px',
-              backgroundColor: isUserMessage
-                ? 'rgba(255, 255, 255, 0.2)'
-                : 'var(--semi-color-fill-1)',
-              border: isUserMessage
-                ? '1px solid rgba(255, 255, 255, 0.3)'
-                : '1px solid var(--semi-color-border)',
-              fontWeight: 'bold',
-              textAlign: 'left',
-              color: isUserMessage ? 'white' : 'inherit',
-            }}
-          />
-        ),
-        td: (props) => (
-          <td
-            {...props}
-            style={{
-              padding: '8px 12px',
-              border: isUserMessage
-                ? '1px solid rgba(255, 255, 255, 0.3)'
-                : '1px solid var(--semi-color-border)',
-              color: isUserMessage ? 'white' : 'inherit',
-            }}
-          />
-        ),
-      }}
+      components={
+        githubStyle
+          ? {
+              a: (aProps) => {
+                const href = aProps.href || '';
+                if (/\.(aac|mp3|opus|wav)$/.test(href)) {
+                  return (
+                    <figure style={{ margin: '12px 0' }}>
+                      <audio
+                        controls
+                        src={href}
+                        style={{ width: '100%' }}
+                      ></audio>
+                    </figure>
+                  );
+                }
+                if (/\.(3gp|3g2|webm|ogv|mpeg|mp4|avi)$/.test(href)) {
+                  return (
+                    <video
+                      controls
+                      style={{
+                        width: '100%',
+                        maxWidth: '100%',
+                        margin: '12px 0',
+                      }}
+                    >
+                      <source src={href} />
+                    </video>
+                  );
+                }
+                const isInternal = /^\/#/i.test(href);
+                const target = isInternal
+                  ? '_self'
+                  : (aProps.target ?? '_blank');
+                return (
+                  <a
+                    {...aProps}
+                    target={target}
+                    rel={
+                      target === '_blank' ? 'noopener noreferrer' : aProps.rel
+                    }
+                  />
+                );
+              },
+            }
+          : {
+              pre: PreCode,
+              code: CustomCode,
+              p: (pProps) => (
+                <p
+                  {...pProps}
+                  dir='auto'
+                  style={{
+                    lineHeight: '1.6',
+                    color: isUserMessage ? 'white' : 'inherit',
+                  }}
+                />
+              ),
+              a: (aProps) => {
+                const href = aProps.href || '';
+                if (/\.(aac|mp3|opus|wav)$/.test(href)) {
+                  return (
+                    <figure style={{ margin: '12px 0' }}>
+                      <audio
+                        controls
+                        src={href}
+                        style={{ width: '100%' }}
+                      ></audio>
+                    </figure>
+                  );
+                }
+                if (/\.(3gp|3g2|webm|ogv|mpeg|mp4|avi)$/.test(href)) {
+                  return (
+                    <video
+                      controls
+                      style={{
+                        width: '100%',
+                        maxWidth: '100%',
+                        margin: '12px 0',
+                      }}
+                    >
+                      <source src={href} />
+                    </video>
+                  );
+                }
+                const isInternal = /^\/#/i.test(href);
+                const target = isInternal
+                  ? '_self'
+                  : (aProps.target ?? '_blank');
+                return (
+                  <a
+                    {...aProps}
+                    target={target}
+                    style={{
+                      color: isUserMessage
+                        ? '#87CEEB'
+                        : 'var(--semi-color-primary)',
+                      textDecoration: 'none',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.textDecoration = 'underline';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.textDecoration = 'none';
+                    }}
+                  />
+                );
+              },
+              h1: (props) => (
+                <h1
+                  {...props}
+                  style={{
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    margin: '20px 0 12px 0',
+                    color: isUserMessage ? 'white' : 'var(--semi-color-text-0)',
+                  }}
+                />
+              ),
+              h2: (props) => (
+                <h2
+                  {...props}
+                  style={{
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    margin: '18px 0 10px 0',
+                    color: isUserMessage ? 'white' : 'var(--semi-color-text-0)',
+                  }}
+                />
+              ),
+              h3: (props) => (
+                <h3
+                  {...props}
+                  style={{
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    margin: '16px 0 8px 0',
+                    color: isUserMessage ? 'white' : 'var(--semi-color-text-0)',
+                  }}
+                />
+              ),
+              h4: (props) => (
+                <h4
+                  {...props}
+                  style={{
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    margin: '14px 0 6px 0',
+                    color: isUserMessage ? 'white' : 'var(--semi-color-text-0)',
+                  }}
+                />
+              ),
+              h5: (props) => (
+                <h5
+                  {...props}
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    margin: '12px 0 4px 0',
+                    color: isUserMessage ? 'white' : 'var(--semi-color-text-0)',
+                  }}
+                />
+              ),
+              h6: (props) => (
+                <h6
+                  {...props}
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 'bold',
+                    margin: '10px 0 4px 0',
+                    color: isUserMessage ? 'white' : 'var(--semi-color-text-0)',
+                  }}
+                />
+              ),
+              blockquote: (props) => (
+                <blockquote
+                  {...props}
+                  style={{
+                    borderLeft: isUserMessage
+                      ? '4px solid rgba(255, 255, 255, 0.5)'
+                      : '4px solid var(--semi-color-primary)',
+                    paddingLeft: '16px',
+                    margin: '12px 0',
+                    backgroundColor: isUserMessage
+                      ? 'rgba(255, 255, 255, 0.1)'
+                      : 'var(--semi-color-fill-0)',
+                    padding: '8px 16px',
+                    borderRadius: '0 4px 4px 0',
+                    fontStyle: 'italic',
+                    color: isUserMessage ? 'white' : 'inherit',
+                  }}
+                />
+              ),
+              ul: (props) => (
+                <ul
+                  {...props}
+                  style={{
+                    margin: '8px 0',
+                    paddingLeft: '20px',
+                    color: isUserMessage ? 'white' : 'inherit',
+                  }}
+                />
+              ),
+              ol: (props) => (
+                <ol
+                  {...props}
+                  style={{
+                    margin: '8px 0',
+                    paddingLeft: '20px',
+                    color: isUserMessage ? 'white' : 'inherit',
+                  }}
+                />
+              ),
+              li: (props) => (
+                <li
+                  {...props}
+                  style={{
+                    margin: '4px 0',
+                    lineHeight: '1.6',
+                    color: isUserMessage ? 'white' : 'inherit',
+                  }}
+                />
+              ),
+              table: (props) => (
+                <div style={{ overflow: 'auto', margin: '12px 0' }}>
+                  <table
+                    {...props}
+                    style={{
+                      width: '100%',
+                      borderCollapse: 'collapse',
+                      border: isUserMessage
+                        ? '1px solid rgba(255, 255, 255, 0.3)'
+                        : '1px solid var(--semi-color-border)',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                    }}
+                  />
+                </div>
+              ),
+              th: (props) => (
+                <th
+                  {...props}
+                  style={{
+                    padding: '8px 12px',
+                    backgroundColor: isUserMessage
+                      ? 'rgba(255, 255, 255, 0.2)'
+                      : 'var(--semi-color-fill-1)',
+                    border: isUserMessage
+                      ? '1px solid rgba(255, 255, 255, 0.3)'
+                      : '1px solid var(--semi-color-border)',
+                    fontWeight: 'bold',
+                    textAlign: 'left',
+                    color: isUserMessage ? 'white' : 'inherit',
+                  }}
+                />
+              ),
+              td: (props) => (
+                <td
+                  {...props}
+                  style={{
+                    padding: '8px 12px',
+                    border: isUserMessage
+                      ? '1px solid rgba(255, 255, 255, 0.3)'
+                      : '1px solid var(--semi-color-border)',
+                    color: isUserMessage ? 'white' : 'inherit',
+                  }}
+                />
+              ),
+            }
+      }
     >
       {escapedContent}
     </ReactMarkdown>
@@ -638,59 +699,78 @@ export function MarkdownRenderer(props) {
   const {
     content,
     loading,
-    fontSize = 14,
-    fontFamily = 'inherit',
+    fontSize,
+    fontFamily,
     className,
     style,
     animated = false,
     previousContentLength = 0,
+    githubStyle = true,
+    githubTheme = 'light',
     ...otherProps
   } = props;
 
+  const resolvedFontSize = fontSize ?? (githubStyle ? 16 : 14);
+  const resolvedFontFamily =
+    fontFamily ?? (githubStyle ? undefined : 'inherit');
+  const markdownClassName = githubStyle ? 'markdown-body' : 'app-markdown-body';
+  const githubMarkdownCss =
+    githubTheme === 'dark' ? githubMarkdownDarkCss : githubMarkdownLightCss;
+  const rendererStyle = {
+    fontSize: `${resolvedFontSize}px`,
+    ...(resolvedFontFamily ? { fontFamily: resolvedFontFamily } : {}),
+    ...(githubStyle
+      ? {}
+      : {
+          lineHeight: '1.6',
+          color: 'var(--semi-color-text-0)',
+        }),
+    ...style,
+  };
+
   return (
-    <div
-      className={clsx('markdown-body', className)}
-      style={{
-        fontSize: `${fontSize}px`,
-        fontFamily: fontFamily,
-        lineHeight: '1.6',
-        color: 'var(--semi-color-text-0)',
-        ...style,
-      }}
-      dir='auto'
-      {...otherProps}
-    >
-      {loading ? (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '16px',
-            color: 'var(--semi-color-text-2)',
-          }}
-        >
+    <>
+      {githubStyle && <style>{githubMarkdownCss}</style>}
+      <div
+        className={clsx(markdownClassName, className)}
+        style={rendererStyle}
+        dir='auto'
+        {...(githubStyle ? { 'data-theme': githubTheme } : {})}
+        {...otherProps}
+      >
+        {loading ? (
           <div
             style={{
-              width: '16px',
-              height: '16px',
-              border: '2px solid var(--semi-color-border)',
-              borderTop: '2px solid var(--semi-color-primary)',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '16px',
+              color: 'var(--semi-color-text-2)',
             }}
+          >
+            <div
+              style={{
+                width: '16px',
+                height: '16px',
+                border: '2px solid var(--semi-color-border)',
+                borderTop: '2px solid var(--semi-color-primary)',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+              }}
+            />
+            正在渲染...
+          </div>
+        ) : (
+          <MarkdownContent
+            content={content}
+            className={className}
+            animated={animated}
+            previousContentLength={previousContentLength}
+            githubStyle={githubStyle}
           />
-          正在渲染...
-        </div>
-      ) : (
-        <MarkdownContent
-          content={content}
-          className={className}
-          animated={animated}
-          previousContentLength={previousContentLength}
-        />
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 }
 

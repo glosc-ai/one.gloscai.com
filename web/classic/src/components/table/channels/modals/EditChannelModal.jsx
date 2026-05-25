@@ -61,6 +61,7 @@ import ModelSelectModal from './ModelSelectModal';
 import SingleModelSelectModal from './SingleModelSelectModal';
 import OllamaModelModal from './OllamaModelModal';
 import CodexOAuthModal from './CodexOAuthModal';
+import GitHubCopilotOAuthModal from './GitHubCopilotOAuthModal';
 import ParamOverrideEditorModal from './ParamOverrideEditorModal';
 import JSONEditor from '../../../common/ui/JSONEditor';
 import SecureVerificationModal from '../../../common/modals/SecureVerificationModal';
@@ -131,7 +132,7 @@ const DEPRECATED_DOUBAO_CODING_PLAN_BASE_URL = 'doubao-coding-plan';
 
 // 支持并且已适配通过接口获取模型列表的渠道类型
 const MODEL_FETCHABLE_TYPES = new Set([
-  1, 4, 14, 34, 17, 26, 27, 24, 47, 25, 20, 23, 31, 40, 42, 48, 43,
+  1, 4, 14, 34, 17, 26, 27, 24, 47, 25, 20, 23, 31, 40, 42, 48, 43, 58,
 ]);
 
 function type2secretPrompt(type) {
@@ -155,6 +156,8 @@ function type2secretPrompt(type) {
       return '按照如下格式输入: AccessKey|SecretAccessKey';
     case 57:
       return '请输入 JSON 格式的 OAuth 凭据（必须包含 access_token 和 account_id）';
+    case 58:
+      return '请输入通过 Copilot 设备登录流程获取的 GitHub OAuth Token，或 JSON：{"github_token":"..."}';
     default:
       return '请输入渠道对应的鉴权密钥';
   }
@@ -382,6 +385,8 @@ const EditChannelModal = (props) => {
   const [isIonetChannel, setIsIonetChannel] = useState(false);
   const [ionetMetadata, setIonetMetadata] = useState(null);
   const [codexOAuthModalVisible, setCodexOAuthModalVisible] = useState(false);
+  const [githubCopilotOAuthModalVisible, setGitHubCopilotOAuthModalVisible] =
+    useState(false);
   const [codexCredentialRefreshing, setCodexCredentialRefreshing] =
     useState(false);
   const [paramOverrideEditorVisible, setParamOverrideEditorVisible] =
@@ -1228,6 +1233,11 @@ const EditChannelModal = (props) => {
   };
 
   const handleCodexOAuthGenerated = (key) => {
+    handleInputChange('key', key);
+    formatJsonField('key');
+  };
+
+  const handleGitHubCopilotOAuthGenerated = (key) => {
     handleInputChange('key', key);
     formatJsonField('key');
   };
@@ -2902,6 +2912,89 @@ const EditChannelModal = (props) => {
                               visible={codexOAuthModalVisible}
                               onCancel={() => setCodexOAuthModalVisible(false)}
                               onSuccess={handleCodexOAuthGenerated}
+                            />
+                          </>
+                        ) : inputs.type === 58 ? (
+                          <>
+                            <Form.TextArea
+                              field='key'
+                              label={
+                                isEdit
+                                  ? t('密钥（编辑模式下，保存的密钥不会显示）')
+                                  : t('密钥')
+                              }
+                              placeholder={t(
+                                '请输入通过 Copilot 设备登录流程获取的 GitHub OAuth Token，或 JSON：{"github_token":"..."}',
+                              )}
+                              rules={
+                                isEdit
+                                  ? []
+                                  : [
+                                      {
+                                        required: true,
+                                        message: t('请输入密钥'),
+                                      },
+                                    ]
+                              }
+                              autoComplete='new-password'
+                              onChange={(value) =>
+                                handleInputChange('key', value)
+                              }
+                              disabled={isIonetLocked}
+                              extraText={
+                                <div className='flex flex-col gap-2'>
+                                  <Text type='tertiary' size='small'>
+                                    {t(
+                                      'GitHub Copilot 渠道使用 GitHub OAuth Token 作为密钥',
+                                    )}
+                                  </Text>
+
+                                  <Space wrap spacing='tight'>
+                                    <Button
+                                      size='small'
+                                      type='primary'
+                                      theme='outline'
+                                      onClick={() =>
+                                        setGitHubCopilotOAuthModalVisible(true)
+                                      }
+                                      disabled={isIonetLocked}
+                                    >
+                                      {t('GitHub Copilot 授权')}
+                                    </Button>
+                                    <Button
+                                      size='small'
+                                      type='primary'
+                                      theme='outline'
+                                      onClick={() => formatJsonField('key')}
+                                      disabled={isIonetLocked}
+                                    >
+                                      {t('格式化')}
+                                    </Button>
+                                    {isEdit && (
+                                      <Button
+                                        size='small'
+                                        type='primary'
+                                        theme='outline'
+                                        onClick={handleShow2FAModal}
+                                        disabled={isIonetLocked}
+                                      >
+                                        {t('查看密钥')}
+                                      </Button>
+                                    )}
+                                    {batchExtra}
+                                  </Space>
+                                </div>
+                              }
+                              autosize
+                              showClear
+                            />
+
+                            <GitHubCopilotOAuthModal
+                              visible={githubCopilotOAuthModalVisible}
+                              onCancel={() =>
+                                setGitHubCopilotOAuthModalVisible(false)
+                              }
+                              onSuccess={handleGitHubCopilotOAuthGenerated}
                             />
                           </>
                         ) : inputs.type === 41 &&

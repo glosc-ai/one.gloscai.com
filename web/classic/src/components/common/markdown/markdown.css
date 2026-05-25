@@ -1,5 +1,5 @@
 /* 基础markdown样式 */
-.markdown-body {
+.app-markdown-body {
   font-family: inherit;
   line-height: 1.6;
   color: var(--semi-color-text-0);
@@ -13,7 +13,7 @@
   color: white !important;
 }
 
-.user-message .markdown-body {
+.user-message .app-markdown-body {
   color: white !important;
 }
 
@@ -60,7 +60,7 @@
 
 .user-message a {
   color: #87ceeb !important;
-  /* 浅蓝色链接 */
+  /* 浅蓝色链�?*/
 }
 
 .user-message a:hover {
@@ -68,7 +68,7 @@
   /* hover时更浅的蓝色 */
 }
 
-/* 表格在用户消息中的样式 */
+/* 表格在用户消息中的样�?*/
 .user-message table {
   border-color: rgba(255, 255, 255, 0.3) !important;
 }
@@ -197,7 +197,7 @@
   transform: translateY(-1px);
 }
 
-/* 代码块样式增强 */
+/* 代码块样式增�?*/
 pre {
   position: relative;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
@@ -229,7 +229,7 @@ pre:hover .copy-code-button {
   cursor: pointer !important;
 }
 
-/* 确保按钮可点击 */
+/* 确保按钮可点�?*/
 .copy-code-button .semi-button {
   pointer-events: auto !important;
   cursor: pointer !important;
@@ -242,14 +242,14 @@ pre:hover .copy-code-button {
   transform: scale(1.05);
 }
 
-/* 表格响应式 */
+/* 表格响应�?*/
 @media (max-width: 768px) {
-  .markdown-body table {
+  .app-markdown-body table {
     font-size: 12px;
   }
 
-  .markdown-body th,
-  .markdown-body td {
+  .app-markdown-body th,
+  .app-markdown-body td {
     padding: 6px 8px;
   }
 }
@@ -265,16 +265,16 @@ pre:hover .copy-code-button {
 }
 
 /* 链接hover效果 */
-.markdown-body a {
+.app-markdown-body a {
   transition: all 0.2s ease;
 }
 
-/* 引用块样式增强 */
-.markdown-body blockquote {
+/* 引用块样式增�?*/
+.app-markdown-body blockquote {
   position: relative;
 }
 
-.markdown-body blockquote::before {
+.app-markdown-body blockquote::before {
   content: '"';
   position: absolute;
   left: -8px;
@@ -285,17 +285,17 @@ pre:hover .copy-code-button {
 }
 
 /* 列表样式增强 */
-.markdown-body ul li::marker {
+.app-markdown-body ul li::marker {
   color: var(--semi-color-primary);
 }
 
-.markdown-body ol li::marker {
+.app-markdown-body ol li::marker {
   color: var(--semi-color-primary);
   font-weight: bold;
 }
 
-/* 分隔线样式 */
-.markdown-body hr {
+/* 分隔线样�?*/
+.app-markdown-body hr {
   border: none;
   height: 1px;
   background: linear-gradient(
@@ -308,7 +308,7 @@ pre:hover .copy-code-button {
 }
 
 /* 图片样式 */
-.markdown-body img {
+.app-markdown-body img {
   max-width: 100%;
   height: auto;
   border-radius: 8px;
@@ -317,7 +317,7 @@ pre:hover .copy-code-button {
 }
 
 /* 内联代码样式 */
-.markdown-body code:not(pre code) {
+.app-markdown-body code:not(pre code) {
   background-color: var(--semi-color-fill-1);
   padding: 2px 6px;
   border-radius: 4px;
@@ -327,28 +327,28 @@ pre:hover .copy-code-button {
 }
 
 /* 标题锚点样式 */
-.markdown-body h1:hover,
-.markdown-body h2:hover,
-.markdown-body h3:hover,
-.markdown-body h4:hover,
-.markdown-body h5:hover,
-.markdown-body h6:hover {
+.app-markdown-body h1:hover,
+.app-markdown-body h2:hover,
+.app-markdown-body h3:hover,
+.app-markdown-body h4:hover,
+.app-markdown-body h5:hover,
+.app-markdown-body h6:hover {
   position: relative;
 }
 
 /* 任务列表样式 */
-.markdown-body input[type='checkbox'] {
+.app-markdown-body input[type='checkbox'] {
   margin-right: 8px;
   transform: scale(1.1);
 }
 
-.markdown-body li.task-list-item {
+.app-markdown-body li.task-list-item {
   list-style: none;
   margin-left: -20px;
 }
 
 /* 键盘按键样式 */
-.markdown-body kbd {
+.app-markdown-body kbd {
   background-color: var(--semi-color-fill-0);
   border: 1px solid var(--semi-color-border);
   border-radius: 3px;
@@ -364,37 +364,37 @@ pre:hover .copy-code-button {
 }
 
 /* 详情折叠样式 */
-.markdown-body details {
+.app-markdown-body details {
   border: 1px solid var(--semi-color-border);
   border-radius: 6px;
   padding: 12px;
   margin: 12px 0;
 }
 
-.markdown-body summary {
+.app-markdown-body summary {
   cursor: pointer;
   font-weight: bold;
   color: var(--semi-color-primary);
   margin-bottom: 8px;
 }
 
-.markdown-body summary:hover {
+.app-markdown-body summary:hover {
   color: var(--semi-color-primary-hover);
 }
 
 /* 脚注样式 */
-.markdown-body .footnote-ref {
+.app-markdown-body .footnote-ref {
   color: var(--semi-color-primary);
   text-decoration: none;
   font-weight: bold;
 }
 
-.markdown-body .footnote-ref:hover {
+.app-markdown-body .footnote-ref:hover {
   text-decoration: underline;
 }
 
-/* 警告块样式 */
-.markdown-body .warning {
+/* 警告块样�?*/
+.app-markdown-body .warning {
   background-color: var(--semi-color-warning-light-default);
   border-left: 4px solid var(--semi-color-warning);
   padding: 12px 16px;
@@ -402,7 +402,7 @@ pre:hover .copy-code-button {
   border-radius: 0 6px 6px 0;
 }
 
-.markdown-body .info {
+.app-markdown-body .info {
   background-color: var(--semi-color-info-light-default);
   border-left: 4px solid var(--semi-color-info);
   padding: 12px 16px;
@@ -410,7 +410,7 @@ pre:hover .copy-code-button {
   border-radius: 0 6px 6px 0;
 }
 
-.markdown-body .success {
+.app-markdown-body .success {
   background-color: var(--semi-color-success-light-default);
   border-left: 4px solid var(--semi-color-success);
   padding: 12px 16px;
@@ -418,7 +418,7 @@ pre:hover .copy-code-button {
   border-radius: 0 6px 6px 0;
 }
 
-.markdown-body .danger {
+.app-markdown-body .danger {
   background-color: var(--semi-color-danger-light-default);
   border-left: 4px solid var(--semi-color-danger);
   padding: 12px 16px;

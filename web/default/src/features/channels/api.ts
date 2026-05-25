@@ -86,6 +86,28 @@ export type CodexCredentialRefreshResponse = {
   }
 }
 
+export type GitHubCopilotOAuthStartResponse = {
+  success: boolean
+  message?: string
+  data?: {
+    authorize_url?: string
+    verification_url?: string
+    user_code?: string
+    expires_in?: number
+    interval?: number
+  }
+}
+
+export type GitHubCopilotOAuthCompleteResponse = {
+  success: boolean
+  message?: string
+  data?: {
+    key?: string
+    channel_id?: number
+    channel_type?: number
+  }
+}
+
 // ============================================================================
 // Base Channel CRUD Operations
 // ============================================================================
@@ -294,6 +316,33 @@ export async function getCodexUsage(
     disableDuplicate: true,
   }
   const res = await api.get(`/api/channel/${channelId}/codex/usage`, config)
+  return res.data
+}
+
+// ============================================================================
+// GitHub Copilot Channel Operations
+// ============================================================================
+
+export async function startGitHubCopilotOAuth(): Promise<GitHubCopilotOAuthStartResponse> {
+  const config: ExtendedApiConfig = { skipBusinessError: true }
+  const res = await api.post(
+    '/api/channel/github-copilot/oauth/start',
+    {},
+    config
+  )
+  return res.data
+}
+
+export async function completeGitHubCopilotOAuth(): Promise<GitHubCopilotOAuthCompleteResponse> {
+  const config: ExtendedApiConfig = {
+    skipBusinessError: true,
+    disableDuplicate: true,
+  }
+  const res = await api.post(
+    '/api/channel/github-copilot/oauth/complete',
+    {},
+    config
+  )
   return res.data
 }
 
