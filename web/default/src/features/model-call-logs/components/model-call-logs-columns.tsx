@@ -4,6 +4,12 @@ import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { StatusBadge } from '@/components/status-badge'
 import { TableId } from '@/components/table-id'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { getModelCallLogStatusConfig } from '../constants'
 import type { ModelCallLog } from '../types'
 
@@ -106,14 +112,33 @@ export function useModelCallLogsColumns(): ColumnDef<ModelCallLog>[] {
       ),
       cell: ({ row }) => {
         const status = row.getValue('status') as string
+        const log = row.original
         const config = getModelCallLogStatusConfig(status)
-
-        return (
+        const badge = (
           <StatusBadge
             label={t(config.labelKey)}
             variant={config.variant}
             copyable={false}
+            className={log.error_code ? 'cursor-help' : undefined}
           />
+        )
+
+        if (status !== 'failed' || !log.error_code) {
+          return badge
+        }
+
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger render={badge} />
+              <TooltipContent>
+                <span>
+                  {t('Error Code')}:{' '}
+                  <span className='font-mono'>{log.error_code}</span>
+                </span>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )
       },
       filterFn: (row, id, value) => {

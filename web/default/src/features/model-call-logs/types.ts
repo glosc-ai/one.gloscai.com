@@ -10,6 +10,7 @@ export const modelCallLogSchema = z.object({
   total_tokens: z.number().default(0),
   quota: z.number().default(0),
   status: z.string(),
+  error_code: z.string().optional().default(''),
   created_at: z.number(),
 })
 

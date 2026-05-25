@@ -52,6 +52,7 @@ type ModelCallLog struct {
 	TotalTokens      int    `json:"total_tokens"`
 	Quota            int    `json:"quota"`
 	Status           string `json:"status"`
+	ErrorCode        string `json:"error_code"`
 	CreatedAt        int64  `json:"created_at"`
 }
 
@@ -462,6 +463,24 @@ func applyModelCallLogFilters(query *gorm.DB, filter ModelCallLogFilter) *gorm.D
 	return query
 }
 
+func getModelCallLogErrorCode(log *Log) string {
+	if log.Type != LogTypeError || strings.TrimSpace(log.Other) == "" {
+		return ""
+	}
+
+	otherMap, err := common.StrToMap(log.Other)
+	if err != nil || otherMap == nil {
+		return ""
+	}
+
+	errorCode, ok := otherMap["error_code"]
+	if !ok || errorCode == nil {
+		return ""
+	}
+
+	return strings.TrimSpace(fmt.Sprint(errorCode))
+}
+
 func GetModelCallLogs(filter ModelCallLogFilter, pageInfo *common.PageInfo) (callLogs []*ModelCallLog, total int64, err error) {
 	query := applyModelCallLogFilters(LOG_DB.Model(&Log{}), filter)
 	if err = query.Count(&total).Error; err != nil {
@@ -478,8 +497,10 @@ func GetModelCallLogs(filter ModelCallLogFilter, pageInfo *common.PageInfo) (cal
 	callLogs = make([]*ModelCallLog, 0, len(logs))
 	for _, log := range logs {
 		status := ModelCallLogStatusSuccess
+		errorCode := ""
 		if log.Type == LogTypeError {
 			status = ModelCallLogStatusFailed
+			errorCode = getModelCallLogErrorCode(log)
 		}
 		callLogs = append(callLogs, &ModelCallLog{
 			Id:               log.Id,
@@ -491,6 +512,7 @@ func GetModelCallLogs(filter ModelCallLogFilter, pageInfo *common.PageInfo) (cal
 			TotalTokens:      log.PromptTokens + log.CompletionTokens,
 			Quota:            log.Quota,
 			Status:           status,
+			ErrorCode:        errorCode,
 			CreatedAt:        log.CreatedAt,
 		})
 	}
