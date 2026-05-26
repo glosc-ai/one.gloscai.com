@@ -66,6 +66,8 @@ type HeaderNavFormValues = {
   customLinks: HeaderNavCustomLinkConfig[]
 }
 
+type HeaderNavBooleanField = Exclude<keyof HeaderNavFormValues, 'customLinks'>
+
 type HeaderNavigationSectionProps = {
   config: HeaderNavModulesConfig
   initialSerialized: string
@@ -215,7 +217,7 @@ export function HeaderNavigationSection({
   }
 
   const simpleModules: Array<{
-    key: keyof HeaderNavFormValues
+    key: HeaderNavBooleanField
     title: string
     description: string
   }> = [
@@ -242,8 +244,8 @@ export function HeaderNavigationSection({
   ]
 
   const accessModules: Array<{
-    enabledKey: keyof HeaderNavFormValues
-    requireAuthKey: keyof HeaderNavFormValues
+    enabledKey: HeaderNavBooleanField
+    requireAuthKey: HeaderNavBooleanField
     requireAuthDependsOn: 'pricingEnabled' | 'rankingsEnabled'
     title: string
     description: string

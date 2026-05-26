@@ -55,6 +55,7 @@ const (
 	PaymentMethodWaffoPancake = "waffo_pancake"
 	PaymentMethodAlipay       = "alipay_official"
 	PaymentMethodWeChatPay    = "wechat_pay_official"
+	PaymentMethodBalance      = "balance"
 )
 
 const (
@@ -65,6 +66,7 @@ const (
 	PaymentProviderWaffoPancake = "waffo_pancake"
 	PaymentProviderAlipay       = "alipay"
 	PaymentProviderWeChatPay    = "wechat_pay"
+	PaymentProviderBalance      = "balance"
 )
 
 var (

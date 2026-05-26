@@ -16,8 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import type { AxiosRequestConfig } from 'axios'
-import { api } from '@/lib/api'
+import { api, type ApiRequestConfig } from '@/lib/api'
 import { getGroups as getUserGroups } from '@/features/users/api'
 import type {
   AddChannelRequest,
@@ -39,11 +38,13 @@ import type {
   TagOperationParams,
 } from './types'
 
-// Extended API config types
-interface ExtendedApiConfig extends AxiosRequestConfig {
-  skipBusinessError?: boolean
-  disableDuplicate?: boolean
-}
+const channelActionConfig = (
+  config: ApiRequestConfig = {}
+): ApiRequestConfig => ({
+  ...config,
+  skipBusinessError: true,
+  skipErrorHandler: true,
+})
 
 export type CodexOAuthStartResponse = {
   success: boolean
@@ -147,7 +148,7 @@ export async function getChannel(id: number): Promise<GetChannelResponse> {
 export async function createChannel(
   data: AddChannelRequest
 ): Promise<{ success: boolean; message?: string }> {
-  const res = await api.post('/api/channel', data)
+  const res = await api.post('/api/channel', data, channelActionConfig())
   return res.data
 }
 
@@ -158,7 +159,11 @@ export async function updateChannel(
   id: number,
   data: Partial<Channel>
 ): Promise<{ success: boolean; message?: string; data?: Channel }> {
-  const res = await api.put('/api/channel/', { id, ...data })
+  const res = await api.put(
+    '/api/channel/',
+    { id, ...data },
+    channelActionConfig()
+  )
   return res.data
 }
 
@@ -168,7 +173,7 @@ export async function updateChannel(
 export async function deleteChannel(
   id: number
 ): Promise<{ success: boolean; message?: string }> {
-  const res = await api.delete(`/api/channel/${id}`)
+  const res = await api.delete(`/api/channel/${id}`, channelActionConfig())
   return res.data
 }
 
@@ -178,7 +183,7 @@ export async function deleteChannel(
 export async function batchDeleteChannels(
   data: BatchDeleteParams
 ): Promise<{ success: boolean; message?: string; data?: number }> {
-  const res = await api.post('/api/channel/batch', data)
+  const res = await api.post('/api/channel/batch', data, channelActionConfig())
   return res.data
 }
 
@@ -188,7 +193,11 @@ export async function batchDeleteChannels(
 export async function batchSetChannelTag(
   data: BatchSetTagParams
 ): Promise<{ success: boolean; message?: string; data?: number }> {
-  const res = await api.post('/api/channel/batch/tag', data)
+  const res = await api.post(
+    '/api/channel/batch/tag',
+    data,
+    channelActionConfig()
+  )
   return res.data
 }
 
@@ -203,7 +212,10 @@ export async function testChannel(
   id: number,
   params?: { model?: string; endpoint_type?: string; stream?: boolean }
 ): Promise<ChannelTestResponse> {
-  const res = await api.get(`/api/channel/test/${id}`, { params })
+  const res = await api.get(
+    `/api/channel/test/${id}`,
+    channelActionConfig({ params })
+  )
   return res.data
 }
 
@@ -213,7 +225,10 @@ export async function testChannel(
 export async function updateChannelBalance(
   id: number
 ): Promise<ChannelBalanceResponse> {
-  const res = await api.get(`/api/channel/update_balance/${id}`)
+  const res = await api.get(
+    `/api/channel/update_balance/${id}`,
+    channelActionConfig()
+  )
   return res.data
 }
 
@@ -223,7 +238,10 @@ export async function updateChannelBalance(
 export async function fetchUpstreamModels(
   id: number
 ): Promise<FetchModelsResponse> {
-  const res = await api.get(`/api/channel/fetch_models/${id}`)
+  const res = await api.get(
+    `/api/channel/fetch_models/${id}`,
+    channelActionConfig()
+  )
   return res.data
 }
 
@@ -234,7 +252,11 @@ export async function copyChannel(
   id: number,
   params: CopyChannelParams = {}
 ): Promise<CopyChannelResponse> {
-  const res = await api.post(`/api/channel/copy/${id}`, null, { params })
+  const res = await api.post(
+    `/api/channel/copy/${id}`,
+    null,
+    channelActionConfig({ params })
+  )
   return res.data
 }
 
@@ -246,7 +268,11 @@ export async function fixChannelAbilities(): Promise<{
   message?: string
   data?: { success: number; fails: number }
 }> {
-  const res = await api.post('/api/channel/fix')
+  const res = await api.post(
+    '/api/channel/fix',
+    undefined,
+    channelActionConfig()
+  )
   return res.data
 }
 
@@ -258,7 +284,7 @@ export async function deleteDisabledChannels(): Promise<{
   message?: string
   data?: number
 }> {
-  const res = await api.delete('/api/channel/disabled')
+  const res = await api.delete('/api/channel/disabled', channelActionConfig())
   return res.data
 }
 
@@ -270,7 +296,11 @@ export async function getChannelKey(
   code?: string
 ): Promise<{ success: boolean; message?: string; data?: { key: string } }> {
   const payload = code ? { code } : undefined
-  const res = await api.post(`/api/channel/${id}/key`, payload)
+  const res = await api.post(
+    `/api/channel/${id}/key`,
+    payload,
+    channelActionConfig()
+  )
   return res.data
 }
 
@@ -279,19 +309,21 @@ export async function getChannelKey(
 // ============================================================================
 
 export async function startCodexOAuth(): Promise<CodexOAuthStartResponse> {
-  const config: ExtendedApiConfig = { skipBusinessError: true }
-  const res = await api.post('/api/channel/codex/oauth/start', {}, config)
+  const res = await api.post(
+    '/api/channel/codex/oauth/start',
+    {},
+    channelActionConfig()
+  )
   return res.data
 }
 
 export async function completeCodexOAuth(
   input: string
 ): Promise<CodexOAuthCompleteResponse> {
-  const config: ExtendedApiConfig = { skipBusinessError: true }
   const res = await api.post(
     '/api/channel/codex/oauth/complete',
     { input },
-    config
+    channelActionConfig()
   )
   return res.data
 }
@@ -299,11 +331,10 @@ export async function completeCodexOAuth(
 export async function refreshCodexCredential(
   channelId: number
 ): Promise<CodexCredentialRefreshResponse> {
-  const config: ExtendedApiConfig = { skipBusinessError: true }
   const res = await api.post(
     `/api/channel/${channelId}/codex/refresh`,
     {},
-    config
+    channelActionConfig()
   )
   return res.data
 }
@@ -311,11 +342,10 @@ export async function refreshCodexCredential(
 export async function getCodexUsage(
   channelId: number
 ): Promise<CodexUsageResponse> {
-  const config: ExtendedApiConfig = {
-    skipBusinessError: true,
-    disableDuplicate: true,
-  }
-  const res = await api.get(`/api/channel/${channelId}/codex/usage`, config)
+  const res = await api.get(
+    `/api/channel/${channelId}/codex/usage`,
+    channelActionConfig({ disableDuplicate: true })
+  )
   return res.data
 }
 
@@ -324,7 +354,7 @@ export async function getCodexUsage(
 // ============================================================================
 
 export async function startGitHubCopilotOAuth(): Promise<GitHubCopilotOAuthStartResponse> {
-  const config: ExtendedApiConfig = { skipBusinessError: true }
+  const config: ApiRequestConfig = { skipBusinessError: true }
   const res = await api.post(
     '/api/channel/github-copilot/oauth/start',
     {},
@@ -334,7 +364,7 @@ export async function startGitHubCopilotOAuth(): Promise<GitHubCopilotOAuthStart
 }
 
 export async function completeGitHubCopilotOAuth(): Promise<GitHubCopilotOAuthCompleteResponse> {
-  const config: ExtendedApiConfig = {
+  const config: ApiRequestConfig = {
     skipBusinessError: true,
     disableDuplicate: true,
   }
@@ -356,7 +386,11 @@ export async function completeGitHubCopilotOAuth(): Promise<GitHubCopilotOAuthCo
 export async function manageMultiKeys(
   params: MultiKeyManageParams
 ): Promise<MultiKeyStatusResponse | { success: boolean; message?: string }> {
-  const res = await api.post('/api/channel/multi_key/manage', params)
+  const res = await api.post(
+    '/api/channel/multi_key/manage',
+    params,
+    channelActionConfig()
+  )
   return res.data
 }
 
@@ -466,7 +500,11 @@ export async function deleteDisabledMultiKeys(
 export async function enableTagChannels(
   tag: string
 ): Promise<{ success: boolean; message?: string }> {
-  const res = await api.post('/api/channel/tag/enabled', { tag })
+  const res = await api.post(
+    '/api/channel/tag/enabled',
+    { tag },
+    channelActionConfig()
+  )
   return res.data
 }
 
@@ -476,7 +514,11 @@ export async function enableTagChannels(
 export async function disableTagChannels(
   tag: string
 ): Promise<{ success: boolean; message?: string }> {
-  const res = await api.post('/api/channel/tag/disabled', { tag })
+  const res = await api.post(
+    '/api/channel/tag/disabled',
+    { tag },
+    channelActionConfig()
+  )
   return res.data
 }
 
@@ -486,7 +528,7 @@ export async function disableTagChannels(
 export async function editTagChannels(
   params: TagOperationParams
 ): Promise<{ success: boolean; message?: string }> {
-  const res = await api.put('/api/channel/tag', params)
+  const res = await api.put('/api/channel/tag', params, channelActionConfig())
   return res.data
 }
 
@@ -512,7 +554,11 @@ export async function fetchModels(data: {
   type: number
   key: string
 }): Promise<FetchModelsResponse> {
-  const res = await api.post('/api/channel/fetch_models', data)
+  const res = await api.post(
+    '/api/channel/fetch_models',
+    data,
+    channelActionConfig()
+  )
   return res.data
 }
 
@@ -523,7 +569,10 @@ export async function deleteOllamaModel(params: {
   channel_id: number
   model_name: string
 }): Promise<{ success: boolean; message?: string }> {
-  const res = await api.delete('/api/channel/ollama/delete', { data: params })
+  const res = await api.delete(
+    '/api/channel/ollama/delete',
+    channelActionConfig({ data: params })
+  )
   return res.data
 }
 
@@ -534,7 +583,7 @@ export async function testAllChannels(): Promise<{
   success: boolean
   message?: string
 }> {
-  const res = await api.get('/api/channel/test')
+  const res = await api.get('/api/channel/test', channelActionConfig())
   return res.data
 }
 
@@ -545,7 +594,10 @@ export async function updateAllChannelsBalance(): Promise<{
   success: boolean
   message?: string
 }> {
-  const res = await api.get('/api/channel/update_balance')
+  const res = await api.get(
+    '/api/channel/update_balance',
+    channelActionConfig()
+  )
   return res.data
 }
 
