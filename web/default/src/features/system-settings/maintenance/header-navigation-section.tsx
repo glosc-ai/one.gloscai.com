@@ -18,17 +18,21 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useEffect, useMemo } from 'react'
 import * as z from 'zod'
-import { useForm } from 'react-hook-form'
+import { Plus, Trash2 } from 'lucide-react'
+import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
   FormDescription,
   FormField,
+  FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import {
   SettingsControlChildren,
@@ -42,22 +46,25 @@ import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 import {
   HEADER_NAV_DEFAULT,
+  type HeaderNavCustomLinkConfig,
   type HeaderNavModulesConfig,
   serializeHeaderNavModules,
 } from './config'
 
-const headerNavSchema = z.object({
-  home: z.boolean(),
-  console: z.boolean(),
-  pricingEnabled: z.boolean(),
-  pricingRequireAuth: z.boolean(),
-  rankingsEnabled: z.boolean(),
-  rankingsRequireAuth: z.boolean(),
-  docs: z.boolean(),
-  about: z.boolean(),
-})
+const CUSTOM_LINK_LIMIT = 8
+const EXTERNAL_HREF_RE = /^(?:[a-z][a-z\d+.-]*:|\/\/)/i
 
-type HeaderNavFormValues = z.infer<typeof headerNavSchema>
+type HeaderNavFormValues = {
+  home: boolean
+  console: boolean
+  pricingEnabled: boolean
+  pricingRequireAuth: boolean
+  rankingsEnabled: boolean
+  rankingsRequireAuth: boolean
+  docs: boolean
+  about: boolean
+  customLinks: HeaderNavCustomLinkConfig[]
+}
 
 type HeaderNavigationSectionProps = {
   config: HeaderNavModulesConfig
@@ -93,7 +100,21 @@ const toFormValues = (config: HeaderNavModulesConfig): HeaderNavFormValues => ({
     config.about === undefined
       ? HEADER_NAV_DEFAULT.about
       : Boolean(config.about),
+  customLinks: Array.isArray(config.customLinks)
+    ? config.customLinks.map((link) => ({
+        title: link.title,
+        href: link.href,
+      }))
+    : [],
 })
+
+const createEmptyCustomLink = (): HeaderNavCustomLinkConfig => ({
+  title: '',
+  href: '',
+})
+
+const isSupportedCustomLinkHref = (href: string): boolean =>
+  href.startsWith('/') || EXTERNAL_HREF_RE.test(href)
 
 export function HeaderNavigationSection({
   config,
@@ -102,10 +123,53 @@ export function HeaderNavigationSection({
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
   const formDefaults = useMemo(() => toFormValues(config), [config])
+  const headerNavSchema = useMemo(
+    () =>
+      z.object({
+        home: z.boolean(),
+        console: z.boolean(),
+        pricingEnabled: z.boolean(),
+        pricingRequireAuth: z.boolean(),
+        rankingsEnabled: z.boolean(),
+        rankingsRequireAuth: z.boolean(),
+        docs: z.boolean(),
+        about: z.boolean(),
+        customLinks: z
+          .array(
+            z.object({
+              title: z
+                .string()
+                .trim()
+                .min(1, t('Link label is required'))
+                .max(64, t('Link label must be 64 characters or fewer')),
+              href: z
+                .string()
+                .trim()
+                .min(1, t('Link URL is required'))
+                .refine(isSupportedCustomLinkHref, {
+                  message: t(
+                    'Use an internal path like /pricing or a full URL like https://example.com'
+                  ),
+                }),
+            })
+          )
+          .max(
+            CUSTOM_LINK_LIMIT,
+            t('You can add up to {{count}} custom links', {
+              count: CUSTOM_LINK_LIMIT,
+            })
+          ),
+      }),
+    [t]
+  )
 
   const form = useForm<HeaderNavFormValues>({
     resolver: zodResolver(headerNavSchema),
     defaultValues: formDefaults,
+  })
+  const customLinks = useFieldArray({
+    control: form.control,
+    name: 'customLinks',
   })
 
   useEffect(() => {
@@ -129,6 +193,10 @@ export function HeaderNavigationSection({
         enabled: values.rankingsEnabled,
         requireAuth: values.rankingsRequireAuth,
       },
+      customLinks: values.customLinks.map((link) => ({
+        title: link.title.trim(),
+        href: link.href.trim(),
+      })),
     }
 
     const serialized = serializeHeaderNavModules(payload)
@@ -291,6 +359,109 @@ export function HeaderNavigationSection({
                 />
               </SettingsControlGroup>
             ))}
+          </div>
+
+          <div data-settings-form-span='full' className='space-y-4'>
+            <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+              <div className='space-y-1'>
+                <h3 className='text-sm font-medium'>{t('Custom links')}</h3>
+                <p className='text-muted-foreground text-sm'>
+                  {t(
+                    'Add redirects to internal pages or external URLs. Custom links appear after the built-in navigation items.'
+                  )}
+                </p>
+              </div>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={() => customLinks.append(createEmptyCustomLink())}
+                disabled={customLinks.fields.length >= CUSTOM_LINK_LIMIT}
+              >
+                <Plus className='mr-2 size-4' />
+                {t('Add link')}
+              </Button>
+            </div>
+
+            {customLinks.fields.length === 0 ? (
+              <div className='text-muted-foreground rounded-xl border border-dashed px-4 py-6 text-sm'>
+                {t(
+                  'No custom links yet. Add one to show another destination in the top navigation.'
+                )}
+              </div>
+            ) : (
+              <div className='space-y-3'>
+                {customLinks.fields.map((field, index) => (
+                  <SettingsControlGroup key={field.id} className='space-y-4'>
+                    <div className='flex items-start justify-between gap-4'>
+                      <div className='space-y-0.5'>
+                        <p className='text-sm font-medium'>
+                          {t('Custom link')} {index + 1}
+                        </p>
+                        <p className='text-muted-foreground text-xs'>
+                          {t(
+                            'Use /path for internal routes or a full URL for external redirects.'
+                          )}
+                        </p>
+                      </div>
+                      <Button
+                        type='button'
+                        variant='ghost'
+                        size='icon'
+                        onClick={() => customLinks.remove(index)}
+                        aria-label={t('Remove link')}
+                      >
+                        <Trash2 className='size-4' />
+                      </Button>
+                    </div>
+
+                    <div className='grid gap-4 md:grid-cols-2'>
+                      <FormField
+                        control={form.control}
+                        name={`customLinks.${index}.title`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('Link label')}</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder={t('Support center')}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              {t('Shown directly in the top navigation bar.')}
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name={`customLinks.${index}.href`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('Link URL')}</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder='/support or https://example.com'
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              {t(
+                                'Internal links should start with /. External links can use https://, mailto:, or other full URLs.'
+                              )}
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </SettingsControlGroup>
+                ))}
+              </div>
+            )}
           </div>
         </SettingsForm>
       </Form>

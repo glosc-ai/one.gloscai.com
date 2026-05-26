@@ -4557,6 +4557,23 @@
     "Zero retention": "データ保持なし",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V 4",
-    "Zoom": "ズーム"
+    "Zoom": "ズーム",
+    "Add link": "リンクを追加",
+    "Add redirects to internal pages or external URLs. Custom links appear after the built-in navigation items.": "内部ページまたは外部 URL への遷移を追加します。カスタムリンクは組み込みのナビゲーション項目の後ろに表示されます。",
+    "Custom link": "カスタムリンク",
+    "Custom links": "カスタムリンク",
+    "Internal links should start with /. External links can use https://, mailto:, or other full URLs.": "内部リンクは / で始めてください。外部リンクには https://、mailto: などの完全な URL を使用できます。",
+    "Link label": "リンク名",
+    "Link label is required": "リンク名は必須です",
+    "Link label must be 64 characters or fewer": "リンク名は 64 文字以内で入力してください",
+    "Link URL": "リンク URL",
+    "Link URL is required": "リンク URL は必須です",
+    "No custom links yet. Add one to show another destination in the top navigation.": "カスタムリンクはまだありません。追加すると、トップナビゲーションに別の遷移先を表示できます。",
+    "Remove link": "リンクを削除",
+    "Shown directly in the top navigation bar.": "トップナビゲーションバーにそのまま表示されます。",
+    "Support center": "サポートセンター",
+    "Use /path for internal routes or a full URL for external redirects.": "内部ルートには /path、外部遷移には完全な URL を使用してください。",
+    "Use an internal path like /pricing or a full URL like https://example.com": "/pricing のような内部パス、または https://example.com のような完全な URL を使用してください",
+    "You can add up to {{count}} custom links": "追加できるカスタムリンクは最大 {{count}} 件です"
   }
 }

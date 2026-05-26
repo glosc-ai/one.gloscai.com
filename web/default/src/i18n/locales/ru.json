@@ -4557,6 +4557,23 @@
     "Zero retention": "Без хранения данных",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Add link": "Добавить ссылку",
+    "Add redirects to internal pages or external URLs. Custom links appear after the built-in navigation items.": "Добавляйте переходы на внутренние страницы или внешние URL. Пользовательские ссылки отображаются после встроенных пунктов навигации.",
+    "Custom link": "Пользовательская ссылка",
+    "Custom links": "Пользовательские ссылки",
+    "Internal links should start with /. External links can use https://, mailto:, or other full URLs.": "Внутренние ссылки должны начинаться с /. Для внешних ссылок можно использовать https://, mailto: или другие полные URL.",
+    "Link label": "Название ссылки",
+    "Link label is required": "Название ссылки обязательно",
+    "Link label must be 64 characters or fewer": "Название ссылки должно быть не длиннее 64 символов",
+    "Link URL": "URL ссылки",
+    "Link URL is required": "URL ссылки обязателен",
+    "No custom links yet. Add one to show another destination in the top navigation.": "Пользовательских ссылок пока нет. Добавьте ссылку, чтобы показать еще один пункт в верхней навигации.",
+    "Remove link": "Удалить ссылку",
+    "Shown directly in the top navigation bar.": "Показывается прямо в верхней панели навигации.",
+    "Support center": "Центр поддержки",
+    "Use /path for internal routes or a full URL for external redirects.": "Используйте /path для внутренних маршрутов или полный URL для внешних переходов.",
+    "Use an internal path like /pricing or a full URL like https://example.com": "Используйте внутренний путь, например /pricing, или полный URL, например https://example.com",
+    "You can add up to {{count}} custom links": "Можно добавить не более {{count}} пользовательских ссылок"
   }
 }

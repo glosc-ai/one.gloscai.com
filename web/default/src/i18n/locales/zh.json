@@ -4557,6 +4557,23 @@
     "Zero retention": "零数据保留",
     "Zhipu": "智谱",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "Add link": "添加链接",
+    "Add redirects to internal pages or external URLs. Custom links appear after the built-in navigation items.": "添加跳转到站内页面或外部 URL 的链接。自定义链接会显示在内置导航项之后。",
+    "Custom link": "自定义链接",
+    "Custom links": "自定义链接",
+    "Internal links should start with /. External links can use https://, mailto:, or other full URLs.": "内部链接应以 / 开头。外部链接可以使用 https://、mailto: 或其他完整 URL。",
+    "Link label": "链接名称",
+    "Link label is required": "链接名称为必填项",
+    "Link label must be 64 characters or fewer": "链接名称不能超过 64 个字符",
+    "Link URL": "链接地址",
+    "Link URL is required": "链接地址为必填项",
+    "No custom links yet. Add one to show another destination in the top navigation.": "还没有自定义链接。添加一个后，它会作为顶部导航的新入口显示。",
+    "Remove link": "删除链接",
+    "Shown directly in the top navigation bar.": "会直接显示在顶部导航栏中。",
+    "Support center": "支持中心",
+    "Use /path for internal routes or a full URL for external redirects.": "内部路由请使用 /path，外部跳转请使用完整 URL。",
+    "Use an internal path like /pricing or a full URL like https://example.com": "请使用类似 /pricing 的站内路径，或类似 https://example.com 的完整 URL",
+    "You can add up to {{count}} custom links": "最多可添加 {{count}} 个自定义链接"
   }
 }

@@ -20,6 +20,8 @@ import { getStatus } from '@/lib/api'
 
 export type ModuleAccess = { enabled: boolean; requireAuth: boolean }
 
+export type HeaderNavCustomLink = { title: string; href: string }
+
 export type HeaderNavModule = 'rankings' | 'pricing'
 
 export type HeaderNavModules = {
@@ -29,7 +31,8 @@ export type HeaderNavModules = {
   rankings: ModuleAccess
   docs: boolean
   about: boolean
-  [key: string]: boolean | ModuleAccess
+  customLinks: HeaderNavCustomLink[]
+  [key: string]: boolean | ModuleAccess | HeaderNavCustomLink[]
 }
 
 const DEFAULT_HEADER_NAV_MODULES: HeaderNavModules = {
@@ -39,6 +42,7 @@ const DEFAULT_HEADER_NAV_MODULES: HeaderNavModules = {
   rankings: { enabled: true, requireAuth: false },
   docs: true,
   about: true,
+  customLinks: [],
 }
 
 const DEFAULTS: Record<HeaderNavModule, ModuleAccess> = {
@@ -51,6 +55,9 @@ function cloneHeaderNavDefaults(): HeaderNavModules {
     ...DEFAULT_HEADER_NAV_MODULES,
     pricing: { ...DEFAULT_HEADER_NAV_MODULES.pricing },
     rankings: { ...DEFAULT_HEADER_NAV_MODULES.rankings },
+    customLinks: DEFAULT_HEADER_NAV_MODULES.customLinks.map((link) => ({
+      ...link,
+    })),
   }
 }
 
@@ -104,6 +111,29 @@ function parseHeaderNavRecord(raw: unknown): Record<string, unknown> | null {
   }
 }
 
+function parseCustomLinks(raw: unknown): HeaderNavCustomLink[] {
+  if (!Array.isArray(raw)) {
+    return []
+  }
+
+  return raw.reduce<HeaderNavCustomLink[]>((acc, item) => {
+    if (!item || typeof item !== 'object') {
+      return acc
+    }
+
+    const record = item as Record<string, unknown>
+    const title = typeof record.title === 'string' ? record.title.trim() : ''
+    const href = typeof record.href === 'string' ? record.href.trim() : ''
+
+    if (!title || !href) {
+      return acc
+    }
+
+    acc.push({ title, href })
+    return acc
+  }, [])
+}
+
 export function parseHeaderNavModules(raw: unknown): HeaderNavModules {
   const result = cloneHeaderNavDefaults()
   const parsed = parseHeaderNavRecord(raw)
@@ -116,6 +146,10 @@ export function parseHeaderNavModules(raw: unknown): HeaderNavModules {
     }
     if (key === 'rankings') {
       result.rankings = parseAccess(value, result.rankings)
+      return
+    }
+    if (key === 'customLinks') {
+      result.customLinks = parseCustomLinks(value)
       return
     }
 

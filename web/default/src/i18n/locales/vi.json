@@ -4557,6 +4557,23 @@
     "Zero retention": "Không lưu dữ liệu",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Add link": "Thêm liên kết",
+    "Add redirects to internal pages or external URLs. Custom links appear after the built-in navigation items.": "Thêm liên kết chuyển hướng đến trang nội bộ hoặc URL bên ngoài. Các liên kết tùy chỉnh sẽ xuất hiện sau các mục điều hướng dựng sẵn.",
+    "Custom link": "Liên kết tùy chỉnh",
+    "Custom links": "Liên kết tùy chỉnh",
+    "Internal links should start with /. External links can use https://, mailto:, or other full URLs.": "Liên kết nội bộ phải bắt đầu bằng /. Liên kết ngoài có thể dùng https://, mailto: hoặc các URL đầy đủ khác.",
+    "Link label": "Nhãn liên kết",
+    "Link label is required": "Nhãn liên kết là bắt buộc",
+    "Link label must be 64 characters or fewer": "Nhãn liên kết phải có tối đa 64 ký tự",
+    "Link URL": "URL liên kết",
+    "Link URL is required": "URL liên kết là bắt buộc",
+    "No custom links yet. Add one to show another destination in the top navigation.": "Chưa có liên kết tùy chỉnh nào. Hãy thêm một liên kết để hiển thị thêm một đích đến trên thanh điều hướng trên cùng.",
+    "Remove link": "Xóa liên kết",
+    "Shown directly in the top navigation bar.": "Hiển thị trực tiếp trên thanh điều hướng trên cùng.",
+    "Support center": "Trung tâm hỗ trợ",
+    "Use /path for internal routes or a full URL for external redirects.": "Dùng /path cho route nội bộ hoặc URL đầy đủ cho chuyển hướng bên ngoài.",
+    "Use an internal path like /pricing or a full URL like https://example.com": "Hãy dùng đường dẫn nội bộ như /pricing hoặc URL đầy đủ như https://example.com",
+    "You can add up to {{count}} custom links": "Bạn có thể thêm tối đa {{count}} liên kết tùy chỉnh"
   }
 }

@@ -4557,6 +4557,23 @@
     "Zero retention": "Zero retention",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Add link": "Add link",
+    "Add redirects to internal pages or external URLs. Custom links appear after the built-in navigation items.": "Add redirects to internal pages or external URLs. Custom links appear after the built-in navigation items.",
+    "Custom link": "Custom link",
+    "Custom links": "Custom links",
+    "Internal links should start with /. External links can use https://, mailto:, or other full URLs.": "Internal links should start with /. External links can use https://, mailto:, or other full URLs.",
+    "Link label": "Link label",
+    "Link label is required": "Link label is required",
+    "Link label must be 64 characters or fewer": "Link label must be 64 characters or fewer",
+    "Link URL": "Link URL",
+    "Link URL is required": "Link URL is required",
+    "No custom links yet. Add one to show another destination in the top navigation.": "No custom links yet. Add one to show another destination in the top navigation.",
+    "Remove link": "Remove link",
+    "Shown directly in the top navigation bar.": "Shown directly in the top navigation bar.",
+    "Support center": "Support center",
+    "Use /path for internal routes or a full URL for external redirects.": "Use /path for internal routes or a full URL for external redirects.",
+    "Use an internal path like /pricing or a full URL like https://example.com": "Use an internal path like /pricing or a full URL like https://example.com",
+    "You can add up to {{count}} custom links": "You can add up to {{count}} custom links"
   }
 }

@@ -4557,6 +4557,23 @@
     "Zero retention": "Aucune rétention",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Add link": "Ajouter un lien",
+    "Add redirects to internal pages or external URLs. Custom links appear after the built-in navigation items.": "Ajoutez des redirections vers des pages internes ou des URL externes. Les liens personnalisés apparaissent après les éléments de navigation intégrés.",
+    "Custom link": "Lien personnalisé",
+    "Custom links": "Liens personnalisés",
+    "Internal links should start with /. External links can use https://, mailto:, or other full URLs.": "Les liens internes doivent commencer par /. Les liens externes peuvent utiliser https://, mailto: ou toute autre URL complète.",
+    "Link label": "Libellé du lien",
+    "Link label is required": "Le libellé du lien est requis",
+    "Link label must be 64 characters or fewer": "Le libellé du lien doit contenir au maximum 64 caractères",
+    "Link URL": "URL du lien",
+    "Link URL is required": "L'URL du lien est requise",
+    "No custom links yet. Add one to show another destination in the top navigation.": "Aucun lien personnalisé pour le moment. Ajoutez-en un pour afficher une destination supplémentaire dans la navigation supérieure.",
+    "Remove link": "Supprimer le lien",
+    "Shown directly in the top navigation bar.": "S'affiche directement dans la barre de navigation supérieure.",
+    "Support center": "Centre d'assistance",
+    "Use /path for internal routes or a full URL for external redirects.": "Utilisez /path pour les routes internes ou une URL complète pour les redirections externes.",
+    "Use an internal path like /pricing or a full URL like https://example.com": "Utilisez un chemin interne comme /pricing ou une URL complète comme https://example.com",
+    "You can add up to {{count}} custom links": "Vous pouvez ajouter jusqu'à {{count}} liens personnalisés"
   }
 }

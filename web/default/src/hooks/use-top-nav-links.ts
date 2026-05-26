@@ -22,6 +22,8 @@ import { useAuthStore } from '@/stores/auth-store'
 import { parseHeaderNavModulesFromStatus } from '@/lib/nav-modules'
 import { useStatus } from '@/hooks/use-status'
 
+const EXTERNAL_HREF_RE = /^(?:[a-z][a-z\d+.-]*:|\/\/)/i
+
 export type TopNavLink = {
   title: string
   href: string
@@ -98,6 +100,22 @@ export function useTopNavLinks(): TopNavLink[] {
   if (modules?.about !== false) {
     links.push({ title: t('About'), href: '/about' })
   }
+
+  const customLinks = Array.isArray(modules?.customLinks)
+    ? modules.customLinks
+    : []
+
+  customLinks.forEach((link) => {
+    if (!link?.title || !link?.href) {
+      return
+    }
+
+    links.push({
+      title: link.title,
+      href: link.href,
+      external: EXTERNAL_HREF_RE.test(link.href),
+    })
+  })
 
   return links
 }

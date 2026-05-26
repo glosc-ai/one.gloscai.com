@@ -21,6 +21,11 @@ export type HeaderNavAccessConfig = {
   requireAuth: boolean
 }
 
+export type HeaderNavCustomLinkConfig = {
+  title: string
+  href: string
+}
+
 export type HeaderNavModulesConfig = {
   home: boolean
   console: boolean
@@ -28,7 +33,8 @@ export type HeaderNavModulesConfig = {
   rankings: HeaderNavAccessConfig
   docs: boolean
   about: boolean
-  [key: string]: boolean | HeaderNavAccessConfig
+  customLinks: HeaderNavCustomLinkConfig[]
+  [key: string]: boolean | HeaderNavAccessConfig | HeaderNavCustomLinkConfig[]
 }
 
 export type SidebarSectionConfig = {
@@ -51,6 +57,7 @@ export const HEADER_NAV_DEFAULT: HeaderNavModulesConfig = {
   },
   docs: true,
   about: true,
+  customLinks: [],
 }
 
 export const SIDEBAR_MODULES_DEFAULT: SidebarModulesAdminConfig = {
@@ -100,6 +107,7 @@ const cloneHeaderNavDefault = (): HeaderNavModulesConfig => ({
   ...HEADER_NAV_DEFAULT,
   pricing: { ...HEADER_NAV_DEFAULT.pricing },
   rankings: { ...HEADER_NAV_DEFAULT.rankings },
+  customLinks: HEADER_NAV_DEFAULT.customLinks.map((link) => ({ ...link })),
 })
 
 const parseAccessModule = (
@@ -124,6 +132,29 @@ const parseAccessModule = (
     }
   }
   return { ...fallback }
+}
+
+const parseCustomLinks = (raw: unknown): HeaderNavCustomLinkConfig[] => {
+  if (!Array.isArray(raw)) {
+    return []
+  }
+
+  return raw.reduce<HeaderNavCustomLinkConfig[]>((acc, item) => {
+    if (!item || typeof item !== 'object') {
+      return acc
+    }
+
+    const record = item as Record<string, unknown>
+    const title = typeof record.title === 'string' ? record.title.trim() : ''
+    const href = typeof record.href === 'string' ? record.href.trim() : ''
+
+    if (!title || !href) {
+      return acc
+    }
+
+    acc.push({ title, href })
+    return acc
+  }, [])
 }
 
 const cloneSidebarDefault = (): SidebarModulesAdminConfig =>
@@ -159,6 +190,10 @@ export function parseHeaderNavModules(
         result.rankings = parseAccessModule(raw, base.rankings)
         return
       }
+      if (key === 'customLinks') {
+        result.customLinks = parseCustomLinks(raw)
+        return
+      }
 
       if (typeof raw === 'boolean') {
         result[key] = raw
@@ -179,7 +214,10 @@ export function parseHeaderNavModules(
 export function serializeHeaderNavModules(
   config: HeaderNavModulesConfig
 ): string {
-  return JSON.stringify(config)
+  return JSON.stringify({
+    ...config,
+    customLinks: parseCustomLinks(config.customLinks),
+  })
 }
 
 export function parseSidebarModulesAdmin(
