@@ -27,6 +27,7 @@ import {
   handleOIDCOAuth,
   handleDiscordOAuth,
   handleLinuxDOOAuth,
+  handleWeChatOAuth,
 } from '@/lib/oauth'
 import { useDialogs } from '@/hooks/use-dialog'
 import { useStatus } from '@/hooks/use-status'
@@ -43,7 +44,6 @@ import {
 import type { UserProfile, BindingItem } from '../../types'
 import { EmailBindDialog } from '../dialogs/email-bind-dialog'
 import { TelegramBindDialog } from '../dialogs/telegram-bind-dialog'
-import { WeChatBindDialog } from '../dialogs/wechat-bind-dialog'
 
 // ============================================================================
 // Account Bindings Tab Component
@@ -54,7 +54,7 @@ interface AccountBindingsTabProps {
   onUpdate: () => void
 }
 
-type DialogKey = 'email' | 'wechat' | 'telegram'
+type DialogKey = 'email' | 'telegram'
 
 export function AccountBindingsTab({
   profile,
@@ -168,8 +168,12 @@ export function AccountBindingsTab({
         isBound: Boolean(
           (profile as unknown as Record<string, unknown>).wechat_id
         ),
-        isEnabled: status?.wechat_login || false,
-        onBind: () => dialogs.open('wechat'),
+        isEnabled: Boolean(status?.wechat_login && status?.wechat_app_id),
+        onBind: () => {
+          if (status?.wechat_app_id) {
+            void handleWeChatOAuth(status.wechat_app_id)
+          }
+        },
       },
       {
         id: 'github',
@@ -397,15 +401,6 @@ export function AccountBindingsTab({
           open ? dialogs.open('email') : dialogs.close('email')
         }
         currentEmail={profile.email}
-        onSuccess={onUpdate}
-      />
-
-      {/* WeChat Bind Dialog */}
-      <WeChatBindDialog
-        open={dialogs.isOpen('wechat')}
-        onOpenChange={(open) =>
-          open ? dialogs.open('wechat') : dialogs.close('wechat')
-        }
         onSuccess={onUpdate}
       />
 

@@ -123,8 +123,11 @@ export async function bindEmail(
 /**
  * Bind WeChat account
  */
-export async function bindWeChat(code: string): Promise<ApiResponse> {
-  const res = await api.get(`/api/oauth/wechat/bind?code=${code}`)
+export async function bindWeChat(
+  code: string,
+  state?: string
+): Promise<ApiResponse> {
+  const res = await api.post('/api/oauth/wechat/bind', { code, state })
   return res.data
 }
 

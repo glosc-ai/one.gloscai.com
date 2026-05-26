@@ -42,7 +42,10 @@ func GenerateOAuthCode(c *gin.Context) {
 
 // HandleOAuth handles OAuth callback for all standard OAuth providers
 func HandleOAuth(c *gin.Context) {
-	providerName := c.Param("provider")
+	handleOAuthProvider(c, c.Param("provider"))
+}
+
+func handleOAuthProvider(c *gin.Context, providerName string) {
 	provider := oauth.GetProvider(providerName)
 	if provider == nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -56,7 +59,8 @@ func HandleOAuth(c *gin.Context) {
 
 	// 1. Validate state (CSRF protection)
 	state := c.Query("state")
-	if state == "" || session.Get("oauth_state") == nil || state != session.Get("oauth_state").(string) {
+	expectedState, _ := session.Get("oauth_state").(string)
+	if state == "" || expectedState == "" || state != expectedState {
 		c.JSON(http.StatusForbidden, gin.H{
 			"success": false,
 			"message": i18n.T(c, i18n.MsgOAuthStateInvalid),

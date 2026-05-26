@@ -94,8 +94,11 @@ export async function getOAuthState(): Promise<string> {
 }
 
 // WeChat login by authorization code
-export async function wechatLoginByCode(code: string): Promise<ApiResponse> {
-  const res = await api.get('/api/oauth/wechat', { params: { code } })
+export async function wechatLoginByCode(
+  code: string,
+  state?: string
+): Promise<ApiResponse> {
+  const res = await api.get('/api/oauth/wechat', { params: { code, state } })
   return res.data
 }
 

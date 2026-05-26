@@ -68,9 +68,8 @@ const oauthSchema = z.object({
   LinuxDOClientSecret: z.string().optional(),
   LinuxDOMinimumTrustLevel: z.string().optional(),
   WeChatAuthEnabled: z.boolean(),
-  WeChatServerAddress: z.string().optional(),
-  WeChatServerToken: z.string().optional(),
-  WeChatAccountQRCodeImageURL: z.string().optional(),
+  WeChatAppId: z.string().optional(),
+  WeChatAppSecret: z.string().optional(),
 })
 
 const oauthTabContentClassName =
@@ -86,6 +85,10 @@ export function OAuthSection({ defaultValues }: OAuthSectionProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
   const [activeTab, setActiveTab] = useState('github')
+  const wechatRedirectUri =
+    typeof window === 'undefined'
+      ? '/oauth/wechat'
+      : `${window.location.origin}/oauth/wechat`
 
   // Normalize empty strings for optional fields (only at mount)
   const normalizedDefaults: OAuthFormValues = {
@@ -106,10 +109,8 @@ export function OAuthSection({ defaultValues }: OAuthSectionProps) {
     LinuxDOClientId: defaultValues.LinuxDOClientId ?? '',
     LinuxDOClientSecret: defaultValues.LinuxDOClientSecret ?? '',
     LinuxDOMinimumTrustLevel: defaultValues.LinuxDOMinimumTrustLevel ?? '',
-    WeChatServerAddress: defaultValues.WeChatServerAddress ?? '',
-    WeChatServerToken: defaultValues.WeChatServerToken ?? '',
-    WeChatAccountQRCodeImageURL:
-      defaultValues.WeChatAccountQRCodeImageURL ?? '',
+    WeChatAppId: defaultValues.WeChatAppId ?? '',
+    WeChatAppSecret: defaultValues.WeChatAppSecret ?? '',
   }
 
   const form = useForm<OAuthFormValues>({
@@ -184,10 +185,17 @@ export function OAuthSection({ defaultValues }: OAuthSectionProps) {
     }
 
     // Find changed fields by comparing to initial values
-    const updates = Object.entries(finalData).filter(
-      ([key, value]) =>
-        value !== normalizedDefaults[key as keyof OAuthFormValues]
-    )
+    const updates = Object.entries(finalData)
+      .filter(
+        ([key, value]) =>
+          value !== normalizedDefaults[key as keyof OAuthFormValues]
+      )
+      .sort(([keyA], [keyB]) => {
+        const isToggleA = keyA.endsWith('Enabled') || keyA.endsWith('.enabled')
+        const isToggleB = keyB.endsWith('Enabled') || keyB.endsWith('.enabled')
+        if (isToggleA === isToggleB) return 0
+        return isToggleA ? 1 : -1
+      })
 
     if (updates.length === 0) {
       toast.info(t('No changes to save'))
@@ -705,13 +713,13 @@ export function OAuthSection({ defaultValues }: OAuthSectionProps) {
 
                 <FormField
                   control={form.control}
-                  name='WeChatServerAddress'
+                  name='WeChatAppId'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('Server Address')}</FormLabel>
+                      <FormLabel>{t('WeChat Open Platform AppID')}</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder={t('https://wechat-server.example.com')}
+                          placeholder={t('WeChat Open Platform AppID')}
                           autoComplete='off'
                           {...field}
                         />
@@ -723,14 +731,16 @@ export function OAuthSection({ defaultValues }: OAuthSectionProps) {
 
                 <FormField
                   control={form.control}
-                  name='WeChatServerToken'
+                  name='WeChatAppSecret'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('Server Token')}</FormLabel>
+                      <FormLabel>
+                        {t('WeChat Open Platform AppSecret')}
+                      </FormLabel>
                       <FormControl>
                         <Input
                           type='password'
-                          placeholder={t('Server Token')}
+                          placeholder={t('WeChat Open Platform AppSecret')}
                           autoComplete='new-password'
                           {...field}
                         />
@@ -740,23 +750,17 @@ export function OAuthSection({ defaultValues }: OAuthSectionProps) {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name='WeChatAccountQRCodeImageURL'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('QR Code Image URL')}</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder={t('https://example.com/qr-code.png')}
-                          autoComplete='off'
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormItem>
+                  <FormLabel>{t('OAuth callback URL')}</FormLabel>
+                  <FormControl>
+                    <Input value={wechatRedirectUri} readOnly />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'Configure this URL as the website app authorization callback in WeChat Open Platform'
+                    )}
+                  </FormDescription>
+                </FormItem>
               </TabsContent>
             </Tabs>
           </SettingsForm>
