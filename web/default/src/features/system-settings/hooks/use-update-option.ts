@@ -37,6 +37,9 @@ const STATUS_RELATED_KEYS = [
   'general_setting.custom_currency_symbol',
   'general_setting.custom_currency_exchange_rate',
   'WeChatAuthEnabled',
+  'WeChatServerAddress',
+  'WeChatServerToken',
+  'WeChatAccountQRCodeImageURL',
   'WeChatAppId',
   'WeChatAppSecret',
 ]

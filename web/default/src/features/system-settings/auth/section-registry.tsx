@@ -70,6 +70,9 @@ const AUTH_SECTIONS = [
           LinuxDOClientSecret: settings.LinuxDOClientSecret,
           LinuxDOMinimumTrustLevel: settings.LinuxDOMinimumTrustLevel,
           WeChatAuthEnabled: settings.WeChatAuthEnabled,
+          WeChatServerAddress: settings.WeChatServerAddress,
+          WeChatServerToken: settings.WeChatServerToken,
+          WeChatAccountQRCodeImageURL: settings.WeChatAccountQRCodeImageURL,
           WeChatAppId: settings.WeChatAppId,
           WeChatAppSecret: settings.WeChatAppSecret,
         }}
@@ -92,14 +95,8 @@ const AUTH_SECTIONS = [
             | 'required'
             | 'preferred'
             | 'discouraged',
-          'passkey.attachment_preference': (settings[
-            'passkey.attachment_preference'
-          ] === ''
-            ? 'none'
-            : settings['passkey.attachment_preference']) as
-            | 'none'
-            | 'platform'
-            | 'cross-platform',
+          'passkey.attachment_preference':
+            settings['passkey.attachment_preference'],
         }}
       />
     ),
