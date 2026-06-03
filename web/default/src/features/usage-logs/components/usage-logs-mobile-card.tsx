@@ -184,8 +184,9 @@ function CommonLogsCard<TData>({
 
   const modelCell = cells.get('model_name')
   const quotaCell = cells.get('quota')
-  const createdAtOriginal = cells.get('created_at')?.row.original as
-    | Pick<UsageLog, 'created_at' | 'type'>
+  const rowData = cells.get('created_at')?.row.original as
+    | (Record<string, unknown> &
+        Partial<Pick<UsageLog, 'created_at' | 'type'>>)
     | undefined
 
   return (
@@ -194,7 +195,7 @@ function CommonLogsCard<TData>({
         <CompactCell cell={modelCell} className='flex-1' />
         <CompactCell
           cell={quotaCell}
-          className='shrink-0 text-right [&_span]:!h-6 [&_span]:!px-2 [&_span]:!text-sm [&_span]:!leading-none'
+          className='shrink-0 text-right [&_span]:h-6! [&_span]:px-2! [&_span]:text-sm! [&_span]:leading-none!'
         />
       </div>
 
@@ -204,8 +205,8 @@ function CommonLogsCard<TData>({
             {t('Time')}
           </div>
           <MobileLogTimeStatus
-            createdAt={createdAtOriginal?.created_at}
-            type={createdAtOriginal?.type}
+            createdAt={rowData?.created_at}
+            type={rowData?.type}
           />
         </div>
         <SummaryField

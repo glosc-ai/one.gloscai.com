@@ -144,7 +144,7 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
   // 显示加载状态
   if (loading) {
     return (
-      <div className='document-renderer-page flex justify-center items-center'>
+    <div className='classic-page-fill document-renderer-page flex justify-center items-center'>
         <Spin size='large' />
       </div>
     );
@@ -153,7 +153,7 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
   // 如果没有内容，显示空状态
   if (!content || content.trim() === '') {
     return (
-      <div className='document-renderer-page flex justify-center items-center'>
+    <div className='classic-page-fill document-renderer-page flex justify-center items-center'>
         <Empty
           title={t('管理员未设置' + title + '内容')}
           image={
@@ -171,7 +171,7 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
   // 如果是 URL，显示链接卡片
   if (isUrl(content)) {
     return (
-      <div className='document-renderer-page flex justify-center items-center p-4'>
+    <div className='classic-page-fill document-renderer-page flex justify-center items-center p-4'>
         <Card className='max-w-md w-full'>
           <div className='text-center'>
             <Title heading={4} className='mb-4'>
@@ -199,7 +199,7 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
   // 如果是 HTML 内容，直接渲染
   if (isHtmlContent(content)) {
     return (
-      <div className='document-renderer-page'>
+      <div className='classic-page-fill document-renderer-page'>
         <div className='document-renderer-shell'>
           <div className='document-renderer-html-card'>
             <Title heading={2} className='text-center mb-8'>
@@ -217,7 +217,7 @@ const DocumentRenderer = ({ apiEndpoint, title, cacheKey, emptyMessage }) => {
 
   // 其他内容统一使用 Markdown 渲染器
   return (
-    <div className='document-renderer-page'>
+    <div className='classic-page-fill document-renderer-page'>
       <div className='document-renderer-shell'>
         <div className='document-renderer-card' data-github-theme={actualTheme}>
           <div className='document-renderer-title'>
