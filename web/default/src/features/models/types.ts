@@ -91,6 +91,7 @@ export interface GetModelsParams {
   p?: number
   page_size?: number
   vendor?: string // vendor ID to filter by
+  tag?: string // tag to filter by, __empty__ for models without tags
   status?: string // filter by status
   sync_official?: string // filter by sync_official status
   has_price?: string // filter by pricing configuration status
@@ -102,6 +103,7 @@ export interface GetModelsParams {
 export interface SearchModelsParams {
   keyword?: string
   vendor?: string // vendor ID to filter by
+  tag?: string // tag to filter by, __empty__ for models without tags
   status?: string // filter by status
   sync_official?: string // filter by sync_official status
   has_price?: string // filter by pricing configuration status
@@ -121,6 +123,7 @@ export interface GetModelsResponse {
     page: number
     page_size: number
     vendor_counts?: Record<string, number>
+    tag_counts?: Record<string, number>
   }
 }
 

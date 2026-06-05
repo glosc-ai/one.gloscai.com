@@ -57,6 +57,7 @@ type Model struct {
 type ModelsMetaFilter struct {
 	Keyword      string
 	Vendor       string
+	Tag          string
 	Status       *int
 	SyncOfficial *int
 	HasPrice     *bool
@@ -225,7 +226,53 @@ func applyModelsMetaFilters(db *gorm.DB, filter ModelsMetaFilter) *gorm.DB {
 	if filter.SyncOfficial != nil {
 		db = db.Where("models.sync_official = ?", *filter.SyncOfficial)
 	}
+	if filter.Tag != "" {
+		if filter.Tag == "__empty__" {
+			db = db.Where("models.tags IS NULL OR TRIM(models.tags) = ''")
+		} else {
+			db = db.Where(
+				"models.tags = ? OR models.tags LIKE ? OR models.tags LIKE ? OR models.tags LIKE ?",
+				filter.Tag,
+				filter.Tag+",%",
+				"%,"+filter.Tag,
+				"%,"+filter.Tag+",%",
+			)
+		}
+	}
 	return db
+}
+
+func GetModelTagCounts(filter ModelsMetaFilter) (map[string]int64, error) {
+	filter.Tag = ""
+	db := applyModelsMetaFilters(DB.Model(&Model{}), filter)
+
+	var models []Model
+	if err := db.Select("tags").Find(&models).Error; err != nil {
+		return nil, err
+	}
+
+	counts := make(map[string]int64)
+	for _, modelMeta := range models {
+		tags := strings.Split(modelMeta.Tags, ",")
+		hasTag := false
+		seen := make(map[string]struct{}, len(tags))
+		for _, tag := range tags {
+			tag = strings.TrimSpace(tag)
+			if tag == "" {
+				continue
+			}
+			if _, ok := seen[tag]; ok {
+				continue
+			}
+			seen[tag] = struct{}{}
+			counts[tag]++
+			hasTag = true
+		}
+		if !hasTag {
+			counts["__empty__"]++
+		}
+	}
+	return counts, nil
 }
 
 func ListModelsMeta(filter ModelsMetaFilter, offset int, limit int) ([]*Model, int64, error) {

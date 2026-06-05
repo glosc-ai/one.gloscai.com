@@ -56,6 +56,18 @@ export interface ImageGenerationResult {
   revised_prompt?: string
 }
 
+export interface ImageGenerationHistoryItem {
+  id: string
+  createdAt: number
+  model: string
+  group?: string
+  prompt: string
+  size?: string
+  quality?: string
+  referenceImage?: string
+  results: ImageGenerationResult[]
+}
+
 export interface VideoGenerationRequest {
   model: string
   prompt: string
@@ -78,6 +90,19 @@ export interface VideoTaskStatus {
   videoId?: string
   action?: string
   quota?: number
+}
+
+export interface VideoGenerationHistoryItem {
+  id: string
+  createdAt: number
+  updatedAt: number
+  model: string
+  group?: string
+  prompt: string
+  image?: string
+  size?: string
+  seconds?: string
+  task: VideoTaskStatus
 }
 
 export interface MediaUploadResult {

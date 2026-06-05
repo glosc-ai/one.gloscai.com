@@ -42,6 +42,7 @@ import { useModelsColumns } from './models-columns'
 import { useModels } from './models-provider'
 
 const route = getRouteApi('/_authenticated/models/$section')
+const EMPTY_TAG_FILTER_VALUE = '__empty__'
 
 export function ModelsTable() {
   const { t } = useTranslation()
@@ -77,6 +78,7 @@ export function ModelsTable() {
     columnFilters: [
       { columnId: 'status', searchKey: 'status', type: 'array' },
       { columnId: 'vendor_id', searchKey: 'vendor', type: 'array' },
+      { columnId: 'tags', searchKey: 'tag', type: 'array' },
       { columnId: 'sync_official', searchKey: 'sync', type: 'array' },
       { columnId: 'has_price', searchKey: 'price', type: 'array' },
     ],
@@ -87,6 +89,8 @@ export function ModelsTable() {
     (columnFilters.find((f) => f.id === 'status')?.value as string[]) || []
   const vendorFilter =
     (columnFilters.find((f) => f.id === 'vendor_id')?.value as string[]) || []
+  const tagFilter =
+    (columnFilters.find((f) => f.id === 'tags')?.value as string[]) || []
   const syncFilter =
     (columnFilters.find((f) => f.id === 'sync_official')?.value as string[]) ||
     []
@@ -120,6 +124,10 @@ export function ModelsTable() {
     (vendorFilter.length > 0 && !vendorFilter.includes('all')
       ? vendorFilter[0]
       : undefined)
+  const activeTagFilter =
+    tagFilter.length > 0 && !tagFilter.includes('all')
+      ? tagFilter[0]
+      : undefined
 
   // Fetch models data
   // eslint-disable-next-line @tanstack/query/exhaustive-deps
@@ -127,6 +135,7 @@ export function ModelsTable() {
     queryKey: modelsQueryKeys.list({
       keyword: globalFilter,
       vendor: activeVendorFilter,
+      tag: activeTagFilter,
       status:
         statusFilter.length > 0 && !statusFilter.includes('all')
           ? statusFilter[0]
@@ -147,6 +156,7 @@ export function ModelsTable() {
         return searchModels({
           keyword: globalFilter,
           vendor: activeVendorFilter,
+          tag: activeTagFilter,
           status:
             statusFilter.length > 0 && !statusFilter.includes('all')
               ? statusFilter[0]
@@ -164,6 +174,7 @@ export function ModelsTable() {
         })
       } else {
         return getModels({
+          tag: activeTagFilter,
           status:
             statusFilter.length > 0 && !statusFilter.includes('all')
               ? statusFilter[0]
@@ -187,6 +198,7 @@ export function ModelsTable() {
   const models = data?.data?.items || []
   const totalCount = data?.data?.total || 0
   const vendorCounts = data?.data?.vendor_counts
+  const tagCounts = data?.data?.tag_counts
 
   // Columns configuration
   const columns = useModelsColumns(vendors)
@@ -234,6 +246,23 @@ export function ModelsTable() {
       value: option.value,
     })),
   ]
+  const tagFilterOptions = [
+    {
+      label: t('All Tags'),
+      value: 'all',
+    },
+    {
+      label: `${t('No Tags')}${tagCounts?.[EMPTY_TAG_FILTER_VALUE] ? ` (${tagCounts[EMPTY_TAG_FILTER_VALUE]})` : ''}`,
+      value: EMPTY_TAG_FILTER_VALUE,
+    },
+    ...Object.entries(tagCounts || {})
+      .filter(([tag]) => tag !== EMPTY_TAG_FILTER_VALUE)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([tag, count]) => ({
+        label: `${tag}${count ? ` (${count})` : ''}`,
+        value: tag,
+      })),
+  ]
 
   return (
     <DataTablePage
@@ -260,6 +289,12 @@ export function ModelsTable() {
             columnId: 'vendor_id',
             title: t('Vendor'),
             options: vendorFilterOptions,
+            singleSelect: true,
+          },
+          {
+            columnId: 'tags',
+            title: t('Tags'),
+            options: tagFilterOptions,
             singleSelect: true,
           },
           {

@@ -16,14 +16,28 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Clapperboard, Sparkles } from 'lucide-react'
+import {
+  Clapperboard,
+  Clock,
+  PlayCircle,
+  RotateCcw,
+  Sparkles,
+  Trash2,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { formatDateTimeObject } from '@/lib/time'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import {
@@ -38,8 +52,14 @@ import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { ModelSelector, GroupSelector } from '@/components/model-group-selector'
 import { fetchVideoTask, submitVideoGeneration } from '../api'
+import {
+  clearVideoHistory,
+  createVideoHistoryItem,
+  getVideoHistory,
+  saveVideoHistoryItem,
+} from '../history'
 import { useMediaModels } from '../hooks/use-media-models'
-import type { VideoTaskStatus } from '../types'
+import type { VideoGenerationHistoryItem, VideoTaskStatus } from '../types'
 import { ReferenceImageField } from './reference-image-field'
 
 const SIZE_OPTIONS = [
@@ -85,6 +105,9 @@ export function VideoGeneration() {
   const [seconds, setSeconds] = useState('5')
   const [taskId, setTaskId] = useState('')
   const [submitStatus, setSubmitStatus] = useState<VideoTaskStatus | null>(null)
+  const activeHistoryItemRef = useRef<VideoGenerationHistoryItem | null>(null)
+  const [history, setHistory] =
+    useState<VideoGenerationHistoryItem[]>(getVideoHistory)
 
   const selectedModel = model || models[0]?.value || ''
   const selectedGroup =
@@ -96,6 +119,17 @@ export function VideoGeneration() {
     mutationFn: submitVideoGeneration,
     onSuccess: (data) => {
       setSubmitStatus(data)
+      const historyItem = createVideoHistoryItem({
+        model: selectedModel,
+        group: selectedGroup,
+        prompt: prompt.trim(),
+        image: image.trim() || undefined,
+        size,
+        seconds,
+        task: data,
+      })
+      activeHistoryItemRef.current = historyItem
+      setHistory(saveVideoHistoryItem(historyItem))
       if (data.taskId) {
         setTaskId(data.taskId)
       } else if (data.status === 'completed' && data.url) {
@@ -132,6 +166,18 @@ export function VideoGeneration() {
     }
   }, [current?.status, current?.errorMessage, t])
 
+  useEffect(() => {
+    const activeHistoryItem = activeHistoryItemRef.current
+    if (!current || !activeHistoryItem) return
+    const updatedItem = {
+      ...activeHistoryItem,
+      id: current.taskId || activeHistoryItem.id,
+      task: current,
+    }
+    activeHistoryItemRef.current = updatedItem
+    setHistory(saveVideoHistoryItem(updatedItem))
+  }, [current])
+
   const isBusy =
     submitMutation.isPending ||
     (Boolean(taskId) &&
@@ -149,6 +195,7 @@ export function VideoGeneration() {
     }
     setTaskId('')
     setSubmitStatus(null)
+    activeHistoryItemRef.current = null
     submitMutation.mutate({
       model: selectedModel,
       prompt: prompt.trim(),
@@ -160,99 +207,129 @@ export function VideoGeneration() {
     })
   }
 
+  const handleRestore = (item: VideoGenerationHistoryItem) => {
+    setModel(item.model)
+    setGroup(item.group || 'default')
+    setPrompt(item.prompt)
+    setImage(item.image || '')
+    setSize(item.size || '720x1280')
+    setSeconds(item.seconds || '5')
+    setSubmitStatus(item.task)
+    activeHistoryItemRef.current = item
+    if (
+      item.task.taskId &&
+      (item.task.status === 'queued' || item.task.status === 'in_progress')
+    ) {
+      setTaskId(item.task.taskId)
+    } else {
+      setTaskId('')
+    }
+  }
+
   return (
     <div className='grid h-full grid-cols-1 gap-4 overflow-auto p-4 lg:grid-cols-[360px_1fr]'>
-      <Card className='h-fit'>
-        <CardContent className='space-y-4 p-4'>
-          <div className='space-y-2'>
-            <Label>{t('Model')}</Label>
-            <ModelSelector
-              selectedModel={selectedModel}
-              models={models}
-              onModelChange={setModel}
-              disabled={isLoadingModels}
-              className='w-full'
-            />
-          </div>
-
-          <div className='space-y-2'>
-            <Label>{t('Group')}</Label>
-            <GroupSelector
-              selectedGroup={selectedGroup}
-              groups={groups}
-              onGroupChange={setGroup}
-              className='w-full'
-            />
-          </div>
-
-          <div className='space-y-2'>
-            <Label>{t('Prompt')}</Label>
-            <Textarea
-              rows={4}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder={t('Describe the video you want to generate')}
-            />
-          </div>
-
-          <ReferenceImageField
-            value={image}
-            onChange={setImage}
-            label={t('Reference image')}
-            optional
-          />
-
-          <div className='grid grid-cols-2 gap-3'>
+      <div className='space-y-4'>
+        <Card className='h-fit'>
+          <CardContent className='space-y-4 p-4'>
             <div className='space-y-2'>
-              <Label>{t('Size')}</Label>
-              <Select value={size} onValueChange={(v) => v && setSize(v)}>
-                <SelectTrigger className='w-full'>
-                  <SelectValue>{size}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {SIZE_OPTIONS.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              <Label>{t('Model')}</Label>
+              <ModelSelector
+                selectedModel={selectedModel}
+                models={models}
+                onModelChange={setModel}
+                disabled={isLoadingModels}
+                className='w-full'
+              />
             </div>
-            <div className='space-y-2'>
-              <Label>{t('Duration (seconds)')}</Label>
-              <Select value={seconds} onValueChange={(v) => v && setSeconds(v)}>
-                <SelectTrigger className='w-full'>
-                  <SelectValue>{seconds}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {DURATION_OPTIONS.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          <Button
-            className='w-full'
-            onClick={handleGenerate}
-            disabled={isBusy || isLoadingModels}
-          >
-            {isBusy ? (
-              <Spinner className='mr-2' />
-            ) : (
-              <Sparkles className='mr-2 h-4 w-4' />
-            )}
-            {t('Generate')}
-          </Button>
-        </CardContent>
-      </Card>
+            <div className='space-y-2'>
+              <Label>{t('Group')}</Label>
+              <GroupSelector
+                selectedGroup={selectedGroup}
+                groups={groups}
+                onGroupChange={setGroup}
+                className='w-full'
+              />
+            </div>
+
+            <div className='space-y-2'>
+              <Label>{t('Prompt')}</Label>
+              <Textarea
+                rows={4}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder={t('Describe the video you want to generate')}
+              />
+            </div>
+
+            <ReferenceImageField
+              value={image}
+              onChange={setImage}
+              label={t('Reference image')}
+              optional
+            />
+
+            <div className='grid grid-cols-2 gap-3'>
+              <div className='space-y-2'>
+                <Label>{t('Size')}</Label>
+                <Select value={size} onValueChange={(v) => v && setSize(v)}>
+                  <SelectTrigger className='w-full'>
+                    <SelectValue>{size}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {SIZE_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className='space-y-2'>
+                <Label>{t('Duration (seconds)')}</Label>
+                <Select
+                  value={seconds}
+                  onValueChange={(v) => v && setSeconds(v)}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue>{seconds}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {DURATION_OPTIONS.map((d) => (
+                        <SelectItem key={d} value={d}>
+                          {d}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button
+              className='w-full'
+              onClick={handleGenerate}
+              disabled={isBusy || isLoadingModels}
+            >
+              {isBusy ? (
+                <Spinner className='mr-2' />
+              ) : (
+                <Sparkles className='mr-2 h-4 w-4' />
+              )}
+              {t('Generate')}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <VideoHistory
+          history={history}
+          onRestore={handleRestore}
+          onClear={() => setHistory(clearVideoHistory())}
+        />
+      </div>
 
       <div className='min-h-[200px]'>
         {!current ? (
@@ -307,6 +384,110 @@ export function VideoGeneration() {
         )}
       </div>
     </div>
+  )
+}
+
+function VideoHistory({
+  history,
+  onRestore,
+  onClear,
+}: {
+  history: VideoGenerationHistoryItem[]
+  onRestore: (item: VideoGenerationHistoryItem) => void
+  onClear: () => void
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <Card size='sm'>
+      <CardHeader>
+        <CardTitle className='flex items-center gap-2'>
+          <Clock className='h-4 w-4' />
+          {t('History')}
+        </CardTitle>
+        {history.length > 0 && (
+          <CardAction>
+            <Button
+              variant='ghost'
+              size='icon-sm'
+              onClick={onClear}
+              aria-label={t('Clear history')}
+              title={t('Clear history')}
+            >
+              <Trash2 />
+            </Button>
+          </CardAction>
+        )}
+      </CardHeader>
+      <CardContent className='space-y-3'>
+        {history.length === 0 ? (
+          <p className='text-muted-foreground text-sm'>{t('No history yet')}</p>
+        ) : (
+          history.map((item) => (
+            <div key={item.id} className='space-y-2 rounded-lg border p-3'>
+              <div className='flex items-start gap-3'>
+                <div className='bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-md'>
+                  {item.task.status === 'completed' ? (
+                    <PlayCircle className='h-5 w-5' />
+                  ) : (
+                    <Clapperboard className='h-5 w-5' />
+                  )}
+                </div>
+                <div className='min-w-0 flex-1 space-y-1'>
+                  <div className='truncate text-sm font-medium'>
+                    {item.prompt || item.image || item.task.taskId}
+                  </div>
+                  <div className='text-muted-foreground truncate text-xs'>
+                    {item.task.upstreamModel || item.model} · {item.size || '-'}{' '}
+                    · {formatDateTimeObject(new Date(item.updatedAt))}
+                  </div>
+                </div>
+              </div>
+              <div className='flex items-center gap-2'>
+                <Badge variant={getVideoStatusBadgeVariant(item.task.status)}>
+                  {getVideoStatusLabel(t, item.task.status)}
+                </Badge>
+                <span className='text-muted-foreground text-xs'>
+                  {item.task.progress}%
+                </span>
+              </div>
+              {item.task.status !== 'completed' &&
+                item.task.status !== 'failed' && (
+                  <Progress value={item.task.progress} />
+                )}
+              <div className='flex flex-wrap gap-2'>
+                <Button
+                  variant='outline'
+                  size='xs'
+                  onClick={() => onRestore(item)}
+                >
+                  <RotateCcw />
+                  {item.task.status === 'queued' ||
+                  item.task.status === 'in_progress'
+                    ? t('Resume')
+                    : t('Restore')}
+                </Button>
+                {item.task.url && (
+                  <Button
+                    variant='link'
+                    size='xs'
+                    render={
+                      <a
+                        href={item.task.url}
+                        target='_blank'
+                        rel='noreferrer'
+                      />
+                    }
+                  >
+                    {t('Open video in new tab')}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

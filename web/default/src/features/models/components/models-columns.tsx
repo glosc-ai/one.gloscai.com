@@ -334,6 +334,12 @@ export function useModelsColumns(vendors: Vendor[] = []): ColumnDef<Model>[] {
           </TooltipProvider>
         )
       },
+      filterFn: (row, id, value) => {
+        if (!value || value.length === 0 || value.includes('all')) return true
+        const tags = parseModelTags(row.getValue(id) as string)
+        if (value.includes('__empty__')) return tags.length === 0
+        return value.some((tag: string) => tags.includes(tag))
+      },
       size: 150,
       enableSorting: false,
     },

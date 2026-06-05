@@ -18,11 +18,18 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { ImageIcon, Sparkles } from 'lucide-react'
+import { Clock, ImageIcon, RotateCcw, Sparkles, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { formatDateTimeObject } from '@/lib/time'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -36,8 +43,17 @@ import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { ModelSelector, GroupSelector } from '@/components/model-group-selector'
 import { generateImage } from '../api'
+import {
+  clearImageHistory,
+  createImageHistoryItem,
+  getImageHistory,
+  saveImageHistoryItem,
+} from '../history'
 import { useMediaModels } from '../hooks/use-media-models'
-import type { ImageGenerationResult } from '../types'
+import type {
+  ImageGenerationHistoryItem,
+  ImageGenerationResult,
+} from '../types'
 import { ReferenceImageField } from './reference-image-field'
 
 const SIZE_OPTIONS = ['1024x1024', '1024x1792', '1792x1024', '512x512']
@@ -62,6 +78,8 @@ export function ImageGeneration() {
   const [count, setCount] = useState('1')
   const [referenceImage, setReferenceImage] = useState('')
   const [results, setResults] = useState<ImageGenerationResult[]>([])
+  const [history, setHistory] =
+    useState<ImageGenerationHistoryItem[]>(getImageHistory)
 
   const selectedModel = model || models[0]?.value || ''
   const selectedGroup =
@@ -77,6 +95,16 @@ export function ImageGeneration() {
         return
       }
       setResults(data)
+      const historyItem = createImageHistoryItem({
+        model: selectedModel,
+        group: selectedGroup,
+        prompt: prompt.trim(),
+        size,
+        quality,
+        referenceImage: referenceImage.trim() || undefined,
+        results: data,
+      })
+      setHistory(saveImageHistoryItem(historyItem))
     },
     onError: (error) => {
       toast.error(
@@ -106,117 +134,139 @@ export function ImageGeneration() {
     })
   }
 
+  const handleRestore = (item: ImageGenerationHistoryItem) => {
+    setModel(item.model)
+    setGroup(item.group || 'default')
+    setPrompt(item.prompt)
+    setSize(item.size || '1024x1024')
+    setQuality(item.quality || 'standard')
+    setReferenceImage(item.referenceImage || '')
+    setCount(String(item.results.length || 1))
+    setResults(item.results)
+  }
+
   return (
     <div className='grid h-full grid-cols-1 gap-4 overflow-auto p-4 lg:grid-cols-[360px_1fr]'>
-      <Card className='h-fit'>
-        <CardContent className='space-y-4 p-4'>
-          <div className='space-y-2'>
-            <Label>{t('Model')}</Label>
-            <ModelSelector
-              selectedModel={selectedModel}
-              models={models}
-              onModelChange={setModel}
-              disabled={isLoadingModels}
-              className='w-full'
-            />
-          </div>
-
-          <div className='space-y-2'>
-            <Label>{t('Group')}</Label>
-            <GroupSelector
-              selectedGroup={selectedGroup}
-              groups={groups}
-              onGroupChange={setGroup}
-              className='w-full'
-            />
-          </div>
-
-          <div className='space-y-2'>
-            <Label>{t('Prompt')}</Label>
-            <Textarea
-              rows={5}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder={t('Describe the image you want to generate')}
-            />
-          </div>
-
-          <ReferenceImageField
-            value={referenceImage}
-            onChange={setReferenceImage}
-            label={t('Reference image')}
-            optional
-          />
-
-          <div className='grid grid-cols-2 gap-3'>
+      <div className='space-y-4'>
+        <Card className='h-fit'>
+          <CardContent className='space-y-4 p-4'>
             <div className='space-y-2'>
-              <Label>{t('Size')}</Label>
-              <Select value={size} onValueChange={(v) => v && setSize(v)}>
+              <Label>{t('Model')}</Label>
+              <ModelSelector
+                selectedModel={selectedModel}
+                models={models}
+                onModelChange={setModel}
+                disabled={isLoadingModels}
+                className='w-full'
+              />
+            </div>
+
+            <div className='space-y-2'>
+              <Label>{t('Group')}</Label>
+              <GroupSelector
+                selectedGroup={selectedGroup}
+                groups={groups}
+                onGroupChange={setGroup}
+                className='w-full'
+              />
+            </div>
+
+            <div className='space-y-2'>
+              <Label>{t('Prompt')}</Label>
+              <Textarea
+                rows={5}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder={t('Describe the image you want to generate')}
+              />
+            </div>
+
+            <ReferenceImageField
+              value={referenceImage}
+              onChange={setReferenceImage}
+              label={t('Reference image')}
+              optional
+            />
+
+            <div className='grid grid-cols-2 gap-3'>
+              <div className='space-y-2'>
+                <Label>{t('Size')}</Label>
+                <Select value={size} onValueChange={(v) => v && setSize(v)}>
+                  <SelectTrigger className='w-full'>
+                    <SelectValue>{size}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {SIZE_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className='space-y-2'>
+                <Label>{t('Quality')}</Label>
+                <Select
+                  value={quality}
+                  onValueChange={(v) => v && setQuality(v)}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue>{t(quality)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {QUALITY_OPTIONS.map((q) => (
+                        <SelectItem key={q} value={q}>
+                          {t(q)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className='space-y-2'>
+              <Label>{t('Number of images')}</Label>
+              <Select value={count} onValueChange={(v) => v && setCount(v)}>
                 <SelectTrigger className='w-full'>
-                  <SelectValue>{size}</SelectValue>
+                  <SelectValue>{count}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {SIZE_OPTIONS.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
+                    {COUNT_OPTIONS.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
                       </SelectItem>
                     ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
-            <div className='space-y-2'>
-              <Label>{t('Quality')}</Label>
-              <Select value={quality} onValueChange={(v) => v && setQuality(v)}>
-                <SelectTrigger className='w-full'>
-                  <SelectValue>{t(quality)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {QUALITY_OPTIONS.map((q) => (
-                      <SelectItem key={q} value={q}>
-                        {t(q)}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          <div className='space-y-2'>
-            <Label>{t('Number of images')}</Label>
-            <Select value={count} onValueChange={(v) => v && setCount(v)}>
-              <SelectTrigger className='w-full'>
-                <SelectValue>{count}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {COUNT_OPTIONS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
+            <Button
+              className='w-full'
+              onClick={handleGenerate}
+              disabled={mutation.isPending || isLoadingModels}
+            >
+              {mutation.isPending ? (
+                <Spinner className='mr-2' />
+              ) : (
+                <Sparkles className='mr-2 h-4 w-4' />
+              )}
+              {t('Generate')}
+            </Button>
+          </CardContent>
+        </Card>
 
-          <Button
-            className='w-full'
-            onClick={handleGenerate}
-            disabled={mutation.isPending || isLoadingModels}
-          >
-            {mutation.isPending ? (
-              <Spinner className='mr-2' />
-            ) : (
-              <Sparkles className='mr-2 h-4 w-4' />
-            )}
-            {t('Generate')}
-          </Button>
-        </CardContent>
-      </Card>
+        <ImageHistory
+          history={history}
+          onRestore={handleRestore}
+          onClear={() => setHistory(clearImageHistory())}
+        />
+      </div>
 
       <div className='min-h-[200px]'>
         {results.length === 0 ? (
@@ -249,5 +299,89 @@ export function ImageGeneration() {
         )}
       </div>
     </div>
+  )
+}
+
+function ImageHistory({
+  history,
+  onRestore,
+  onClear,
+}: {
+  history: ImageGenerationHistoryItem[]
+  onRestore: (item: ImageGenerationHistoryItem) => void
+  onClear: () => void
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <Card size='sm'>
+      <CardHeader>
+        <CardTitle className='flex items-center gap-2'>
+          <Clock className='h-4 w-4' />
+          {t('History')}
+        </CardTitle>
+        {history.length > 0 && (
+          <CardAction>
+            <Button
+              variant='ghost'
+              size='icon-sm'
+              onClick={onClear}
+              aria-label={t('Clear history')}
+              title={t('Clear history')}
+            >
+              <Trash2 />
+            </Button>
+          </CardAction>
+        )}
+      </CardHeader>
+      <CardContent className='space-y-3'>
+        {history.length === 0 ? (
+          <p className='text-muted-foreground text-sm'>{t('No history yet')}</p>
+        ) : (
+          history.map((item) => {
+            const firstImage = item.results.map(resolveImageSrc).find(Boolean)
+            return (
+              <div key={item.id} className='flex gap-3 rounded-lg border p-2'>
+                {firstImage ? (
+                  <a
+                    href={firstImage}
+                    target='_blank'
+                    rel='noreferrer'
+                    className='bg-muted block size-14 shrink-0 overflow-hidden rounded-md'
+                  >
+                    <img
+                      src={firstImage}
+                      alt={item.prompt}
+                      className='h-full w-full object-cover'
+                    />
+                  </a>
+                ) : (
+                  <div className='bg-muted text-muted-foreground flex size-14 shrink-0 items-center justify-center rounded-md'>
+                    <ImageIcon className='h-5 w-5' />
+                  </div>
+                )}
+                <div className='min-w-0 flex-1 space-y-1'>
+                  <div className='truncate text-sm font-medium'>
+                    {item.prompt}
+                  </div>
+                  <div className='text-muted-foreground truncate text-xs'>
+                    {item.model} · {item.size || '-'} ·{' '}
+                    {formatDateTimeObject(new Date(item.createdAt))}
+                  </div>
+                  <Button
+                    variant='outline'
+                    size='xs'
+                    onClick={() => onRestore(item)}
+                  >
+                    <RotateCcw />
+                    {t('Restore')}
+                  </Button>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </CardContent>
+    </Card>
   )
 }

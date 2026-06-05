@@ -133,3 +133,11 @@ Stop-Process -Id <PID> -Force
 ```powershell
 & "$env:USERPROFILE\.bun\bin\bun.exe" install
 ```
+
+
+## 发布到docker
+
+```sh
+gh workflow run docker-build.yml -R glosc-ai/one.gloscai.com -f tag=v1.7.0
+
+```

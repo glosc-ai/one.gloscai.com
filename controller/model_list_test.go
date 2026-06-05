@@ -469,6 +469,46 @@ func TestGetAllModelsMetaFiltersStatusSyncAndPrice(t *testing.T) {
 	require.Equal(t, "unpriced-enabled-nosync", payload.Data.Items[0].ModelName)
 }
 
+func TestGetAllModelsMetaFiltersByTag(t *testing.T) {
+	setupModelListControllerTestDB(t)
+
+	records := []*model.Model{
+		{ModelName: "tagged-text", Tags: "text,image", Status: 1, SyncOfficial: 1, NameRule: model.NameRuleExact},
+		{ModelName: "tagged-context", Tags: "context", Status: 1, SyncOfficial: 1, NameRule: model.NameRuleExact},
+		{ModelName: "tagged-empty", Tags: "", Status: 1, SyncOfficial: 1, NameRule: model.NameRuleExact},
+	}
+	for _, record := range records {
+		require.NoError(t, record.Insert())
+	}
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/models/?tag=text", nil)
+
+	GetAllModelsMeta(ctx)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var payload getModelsMetaResponse
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	require.Equal(t, int64(1), payload.Data.Total)
+	require.Len(t, payload.Data.Items, 1)
+	require.Equal(t, "tagged-text", payload.Data.Items[0].ModelName)
+
+	emptyRecorder := httptest.NewRecorder()
+	emptyCtx, _ := gin.CreateTestContext(emptyRecorder)
+	emptyCtx.Request = httptest.NewRequest(http.MethodGet, "/api/models/?tag=__empty__", nil)
+
+	GetAllModelsMeta(emptyCtx)
+
+	require.Equal(t, http.StatusOK, emptyRecorder.Code)
+	payload = getModelsMetaResponse{}
+	require.NoError(t, common.Unmarshal(emptyRecorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	require.Equal(t, int64(1), payload.Data.Total)
+	require.Equal(t, "tagged-empty", payload.Data.Items[0].ModelName)
+}
+
 func TestAddMissingModelsCreatesDisabledMetadata(t *testing.T) {
 	db := setupModelListControllerTestDB(t)
 	require.NoError(t, db.Create(&[]model.Ability{

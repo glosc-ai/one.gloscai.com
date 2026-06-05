@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"encoding/json"
 	"sort"
 	"strconv"
 	"strings"
@@ -63,6 +62,7 @@ func getModelsMetaFilter(c *gin.Context) model.ModelsMetaFilter {
 	return model.ModelsMetaFilter{
 		Keyword: c.Query("keyword"),
 		Vendor:  c.Query("vendor"),
+		Tag:     strings.TrimSpace(c.Query("tag")),
 		Status: parseModelIntFilter(
 			c.Query("status"),
 			map[string]struct{}{"enabled": {}, "enable": {}, "true": {}, "1": {}},
@@ -91,6 +91,7 @@ func GetAllModelsMeta(c *gin.Context) {
 
 	// 统计供应商计数（全部数据，不受分页影响）
 	vendorCounts, _ := model.GetVendorModelCounts()
+	tagCounts, _ := model.GetModelTagCounts(getModelsMetaFilter(c))
 
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(modelsMeta)
@@ -100,6 +101,7 @@ func GetAllModelsMeta(c *gin.Context) {
 		"page":          pageInfo.GetPage(),
 		"page_size":     pageInfo.GetPageSize(),
 		"vendor_counts": vendorCounts,
+		"tag_counts":    tagCounts,
 	})
 }
 
@@ -115,9 +117,16 @@ func SearchModelsMeta(c *gin.Context) {
 	}
 	// 批量填充附加字段，提升列表接口性能
 	enrichModels(modelsMeta)
+	tagCounts, _ := model.GetModelTagCounts(getModelsMetaFilter(c))
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(modelsMeta)
-	common.ApiSuccess(c, pageInfo)
+	common.ApiSuccess(c, gin.H{
+		"items":      modelsMeta,
+		"total":      total,
+		"page":       pageInfo.GetPage(),
+		"page_size":  pageInfo.GetPageSize(),
+		"tag_counts": tagCounts,
+	})
 }
 
 // GetModelMeta 根据 ID 获取单条模型信息
@@ -313,7 +322,7 @@ func enrichModels(models []*model.Model) {
 			mm := models[idx]
 			if mm.Endpoints == "" {
 				eps := model.GetModelSupportEndpointTypes(mm.ModelName)
-				if b, err := json.Marshal(eps); err == nil {
+				if b, err := common.Marshal(eps); err == nil {
 					mm.Endpoints = string(b)
 				}
 			}
@@ -409,7 +418,7 @@ func enrichModels(models []*model.Model) {
 			for et := range es {
 				eps = append(eps, et)
 			}
-			if b, err := json.Marshal(eps); err == nil {
+			if b, err := common.Marshal(eps); err == nil {
 				mm.Endpoints = string(b)
 			}
 		}
