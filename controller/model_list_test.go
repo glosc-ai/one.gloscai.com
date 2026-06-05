@@ -354,6 +354,60 @@ func TestBatchUpdateModelVendor(t *testing.T) {
 	}
 }
 
+func TestBatchUpdateModelCategoryTags(t *testing.T) {
+	db := setupModelListControllerTestDB(t)
+
+	firstModel := model.Model{ModelName: "batch-tags-alpha", Tags: "legacy,text,custom", Status: 1}
+	secondModel := model.Model{ModelName: "batch-tags-beta", Tags: "image,custom", Status: 1}
+	require.NoError(t, firstModel.Insert())
+	require.NoError(t, secondModel.Insert())
+
+	body, err := common.Marshal(gin.H{
+		"ids":  []int{firstModel.Id, secondModel.Id},
+		"tags": []string{"video", "image"},
+	})
+	require.NoError(t, err)
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPut, "/api/models/batch_tags", bytes.NewReader(body))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	BatchUpdateModelCategoryTags(ctx)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var payload batchUpdateVendorResponse
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	require.Equal(t, int64(2), payload.Data.UpdatedCount)
+
+	var updatedModels []model.Model
+	require.NoError(t, db.Where("id IN ?", []int{firstModel.Id, secondModel.Id}).Order("model_name ASC").Find(&updatedModels).Error)
+	require.Len(t, updatedModels, 2)
+	require.Equal(t, "legacy,custom,video,image", updatedModels[0].Tags)
+	require.Equal(t, "custom,video,image", updatedModels[1].Tags)
+
+	clearBody, err := common.Marshal(gin.H{
+		"ids":  []int{firstModel.Id, secondModel.Id},
+		"tags": []string{},
+	})
+	require.NoError(t, err)
+
+	clearRecorder := httptest.NewRecorder()
+	clearCtx, _ := gin.CreateTestContext(clearRecorder)
+	clearCtx.Request = httptest.NewRequest(http.MethodPut, "/api/models/batch_tags", bytes.NewReader(clearBody))
+	clearCtx.Request.Header.Set("Content-Type", "application/json")
+
+	BatchUpdateModelCategoryTags(clearCtx)
+
+	require.Equal(t, http.StatusOK, clearRecorder.Code)
+	updatedModels = nil
+	require.NoError(t, db.Where("id IN ?", []int{firstModel.Id, secondModel.Id}).Order("model_name ASC").Find(&updatedModels).Error)
+	require.Len(t, updatedModels, 2)
+	require.Equal(t, "legacy,custom", updatedModels[0].Tags)
+	require.Equal(t, "custom", updatedModels[1].Tags)
+}
+
 func TestGetAllModelsMetaFiltersStatusSyncAndPrice(t *testing.T) {
 	withSelfUseModeDisabled(t)
 	withTieredBillingConfig(t, map[string]string{

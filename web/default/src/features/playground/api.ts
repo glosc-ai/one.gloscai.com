@@ -38,9 +38,35 @@ export async function sendChatCompletion(
 }
 
 /**
- * Get user available models
+ * Get user available models.
+ *
+ * Prefers the categorized endpoint so the playground (a text-chat scenario)
+ * only lists models tagged for text usage. Falls back to the plain model
+ * list endpoint when the categorized data is unavailable.
  */
 export async function getUserModels(): Promise<ModelOption[]> {
+  try {
+    const categorizedRes = await api.get('/api/user/models/categorized', {
+      skipErrorHandler: true,
+    } as Record<string, unknown>)
+    const categorized = categorizedRes.data
+    if (categorized?.success && Array.isArray(categorized.data)) {
+      const textModels = (
+        categorized.data as Array<{
+          model_name: string
+          categories?: string[]
+        }>
+      )
+        .filter((m) => m.categories?.includes('text'))
+        .map((m) => ({ label: m.model_name, value: m.model_name }))
+      if (textModels.length > 0) {
+        return textModels
+      }
+    }
+  } catch {
+    // Fall back to the plain model list below.
+  }
+
   const res = await api.get(API_ENDPOINTS.USER_MODELS)
   const { data } = res
 

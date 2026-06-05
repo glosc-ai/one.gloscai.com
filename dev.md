@@ -71,6 +71,7 @@ cd web/default
 
 ```powershell
 .\node_modules\.bin\rsbuild.exe dev --port 3001
+bun run dev --port 3001
 ```
 
 启动成功后访问：

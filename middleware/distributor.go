@@ -300,7 +300,8 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			shouldSelectChannel = false
 		}
 		c.Set("relay_mode", relayMode)
-	} else if strings.Contains(c.Request.URL.Path, "/v1/video/generations") {
+	} else if strings.Contains(c.Request.URL.Path, "/v1/video/generations") ||
+		strings.Contains(c.Request.URL.Path, "/pg/video/generations") {
 		relayMode := relayconstant.RelayModeUnknown
 		if c.Request.Method == http.MethodPost {
 			req, err := getModelFromRequest(c)
@@ -308,6 +309,11 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 				return nil, false, err
 			}
 			modelRequest.Model = req.Model
+			modelRequest.Group = req.Group
+			if strings.Contains(c.Request.URL.Path, "/pg/video/generations") && req.Group != "" {
+				common.SetContextKey(c, constant.ContextKeyTokenGroup, req.Group)
+				common.SetContextKey(c, constant.ContextKeyUsingGroup, req.Group)
+			}
 			relayMode = relayconstant.RelayModeVideoSubmit
 		} else if c.Request.Method == http.MethodGet {
 			relayMode = relayconstant.RelayModeVideoFetchByID
@@ -345,7 +351,8 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			modelRequest.Model = c.Param("model")
 		}
 	}
-	if strings.HasPrefix(c.Request.URL.Path, "/v1/images/generations") {
+	if strings.HasPrefix(c.Request.URL.Path, "/v1/images/generations") ||
+		strings.HasPrefix(c.Request.URL.Path, "/pg/images/generations") {
 		modelRequest.Model = common.GetStringIfEmpty(modelRequest.Model, "dall-e")
 	} else if strings.HasPrefix(c.Request.URL.Path, "/v1/images/edits") {
 		//modelRequest.Model = common.GetStringIfEmpty(c.PostForm("model"), "gpt-image-1")

@@ -318,6 +318,13 @@ export type OperationsSettings = {
   WorkerUrl: string
   WorkerValidKey: string
   WorkerAllowHttpImageRequestEnabled: boolean
+  R2StorageEnabled: boolean
+  R2AccountID: string
+  R2Bucket: string
+  R2AccessKey: string
+  R2SecretKey: string
+  R2PublicBaseURL: string
+  R2ObjectPrefix: string
   LogConsumeEnabled: boolean
   'performance_setting.disk_cache_enabled': boolean
   'performance_setting.disk_cache_threshold_mb': number

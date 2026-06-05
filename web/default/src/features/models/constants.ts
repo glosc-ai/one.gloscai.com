@@ -66,6 +66,41 @@ export function getNameRuleConfig(
 }
 
 // ============================================================================
+// Usage-scenario category tags (control which generation page shows the model)
+// ============================================================================
+
+// Reserved category tags recognized by the backend classifier.
+export const MODEL_CATEGORY_TAGS = ['text', 'image', 'video'] as const
+
+export function getModelCategoryTagOptions(t: TFunction) {
+  return [
+    { label: t('Text / Chat'), value: 'text' },
+    { label: t('Image Generation'), value: 'image' },
+    { label: t('Video Generation'), value: 'video' },
+  ]
+}
+
+// ============================================================================
+// Billing type (per-call vs per-second)
+// ============================================================================
+
+export const BILLING_TYPE_PER_CALL = 0
+export const BILLING_TYPE_PER_SECOND = 1
+
+export function getBillingTypeOptions(t: TFunction) {
+  return [
+    {
+      label: t('Per call (charge fixed price once)'),
+      value: BILLING_TYPE_PER_CALL,
+    },
+    {
+      label: t('Per second (fixed price × duration)'),
+      value: BILLING_TYPE_PER_SECOND,
+    },
+  ] as const
+}
+
+// ============================================================================
 // Model Status
 // ============================================================================
 

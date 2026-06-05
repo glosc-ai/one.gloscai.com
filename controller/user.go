@@ -577,6 +577,45 @@ func GetUserModels(c *gin.Context) {
 	return
 }
 
+// GetUserModelsCategorized returns the models available to the current user
+// together with their usage-scenario categories (text/image/video) and tags.
+func GetUserModelsCategorized(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		id = c.GetInt("id")
+	}
+	user, err := model.GetUserCache(id)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	groups := service.GetUserUsableGroups(user.Group)
+	var models []string
+	for group := range groups {
+		for _, g := range model.GetGroupEnabledModels(group) {
+			if !common.StringsContains(models, g) {
+				models = append(models, g)
+			}
+		}
+	}
+	models, err = model.FilterModelNamesByMetaStatus(models)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	infos, err := model.GetModelsCategoryInfo(models)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    infos,
+	})
+	return
+}
+
 func UpdateUser(c *gin.Context) {
 	var updatedUser model.User
 	err := json.NewDecoder(c.Request.Body).Decode(&updatedUser)

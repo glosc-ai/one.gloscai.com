@@ -22,6 +22,7 @@ import type {
   GetModelsResponse,
   GetModelResponse,
   BatchUpdateModelVendorResponse,
+  BatchUpdateModelTagsResponse,
   GetVendorsResponse,
   GetVendorResponse,
   Model,
@@ -111,6 +112,17 @@ export async function batchUpdateModelVendor(data: {
   icon?: string
 }): Promise<BatchUpdateModelVendorResponse> {
   const res = await api.put('/api/models/batch_vendor', data)
+  return res.data
+}
+
+/**
+ * Batch update selected models' category tags (text, image, video)
+ */
+export async function batchUpdateModelTags(data: {
+  ids: number[]
+  tags: string[]
+}): Promise<BatchUpdateModelTagsResponse> {
+  const res = await api.put('/api/models/batch_tags', data)
   return res.data
 }
 

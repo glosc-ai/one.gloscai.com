@@ -20,9 +20,11 @@ import {
   Activity,
   Bot,
   Box,
+  Clapperboard,
   CreditCard,
   FileText,
   FlaskConical,
+  Image as ImageIcon,
   Key,
   LayoutDashboard,
   ListTodo,
@@ -57,6 +59,16 @@ export function useSidebarData(): SidebarData {
             title: t('Playground'),
             url: '/playground',
             icon: FlaskConical,
+          },
+          {
+            title: t('Image Generation'),
+            url: '/image',
+            icon: ImageIcon,
+          },
+          {
+            title: t('Video Generation'),
+            url: '/video',
+            icon: Clapperboard,
           },
           {
             title: t('Chat'),

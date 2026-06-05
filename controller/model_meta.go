@@ -19,6 +19,11 @@ type batchUpdateModelVendorRequest struct {
 	Icon     *string `json:"icon"`
 }
 
+type batchUpdateModelCategoryTagsRequest struct {
+	Ids  []int    `json:"ids"`
+	Tags []string `json:"tags"`
+}
+
 func parseModelIntFilter(raw string, enabledValues map[string]struct{}, disabledValues map[string]struct{}) *int {
 	value := strings.ToLower(strings.TrimSpace(raw))
 	if value == "" || value == "all" {
@@ -221,6 +226,37 @@ func BatchUpdateModelVendor(c *gin.Context) {
 	}
 
 	updatedCount, err := model.BatchUpdateModelVendor(req.Ids, *req.VendorID, req.Icon)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	model.RefreshPricing()
+	common.ApiSuccess(c, gin.H{"updated_count": updatedCount})
+}
+
+func BatchUpdateModelCategoryTags(c *gin.Context) {
+	var req batchUpdateModelCategoryTagsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if len(req.Ids) == 0 {
+		common.ApiErrorMsg(c, "请选择至少一个模型")
+		return
+	}
+	allowedTags := map[string]struct{}{
+		"text":  {},
+		"image": {},
+		"video": {},
+	}
+	for _, tag := range req.Tags {
+		if _, ok := allowedTags[strings.ToLower(strings.TrimSpace(tag))]; !ok {
+			common.ApiErrorMsg(c, "标签只能是 text、image 或 video")
+			return
+		}
+	}
+
+	updatedCount, err := model.BatchUpdateModelCategoryTags(req.Ids, req.Tags)
 	if err != nil {
 		common.ApiError(c, err)
 		return

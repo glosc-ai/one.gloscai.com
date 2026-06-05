@@ -16,6 +16,14 @@ const (
 	NameRuleSuffix
 )
 
+// Billing types for a model. Default is per-call (the configured fixed price is
+// charged once per request). Per-second multiplies the fixed price by the
+// requested duration in seconds (used for video generation models).
+const (
+	BillingTypePerCall   = iota // 0: charge the fixed price once per call
+	BillingTypePerSecond        // 1: charge fixed price × duration(seconds)
+)
+
 type BoundChannel struct {
 	Name string `json:"name"`
 	Type int    `json:"type"`
@@ -31,6 +39,7 @@ type Model struct {
 	Endpoints    string         `json:"endpoints,omitempty" gorm:"type:text"`
 	Status       int            `json:"status" gorm:"default:1"`
 	SyncOfficial int            `json:"sync_official" gorm:"default:1"`
+	BillingType  int            `json:"billing_type" gorm:"default:0"`
 	CreatedTime  int64          `json:"created_time" gorm:"bigint"`
 	UpdatedTime  int64          `json:"updated_time" gorm:"bigint"`
 	DeletedAt    gorm.DeletedAt `json:"-" gorm:"index;uniqueIndex:uk_model_name_delete_at,priority:2"`
@@ -71,6 +80,7 @@ func (mi *Model) Insert() error {
 	return DB.Model(&Model{}).Where("id = ?", mi.Id).Updates(map[string]interface{}{
 		"status":        originalStatus,
 		"sync_official": originalSyncOfficial,
+		"billing_type":  mi.BillingType,
 	}).Error
 }
 
@@ -87,7 +97,7 @@ func (mi *Model) Update() error {
 	mi.UpdatedTime = common.GetTimestamp()
 	// 使用 Select 强制更新所有字段，包括零值
 	return DB.Model(&Model{}).Where("id = ?", mi.Id).
-		Select("model_name", "description", "icon", "tags", "vendor_id", "endpoints", "status", "sync_official", "name_rule", "updated_time").
+		Select("model_name", "description", "icon", "tags", "vendor_id", "endpoints", "status", "sync_official", "billing_type", "name_rule", "updated_time").
 		Updates(mi).Error
 }
 
@@ -101,6 +111,72 @@ func BatchUpdateModelVendor(ids []int, vendorID int, icon *string) (int64, error
 	}
 	result := DB.Model(&Model{}).Where("id IN ?", ids).Updates(updates)
 	return result.RowsAffected, result.Error
+}
+
+func BatchUpdateModelCategoryTags(ids []int, categoryTags []string) (int64, error) {
+	categoryTagSet := map[string]struct{}{
+		"text":  {},
+		"image": {},
+		"video": {},
+	}
+	nextCategoryTags := make([]string, 0, len(categoryTags))
+	seenCategoryTags := make(map[string]struct{}, len(categoryTags))
+	for _, tag := range categoryTags {
+		normalized := strings.ToLower(strings.TrimSpace(tag))
+		if _, ok := categoryTagSet[normalized]; !ok {
+			continue
+		}
+		if _, ok := seenCategoryTags[normalized]; ok {
+			continue
+		}
+		seenCategoryTags[normalized] = struct{}{}
+		nextCategoryTags = append(nextCategoryTags, normalized)
+	}
+
+	var updatedCount int64
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		var models []Model
+		if err := tx.Where("id IN ?", ids).Find(&models).Error; err != nil {
+			return err
+		}
+		now := common.GetTimestamp()
+		for _, modelMeta := range models {
+			mergedTags := make([]string, 0)
+			seenTags := make(map[string]struct{})
+			for _, tag := range strings.Split(modelMeta.Tags, ",") {
+				trimmed := strings.TrimSpace(tag)
+				if trimmed == "" {
+					continue
+				}
+				if _, ok := categoryTagSet[strings.ToLower(trimmed)]; ok {
+					continue
+				}
+				if _, ok := seenTags[trimmed]; ok {
+					continue
+				}
+				seenTags[trimmed] = struct{}{}
+				mergedTags = append(mergedTags, trimmed)
+			}
+			for _, tag := range nextCategoryTags {
+				if _, ok := seenTags[tag]; ok {
+					continue
+				}
+				seenTags[tag] = struct{}{}
+				mergedTags = append(mergedTags, tag)
+			}
+
+			result := tx.Model(&Model{}).Where("id = ?", modelMeta.Id).Updates(map[string]interface{}{
+				"tags":         strings.Join(mergedTags, ","),
+				"updated_time": now,
+			})
+			if result.Error != nil {
+				return result.Error
+			}
+			updatedCount += result.RowsAffected
+		}
+		return nil
+	})
+	return updatedCount, err
 }
 
 func (mi *Model) Delete() error {

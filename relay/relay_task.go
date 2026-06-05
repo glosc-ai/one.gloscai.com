@@ -193,6 +193,11 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (*TaskSubmitRe
 		}
 	}
 
+	// 5.5 按秒计费：当模型的计费方式被设置为“按秒计费”，且适配器未提供时长
+	//     系数时，从请求中解析时长并写入 OtherRatios["seconds"]。此时配置的
+	//     固定价格被视为“每秒单价”，实际额度 = 每秒单价 × 时长(秒)。
+	applyPerSecondBilling(c, info, modelName)
+
 	// 6. 将 OtherRatios 应用到基础额度
 	if !common.StringsContains(constant.TaskPricePatches, modelName) {
 		for _, ra := range info.PriceData.OtherRatios {
@@ -276,6 +281,48 @@ func recalcQuotaFromRatios(info *relaycommon.RelayInfo, ratios map[string]float6
 		}
 	}
 	return int(result)
+}
+
+// applyPerSecondBilling 实现按秒计费。仅当模型的计费方式被管理员显式设置为
+// “按秒计费”(BillingType == BillingTypePerSecond) 时生效：从用户请求中解析
+// 时长(秒)并写入 OtherRatios["seconds"]，使得配置的固定价格被解释为“每秒单价”，
+// 最终额度 = 每秒单价 × 时长(秒)。已由专用适配器(如 sora/vidu/ali/vertex) 设置
+// seconds 的模型不会被重复处理。
+func applyPerSecondBilling(c *gin.Context, info *relaycommon.RelayInfo, modelName string) {
+	if info == nil {
+		return
+	}
+	if model.GetModelBillingType(modelName) != model.BillingTypePerSecond {
+		return
+	}
+	if info.PriceData.OtherRatios != nil {
+		if s, ok := info.PriceData.OtherRatios["seconds"]; ok && s > 0 {
+			return
+		}
+	}
+	seconds := extractRequestSeconds(c)
+	if seconds <= 0 {
+		return
+	}
+	info.PriceData.AddOtherRatio("seconds", float64(seconds))
+}
+
+// extractRequestSeconds 从任务请求中解析视频时长（秒）。
+// 优先使用 OpenAI 风格的 seconds 字符串字段，其次使用 duration 数值字段。
+func extractRequestSeconds(c *gin.Context) int {
+	req, err := relaycommon.GetTaskRequest(c)
+	if err != nil {
+		return 0
+	}
+	if req.Seconds != "" {
+		if s, err := strconv.Atoi(req.Seconds); err == nil && s > 0 {
+			return s
+		}
+	}
+	if req.Duration > 0 {
+		return req.Duration
+	}
+	return 0
 }
 
 var fetchRespBuilders = map[int]func(c *gin.Context) (respBody []byte, taskResp *dto.TaskError){

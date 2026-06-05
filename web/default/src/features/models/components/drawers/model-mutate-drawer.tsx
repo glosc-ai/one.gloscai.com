@@ -70,7 +70,7 @@ import {
   sideDrawerSwitchItemClassName,
 } from '@/components/drawer-layout'
 import { JsonEditor } from '@/components/json-editor'
-import { TagInput } from '@/components/tag-input'
+import { MultiSelect } from '@/components/multi-select'
 import {
   useSystemOptions,
   getOptionValue,
@@ -80,7 +80,12 @@ import { normalizeJsonString } from '@/features/system-settings/models/utils'
 import type { ModelSettings } from '@/features/system-settings/types'
 import { safeJsonParse } from '@/features/system-settings/utils/json-parser'
 import { createModel, updateModel, getModel, getVendors } from '../../api'
-import { getNameRuleOptions, ENDPOINT_TEMPLATES } from '../../constants'
+import {
+  getNameRuleOptions,
+  ENDPOINT_TEMPLATES,
+  getModelCategoryTagOptions,
+  getBillingTypeOptions,
+} from '../../constants'
 import { modelsQueryKeys, vendorsQueryKeys, parseModelTags } from '../../lib'
 import type { Model } from '../../types'
 
@@ -96,6 +101,7 @@ const extendedModelFormSchema = z.object({
   name_rule: z.number(),
   status: z.boolean(),
   sync_official: z.boolean(),
+  billing_type: z.number(),
   price: z.string().optional(),
   ratio: z.string().optional(),
   cacheRatio: z.string().optional(),
@@ -217,6 +223,7 @@ export function ModelMutateDrawer({
       name_rule: 0,
       status: true,
       sync_official: true,
+      billing_type: 0,
       price: '',
       ratio: '',
       cacheRatio: '',
@@ -276,6 +283,7 @@ export function ModelMutateDrawer({
         name_rule: model.name_rule || 0,
         status: model.status === 1,
         sync_official: model.sync_official === 1,
+        billing_type: model.billing_type ?? 0,
         price: '',
         ratio: '',
         cacheRatio: '',
@@ -380,6 +388,7 @@ export function ModelMutateDrawer({
         name_rule: 0,
         status: true,
         sync_official: true,
+        billing_type: 0,
         price: '',
         ratio: '',
         cacheRatio: '',
@@ -401,6 +410,7 @@ export function ModelMutateDrawer({
           tags: Array.isArray(values.tags) ? values.tags.join(',') : '',
           status: values.status ? 1 : 0,
           sync_official: values.sync_official ? 1 : 0,
+          billing_type: values.billing_type ?? 0,
         }
 
         // Remove ratio fields from model data (they're stored in system settings)
@@ -768,14 +778,60 @@ export function ModelMutateDrawer({
                   <FormItem>
                     <FormLabel>{t('Tags')}</FormLabel>
                     <FormControl>
-                      <TagInput
-                        value={field.value || []}
+                      <MultiSelect
+                        options={getModelCategoryTagOptions(t)}
+                        selected={field.value || []}
                         onChange={field.onChange}
-                        placeholder={t('Add tags...')}
+                        allowCreate
+                        placeholder={t('Select or add tags...')}
                       />
                     </FormControl>
                     <FormDescription>
-                      {t('Press Enter or comma to add tags')}
+                      {t(
+                        'Use the tags text / image / video to control which generation page shows this model. You can also add custom tags.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='billing_type'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Billing Method')}</FormLabel>
+                    <Select
+                      value={String(field.value ?? 0)}
+                      onValueChange={(value) =>
+                        field.onChange(parseInt(value ?? '0'))
+                      }
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={t('Select billing method')}
+                          />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectGroup>
+                          {getBillingTypeOptions(t).map((option) => (
+                            <SelectItem
+                              key={option.value}
+                              value={String(option.value)}
+                            >
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      {t(
+                        'Per call charges the fixed price once per request. Per second multiplies the fixed price by the requested duration in seconds (e.g. for video generation).'
+                      )}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

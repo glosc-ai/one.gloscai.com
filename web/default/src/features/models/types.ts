@@ -43,6 +43,7 @@ export interface Model {
   endpoints?: string
   status: number
   sync_official: number
+  billing_type?: number
   created_time: number
   updated_time: number
   name_rule: number
@@ -133,6 +134,14 @@ export interface GetModelResponse {
 }
 
 export interface BatchUpdateModelVendorResponse {
+  success: boolean
+  message?: string
+  data?: {
+    updated_count?: number
+  }
+}
+
+export interface BatchUpdateModelTagsResponse {
   success: boolean
   message?: string
   data?: {

@@ -74,6 +74,13 @@ func InitOptionMap() {
 	common.OptionMap["WorkerUrl"] = system_setting.WorkerUrl
 	common.OptionMap["WorkerValidKey"] = system_setting.WorkerValidKey
 	common.OptionMap["WorkerAllowHttpImageRequestEnabled"] = strconv.FormatBool(system_setting.WorkerAllowHttpImageRequestEnabled)
+	common.OptionMap["R2StorageEnabled"] = strconv.FormatBool(false)
+	common.OptionMap["R2AccountID"] = ""
+	common.OptionMap["R2Bucket"] = ""
+	common.OptionMap["R2AccessKey"] = ""
+	common.OptionMap["R2SecretKey"] = ""
+	common.OptionMap["R2PublicBaseURL"] = ""
+	common.OptionMap["R2ObjectPrefix"] = "media"
 	common.OptionMap["PayAddress"] = ""
 	common.OptionMap["CustomCallbackAddress"] = ""
 	common.OptionMap["EpayId"] = ""

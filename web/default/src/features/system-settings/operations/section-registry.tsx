@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { SystemBehaviorSection } from '../general/system-behavior-section'
 import { EmailSettingsSection } from '../integrations/email-settings-section'
 import { MonitoringSettingsSection } from '../integrations/monitoring-settings-section'
+import { R2StorageSection } from '../integrations/r2-storage-section'
 import { WorkerSettingsSection } from '../integrations/worker-settings-section'
 import { LogSettingsSection } from '../maintenance/log-settings-section'
 import { PerformanceSection } from '../maintenance/performance-section'
@@ -90,6 +91,23 @@ const OPERATIONS_SECTIONS = [
           WorkerValidKey: settings.WorkerValidKey,
           WorkerAllowHttpImageRequestEnabled:
             settings.WorkerAllowHttpImageRequestEnabled,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'r2-storage',
+    titleKey: 'R2 Storage',
+    build: (settings: OperationsSettings) => (
+      <R2StorageSection
+        defaultValues={{
+          R2StorageEnabled: settings.R2StorageEnabled,
+          R2AccountID: settings.R2AccountID,
+          R2Bucket: settings.R2Bucket,
+          R2AccessKey: settings.R2AccessKey,
+          R2SecretKey: settings.R2SecretKey,
+          R2PublicBaseURL: settings.R2PublicBaseURL,
+          R2ObjectPrefix: settings.R2ObjectPrefix,
         }}
       />
     ),

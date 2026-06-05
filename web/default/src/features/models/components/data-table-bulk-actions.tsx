@@ -19,7 +19,15 @@ For commercial licensing, please contact support@quantumnous.com
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { type Table } from '@tanstack/react-table'
-import { Power, PowerOff, Trash2, Copy, Building2, Loader2 } from 'lucide-react'
+import {
+  Power,
+  PowerOff,
+  Trash2,
+  Copy,
+  Building2,
+  Loader2,
+  Tags,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
@@ -47,11 +55,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
+import { MultiSelect } from '@/components/multi-select'
+import { MODEL_CATEGORY_TAGS, getModelCategoryTagOptions } from '../constants'
 import {
   handleBatchEnableModels,
   handleBatchDisableModels,
   handleBatchDeleteModels,
   handleBatchUpdateModelVendor,
+  handleBatchUpdateModelTags,
+  parseModelTags,
 } from '../lib'
 import type { Model, Vendor } from '../types'
 
@@ -68,9 +80,12 @@ export function DataTableBulkActions<TData>({
   const queryClient = useQueryClient()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showVendorDialog, setShowVendorDialog] = useState(false)
+  const [showTagsDialog, setShowTagsDialog] = useState(false)
   const [selectedVendorId, setSelectedVendorId] = useState<string>('')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [modelIcon, setModelIcon] = useState('')
   const [isUpdatingVendor, setIsUpdatingVendor] = useState(false)
+  const [isUpdatingTags, setIsUpdatingTags] = useState(false)
 
   const selectedRows = table.getFilteredSelectedRowModel().rows
   const selectedIds = selectedRows.reduce<number[]>((ids, row) => {
@@ -84,6 +99,7 @@ export function DataTableBulkActions<TData>({
   }, [])
 
   const selectedModels = selectedRows.map((row) => row.original as Model)
+  const categoryTagSet = new Set<string>(MODEL_CATEGORY_TAGS)
 
   const handleClearSelection = () => {
     table.resetRowSelection()
@@ -113,6 +129,21 @@ export function DataTableBulkActions<TData>({
     setModelIcon(selectedVendor?.icon?.trim() || '')
   }
 
+  const openTagsDialog = () => {
+    const commonTags = selectedModels.reduce<string[] | null>((acc, model) => {
+      const modelTags = parseModelTags(model.tags).filter((tag) =>
+        categoryTagSet.has(tag)
+      )
+      if (acc === null) {
+        return modelTags
+      }
+      return acc.filter((tag) => modelTags.includes(tag))
+    }, null)
+
+    setSelectedTags(commonTags || [])
+    setShowTagsDialog(true)
+  }
+
   const handleUpdateVendor = async () => {
     if (!selectedVendorId) {
       toast.error(t('Please select a vendor'))
@@ -135,6 +166,24 @@ export function DataTableBulkActions<TData>({
       )
     } finally {
       setIsUpdatingVendor(false)
+    }
+  }
+
+  const handleUpdateTags = async () => {
+    setIsUpdatingTags(true)
+    try {
+      await handleBatchUpdateModelTags(
+        selectedIds,
+        selectedTags,
+        queryClient,
+        () => {
+          setShowTagsDialog(false)
+          setSelectedTags([])
+          handleClearSelection()
+        }
+      )
+    } finally {
+      setIsUpdatingTags(false)
     }
   }
 
@@ -169,6 +218,27 @@ export function DataTableBulkActions<TData>({
           </TooltipTrigger>
           <TooltipContent>
             <p>{t('Enable selected models')}</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant='outline'
+                size='icon'
+                onClick={openTagsDialog}
+                className='size-8'
+                aria-label={t('Update selected models tags')}
+                title={t('Update selected models tags')}
+              />
+            }
+          >
+            <Tags />
+            <span className='sr-only'>{t('Update selected models tags')}</span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{t('Update selected models tags')}</p>
           </TooltipContent>
         </Tooltip>
 
@@ -281,6 +351,59 @@ export function DataTableBulkActions<TData>({
             </Button>
             <Button variant='destructive' onClick={handleDeleteAll}>
               {t('Delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showTagsDialog}
+        onOpenChange={(open) => {
+          setShowTagsDialog(open)
+          if (!open) {
+            setSelectedTags([])
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t('Update')} {t('Tags')}
+            </DialogTitle>
+            <DialogDescription>
+              {t(
+                'Choose text, image, or video tags for {{count}} selected model(s). Custom tags will be kept.',
+                { count: selectedIds.length }
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className='flex flex-col gap-2'>
+            <label className='text-sm font-medium'>{t('Tags')}</label>
+            <MultiSelect
+              options={getModelCategoryTagOptions(t)}
+              selected={selectedTags}
+              onChange={setSelectedTags}
+              placeholder={t('Select category tags...')}
+            />
+            <p className='text-muted-foreground text-xs'>
+              {t(
+                'Leaving this empty removes text, image, and video category tags from the selected models.'
+              )}
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => setShowTagsDialog(false)}
+              disabled={isUpdatingTags}
+            >
+              {t('Cancel')}
+            </Button>
+            <Button onClick={handleUpdateTags} disabled={isUpdatingTags}>
+              {isUpdatingTags && <Loader2 className='animate-spin' />}
+              {t('Update')}
             </Button>
           </DialogFooter>
         </DialogContent>
