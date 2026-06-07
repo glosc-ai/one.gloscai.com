@@ -119,6 +119,8 @@ func BatchUpdateModelCategoryTags(ids []int, categoryTags []string) (int64, erro
 		"text":  {},
 		"image": {},
 		"video": {},
+		"stt":   {},
+		"tts":   {},
 	}
 	nextCategoryTags := make([]string, 0, len(categoryTags))
 	seenCategoryTags := make(map[string]struct{}, len(categoryTags))

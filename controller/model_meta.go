@@ -257,10 +257,12 @@ func BatchUpdateModelCategoryTags(c *gin.Context) {
 		"text":  {},
 		"image": {},
 		"video": {},
+		"stt":   {},
+		"tts":   {},
 	}
 	for _, tag := range req.Tags {
 		if _, ok := allowedTags[strings.ToLower(strings.TrimSpace(tag))]; !ok {
-			common.ApiErrorMsg(c, "标签只能是 text、image 或 video")
+			common.ApiErrorMsg(c, "标签只能是 text、image、video、stt 或 tts")
 			return
 		}
 	}
