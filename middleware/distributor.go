@@ -330,7 +330,9 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			modelRequest.Model = modelName
 		}
 		c.Set("relay_mode", relayMode)
-	} else if !strings.HasPrefix(c.Request.URL.Path, "/v1/audio/transcriptions") && !strings.Contains(c.Request.Header.Get("Content-Type"), "multipart/form-data") {
+	} else if !strings.HasPrefix(c.Request.URL.Path, "/v1/audio/transcriptions") &&
+		!strings.HasPrefix(c.Request.URL.Path, "/pg/audio/transcriptions") &&
+		!strings.Contains(c.Request.Header.Get("Content-Type"), "multipart/form-data") {
 		req, err := getModelFromRequest(c)
 		if err != nil {
 			return nil, false, err
@@ -364,19 +366,23 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			}
 		}
 	}
-	if strings.HasPrefix(c.Request.URL.Path, "/v1/audio") {
+	if strings.HasPrefix(c.Request.URL.Path, "/v1/audio") ||
+		strings.HasPrefix(c.Request.URL.Path, "/pg/audio") {
 		relayMode := relayconstant.RelayModeAudioSpeech
-		if strings.HasPrefix(c.Request.URL.Path, "/v1/audio/speech") {
+		if strings.HasPrefix(c.Request.URL.Path, "/v1/audio/speech") ||
+			strings.HasPrefix(c.Request.URL.Path, "/pg/audio/speech") {
 
 			modelRequest.Model = common.GetStringIfEmpty(modelRequest.Model, "tts-1")
-		} else if strings.HasPrefix(c.Request.URL.Path, "/v1/audio/translations") {
+		} else if strings.HasPrefix(c.Request.URL.Path, "/v1/audio/translations") ||
+			strings.HasPrefix(c.Request.URL.Path, "/pg/audio/translations") {
 			// 先尝试从请求读取
 			if req, err := getModelFromRequest(c); err == nil && req.Model != "" {
 				modelRequest.Model = req.Model
 			}
 			modelRequest.Model = common.GetStringIfEmpty(modelRequest.Model, "whisper-1")
 			relayMode = relayconstant.RelayModeAudioTranslation
-		} else if strings.HasPrefix(c.Request.URL.Path, "/v1/audio/transcriptions") {
+		} else if strings.HasPrefix(c.Request.URL.Path, "/v1/audio/transcriptions") ||
+			strings.HasPrefix(c.Request.URL.Path, "/pg/audio/transcriptions") {
 			// 先尝试从请求读取
 			if req, err := getModelFromRequest(c); err == nil && req.Model != "" {
 				modelRequest.Model = req.Model

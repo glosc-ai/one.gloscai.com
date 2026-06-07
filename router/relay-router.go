@@ -68,6 +68,8 @@ func SetRelayRouter(router *gin.Engine) {
 		playgroundRouter.POST("/images/generations", controller.PlaygroundImage)
 		playgroundRouter.POST("/video/generations", controller.PlaygroundVideo)
 		playgroundRouter.GET("/video/generations/:task_id", controller.PlaygroundVideoFetch)
+		playgroundRouter.POST("/audio/speech", controller.PlaygroundAudioSpeech)
+		playgroundRouter.POST("/audio/transcriptions", controller.PlaygroundAudioTranscription)
 	}
 	relayV1Router := router.Group("/v1")
 	relayV1Router.Use(middleware.RouteTag("relay"))

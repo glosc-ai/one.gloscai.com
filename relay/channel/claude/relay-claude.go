@@ -852,6 +852,7 @@ func HandleStreamFinalResponse(c *gin.Context, info *relaycommon.RelayInfo, clau
 	}
 	if claudeInfo.Usage != nil {
 		claudeInfo.Usage.UsageSemantic = "anthropic"
+		claudeInfo.Usage.OutputText = claudeInfo.ResponseText.String()
 	}
 
 	if info.RelayFormat == types.RelayFormatClaude {
@@ -915,6 +916,13 @@ func HandleClaudeResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 		claudeInfo.Usage.ClaudeCacheCreation5mTokens = claudeResponse.Usage.GetCacheCreation5mTokens()
 		claudeInfo.Usage.ClaudeCacheCreation1hTokens = claudeResponse.Usage.GetCacheCreation1hTokens()
 	}
+	var responseText strings.Builder
+	for _, content := range claudeResponse.Content {
+		if content.Type == "text" || content.Type == "thinking" {
+			responseText.WriteString(content.GetText())
+		}
+	}
+	claudeInfo.Usage.OutputText = responseText.String()
 	var responseData []byte
 	switch info.RelayFormat {
 	case types.RelayFormatOpenAI:

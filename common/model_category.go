@@ -4,9 +4,11 @@ import "strings"
 
 // Model usage-scenario categories. A model may belong to multiple categories.
 const (
-	ModelCategoryText  = "text"
-	ModelCategoryImage = "image"
-	ModelCategoryVideo = "video"
+	ModelCategoryText     = "text"
+	ModelCategoryImage    = "image"
+	ModelCategoryVideo    = "video"
+	ModelCategoryAudioSTT = "audio_stt"
+	ModelCategoryAudioTTS = "audio_tts"
 )
 
 // VideoGenerationModels holds substrings that identify video generation models.
@@ -55,6 +57,12 @@ func classifyTag(tag string) string {
 		return ModelCategoryImage
 	case "video", "videos", "视频", "影片":
 		return ModelCategoryVideo
+	case "stt", "asr", "transcribe", "transcription", "speech-to-text",
+		"speech_to_text", "whisper", "语音转文字", "语音识别", "转写":
+		return ModelCategoryAudioSTT
+	case "tts", "text-to-speech", "text_to_speech", "speech", "voice",
+		"文字转语音", "语音合成":
+		return ModelCategoryAudioTTS
 	}
 	return ""
 }
@@ -93,7 +101,13 @@ func ClassifyModelCategories(modelName string, tags []string, endpoints []string
 	}
 
 	ordered := make([]string, 0, len(set))
-	for _, c := range []string{ModelCategoryText, ModelCategoryImage, ModelCategoryVideo} {
+	for _, c := range []string{
+		ModelCategoryText,
+		ModelCategoryImage,
+		ModelCategoryVideo,
+		ModelCategoryAudioSTT,
+		ModelCategoryAudioTTS,
+	} {
 		if set[c] {
 			ordered = append(ordered, c)
 		}

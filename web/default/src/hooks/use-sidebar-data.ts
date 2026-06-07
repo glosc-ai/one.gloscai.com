@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import {
   Activity,
+  AudioLines,
   Bot,
   Box,
   Clapperboard,
@@ -29,6 +30,7 @@ import {
   LayoutDashboard,
   ListTodo,
   MessageSquare,
+  Mic,
   Radio,
   ReceiptText,
   Settings,
@@ -69,6 +71,16 @@ export function useSidebarData(): SidebarData {
             title: t('Video Generation'),
             url: '/video',
             icon: Clapperboard,
+          },
+          {
+            title: t('Speech to Text'),
+            url: '/speech-to-text',
+            icon: Mic,
+          },
+          {
+            title: t('Text to Speech'),
+            url: '/text-to-speech',
+            icon: AudioLines,
           },
           {
             title: t('Chat'),

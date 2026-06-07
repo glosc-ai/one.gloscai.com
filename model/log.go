@@ -65,6 +65,8 @@ type ModelCallLog struct {
 	CompletionTokens int    `json:"completion_tokens"`
 	TotalTokens      int    `json:"total_tokens"`
 	Quota            int    `json:"quota"`
+	InputText        string `json:"input_text"`
+	OutputText       string `json:"output_text"`
 	Status           string `json:"status"`
 	ErrorCode        string `json:"error_code"`
 	ErrorMessage     string `json:"error_message"`
@@ -496,6 +498,25 @@ func getModelCallLogErrorCode(log *Log) string {
 	return strings.TrimSpace(fmt.Sprint(errorCode))
 }
 
+func getModelCallLogTextDetails(log *Log) (inputText string, outputText string) {
+	if strings.TrimSpace(log.Other) == "" {
+		return "", ""
+	}
+
+	otherMap, err := common.StrToMap(log.Other)
+	if err != nil || otherMap == nil {
+		return "", ""
+	}
+
+	if value, ok := otherMap["input_text"]; ok && value != nil {
+		inputText = strings.TrimSpace(fmt.Sprint(value))
+	}
+	if value, ok := otherMap["output_text"]; ok && value != nil {
+		outputText = strings.TrimSpace(fmt.Sprint(value))
+	}
+	return inputText, outputText
+}
+
 func GetModelCallLogs(filter ModelCallLogFilter, pageInfo *common.PageInfo) (callLogs []*ModelCallLog, total int64, err error) {
 	query := applyModelCallLogFilters(LOG_DB.Model(&Log{}), filter)
 	if err = query.Count(&total).Error; err != nil {
@@ -514,6 +535,7 @@ func GetModelCallLogs(filter ModelCallLogFilter, pageInfo *common.PageInfo) (cal
 		status := ModelCallLogStatusSuccess
 		errorCode := ""
 		errorMessage := ""
+		inputText, outputText := getModelCallLogTextDetails(log)
 		if log.Type == LogTypeError {
 			status = ModelCallLogStatusFailed
 			errorCode = getModelCallLogErrorCode(log)
@@ -528,6 +550,8 @@ func GetModelCallLogs(filter ModelCallLogFilter, pageInfo *common.PageInfo) (cal
 			CompletionTokens: log.CompletionTokens,
 			TotalTokens:      log.PromptTokens + log.CompletionTokens,
 			Quota:            log.Quota,
+			InputText:        inputText,
+			OutputText:       outputText,
 			Status:           status,
 			ErrorCode:        errorCode,
 			ErrorMessage:     errorMessage,

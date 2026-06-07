@@ -17,7 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-export type ModelCategory = 'text' | 'image' | 'video'
+export type ModelCategory =
+  | 'text'
+  | 'image'
+  | 'video'
+  | 'audio_stt'
+  | 'audio_tts'
 
 export interface CategorizedModel {
   model_name: string
@@ -108,4 +113,66 @@ export interface VideoGenerationHistoryItem {
 export interface MediaUploadResult {
   url: string
   key: string
+}
+
+export interface SpeechToTextRequest {
+  model: string
+  group?: string
+  file: File
+  language?: string
+  prompt?: string
+  response_format?: 'json' | 'text' | 'srt' | 'verbose_json' | 'vtt'
+  temperature?: number
+}
+
+export interface SpeechToTextResult {
+  text: string
+  language?: string
+  duration?: number
+  segments?: Array<{
+    id?: number
+    start?: number
+    end?: number
+    text: string
+  }>
+}
+
+export interface SpeechToTextHistoryItem {
+  id: string
+  createdAt: number
+  model: string
+  group?: string
+  fileName: string
+  fileSize: number
+  durationSeconds?: number
+  result: SpeechToTextResult
+}
+
+export interface TextToSpeechRequest {
+  model: string
+  group?: string
+  input: string
+  voice: string
+  response_format?: 'mp3' | 'opus' | 'aac' | 'flac' | 'wav' | 'pcm'
+  speed?: number
+}
+
+export interface TextToSpeechResult {
+  /** Object URL pointing at the generated audio Blob. */
+  url: string
+  blob: Blob
+  mimeType: string
+  byteSize: number
+}
+
+export interface TextToSpeechHistoryItem {
+  id: string
+  createdAt: number
+  model: string
+  group?: string
+  voice: string
+  format: string
+  speed: number
+  input: string
+  byteSize: number
 }

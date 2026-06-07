@@ -1,17 +1,18 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
-import { DataTableColumnHeader } from '@/components/data-table'
-import { StatusBadge } from '@/components/status-badge'
-import { TableId } from '@/components/table-id'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { DataTableColumnHeader } from '@/components/data-table'
+import { StatusBadge } from '@/components/status-badge'
+import { TableId } from '@/components/table-id'
 import { getModelCallLogStatusConfig } from '../constants'
 import type { ModelCallLog } from '../types'
+import { TextDetailsDialog } from './text-details-dialog'
 
 export function useModelCallLogsColumns(): ColumnDef<ModelCallLog>[] {
   const { t } = useTranslation()
@@ -69,21 +70,27 @@ export function useModelCallLogsColumns(): ColumnDef<ModelCallLog>[] {
       ),
       cell: ({ row }) => {
         const log = row.original
-        const totalTokens = row.getValue('total_tokens') as number
+        const totalTokens = Math.max(
+          (row.getValue('total_tokens') as number) || 0,
+          (log.prompt_tokens || 0) + (log.completion_tokens || 0)
+        )
 
         if (totalTokens <= 0) {
           return <span className='text-muted-foreground text-xs'>-</span>
         }
 
         return (
-          <div className='flex flex-col gap-0.5'>
-            <span className='font-mono text-sm font-medium tabular-nums'>
-              {totalTokens.toLocaleString()}
-            </span>
-            <span className='text-muted-foreground/60 text-[11px]'>
-              {log.prompt_tokens.toLocaleString()} /{' '}
-              {log.completion_tokens.toLocaleString()}
-            </span>
+          <div className='flex items-center gap-1.5'>
+            <div className='flex flex-col gap-0.5'>
+              <span className='font-mono text-sm font-medium tabular-nums'>
+                {totalTokens.toLocaleString()}
+              </span>
+              <span className='text-muted-foreground/60 text-[11px]'>
+                {log.prompt_tokens.toLocaleString()} /{' '}
+                {log.completion_tokens.toLocaleString()}
+              </span>
+            </div>
+            <TextDetailsDialog log={log} />
           </div>
         )
       },

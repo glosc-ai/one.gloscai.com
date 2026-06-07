@@ -57,6 +57,8 @@ type textQuotaSummary struct {
 	ToolCallSurchargeQuota   decimal.Decimal
 }
 
+const maxModelCallLogTextRunes = 20000
+
 func cacheWriteTokensTotal(summary textQuotaSummary) int {
 	if summary.CacheCreationTokens5m > 0 || summary.CacheCreationTokens1h > 0 {
 		splitCacheWriteTokens := summary.CacheCreationTokens5m + summary.CacheCreationTokens1h
@@ -66,6 +68,104 @@ func cacheWriteTokensTotal(summary textQuotaSummary) int {
 		return splitCacheWriteTokens
 	}
 	return summary.CacheCreationTokens
+}
+
+func truncateModelCallLogText(text string) string {
+	runes := []rune(strings.TrimSpace(text))
+	if len(runes) <= maxModelCallLogTextRunes {
+		return string(runes)
+	}
+	return string(runes[:maxModelCallLogTextRunes]) + "\n...[truncated]"
+}
+
+func collectModelCallTextValues(value interface{}, key string, active bool, out *[]string) {
+	normalizedKey := strings.ToLower(key)
+	isTextKey := normalizedKey == "prompt" ||
+		normalizedKey == "input" ||
+		normalizedKey == "content" ||
+		normalizedKey == "text" ||
+		normalizedKey == "instructions" ||
+		normalizedKey == "instruction" ||
+		normalizedKey == "system"
+	nextActive := active || normalizedKey == "input" || normalizedKey == "content"
+
+	switch typed := value.(type) {
+	case string:
+		if isTextKey {
+			text := strings.TrimSpace(typed)
+			if text != "" {
+				*out = append(*out, text)
+			}
+		}
+	case []interface{}:
+		for _, item := range typed {
+			collectModelCallTextValues(item, key, nextActive, out)
+		}
+	case map[string]interface{}:
+		for childKey, childValue := range typed {
+			collectModelCallTextValues(childValue, childKey, nextActive, out)
+		}
+	}
+}
+
+func extractModelCallInputTextFromBody(ctx *gin.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	storage, err := common.GetBodyStorage(ctx)
+	if err != nil {
+		return ""
+	}
+	body, err := storage.Bytes()
+	if err != nil || len(body) == 0 {
+		return ""
+	}
+	var payload interface{}
+	if err := common.Unmarshal(body, &payload); err != nil {
+		return ""
+	}
+	texts := make([]string, 0)
+	collectModelCallTextValues(payload, "", false, &texts)
+	return truncateModelCallLogText(strings.Join(texts, "\n"))
+}
+
+func extractModelCallInputText(relayInfo *relaycommon.RelayInfo) string {
+	if relayInfo == nil || relayInfo.Request == nil {
+		return ""
+	}
+	meta := relayInfo.Request.GetTokenCountMeta()
+	if meta == nil {
+		return ""
+	}
+	return truncateModelCallLogText(meta.CombineText)
+}
+
+func addModelCallTextDetails(ctx *gin.Context, other map[string]interface{}, relayInfo *relaycommon.RelayInfo, usage *dto.Usage) {
+	var outputText string
+	if usage != nil {
+		outputText = usage.OutputText
+	}
+	addModelCallTextDetailsRaw(ctx, other, relayInfo, outputText)
+}
+
+// addModelCallTextDetailsRaw is the underlying implementation that accepts a
+// plain output text string instead of a *dto.Usage. It is used by callers
+// whose usage type (e.g. *dto.RealtimeUsage) does not carry OutputText.
+func addModelCallTextDetailsRaw(ctx *gin.Context, other map[string]interface{}, relayInfo *relaycommon.RelayInfo, outputText string) {
+	if other == nil {
+		return
+	}
+	inputText := extractModelCallInputText(relayInfo)
+	if inputText == "" {
+		inputText = extractModelCallInputTextFromBody(ctx)
+	}
+	if inputText != "" {
+		other["input_text"] = inputText
+	}
+	truncated := truncateModelCallLogText(outputText)
+	if truncated != "" {
+		other["output_text"] = truncated
+	}
 }
 
 func isLegacyClaudeDerivedOpenAIUsage(relayInfo *relaycommon.RelayInfo, usage *dto.Usage) bool {
@@ -429,6 +529,7 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 		other["image_generation_call"] = true
 		other["image_generation_call_price"] = summary.ImageGenerationCallPrice
 	}
+	addModelCallTextDetails(ctx, other, relayInfo, usage)
 	if summary.CacheCreationTokens > 0 {
 		other["cache_creation_tokens"] = summary.CacheCreationTokens
 		other["cache_creation_ratio"] = summary.CacheCreationRatio

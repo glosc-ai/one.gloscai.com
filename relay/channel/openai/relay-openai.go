@@ -180,6 +180,8 @@ func OaiStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Re
 	if !containStreamUsage {
 		usage = service.ResponseText2Usage(c, responseTextBuilder.String(), info.UpstreamModelName, info.GetEstimatePromptTokens())
 		usage.CompletionTokens += toolCount * 7
+	} else {
+		usage.OutputText = responseTextBuilder.String()
 	}
 
 	applyUsagePostProcessing(info, usage, common.StringToByteSlice(lastStreamData))
@@ -236,6 +238,11 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 	}
 
 	usageModified := false
+	var responseTextBuilder strings.Builder
+	for _, choice := range simpleResponse.Choices {
+		responseTextBuilder.WriteString(choice.Message.StringContent())
+		responseTextBuilder.WriteString(choice.Message.GetReasoningContent())
+	}
 	if simpleResponse.Usage.PromptTokens == 0 {
 		completionTokens := simpleResponse.Usage.CompletionTokens
 		if completionTokens == 0 {
@@ -251,6 +258,7 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 		}
 		usageModified = true
 	}
+	simpleResponse.Usage.OutputText = responseTextBuilder.String()
 
 	applyUsagePostProcessing(info, &simpleResponse.Usage, responseBody)
 

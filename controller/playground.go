@@ -113,3 +113,24 @@ func PlaygroundVideoFetch(c *gin.Context) {
 	}
 	RelayTaskFetch(c)
 }
+
+// PlaygroundAudioSpeech proxies dashboard text-to-speech (TTS) requests through
+// the relay using the current user's session (no API key required).
+func PlaygroundAudioSpeech(c *gin.Context) {
+	if apiErr := setupPlaygroundToken(c, types.RelayFormatOpenAIAudio); apiErr != nil {
+		c.JSON(apiErr.StatusCode, gin.H{"error": apiErr.ToOpenAIError()})
+		return
+	}
+	Relay(c, types.RelayFormatOpenAIAudio)
+}
+
+// PlaygroundAudioTranscription proxies dashboard speech-to-text (STT)
+// transcription requests through the relay using the current user's session
+// (no API key required).
+func PlaygroundAudioTranscription(c *gin.Context) {
+	if apiErr := setupPlaygroundToken(c, types.RelayFormatOpenAIAudio); apiErr != nil {
+		c.JSON(apiErr.StatusCode, gin.H{"error": apiErr.ToOpenAIError()})
+		return
+	}
+	Relay(c, types.RelayFormatOpenAIAudio)
+}

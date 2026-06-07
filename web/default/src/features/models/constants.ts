@@ -70,13 +70,21 @@ export function getNameRuleConfig(
 // ============================================================================
 
 // Reserved category tags recognized by the backend classifier.
-export const MODEL_CATEGORY_TAGS = ['text', 'image', 'video'] as const
+export const MODEL_CATEGORY_TAGS = [
+  'text',
+  'image',
+  'video',
+  'stt',
+  'tts',
+] as const
 
 export function getModelCategoryTagOptions(t: TFunction) {
   return [
     { label: t('Text / Chat'), value: 'text' },
     { label: t('Image Generation'), value: 'image' },
     { label: t('Video Generation'), value: 'video' },
+    { label: t('Speech to Text'), value: 'stt' },
+    { label: t('Text to Speech'), value: 'tts' },
   ]
 }
 

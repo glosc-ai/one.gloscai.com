@@ -23,6 +23,10 @@ import type {
   ImageGenerationRequest,
   ImageGenerationResult,
   MediaUploadResult,
+  SpeechToTextRequest,
+  SpeechToTextResult,
+  TextToSpeechRequest,
+  TextToSpeechResult,
   VideoGenerationRequest,
   VideoTaskStatus,
 } from './types'
@@ -32,6 +36,8 @@ export const MEDIA_API_ENDPOINTS = {
   USER_GROUPS: '/api/user/self/groups',
   IMAGE_GENERATIONS: '/pg/images/generations',
   VIDEO_GENERATIONS: '/pg/video/generations',
+  AUDIO_SPEECH: '/pg/audio/speech',
+  AUDIO_TRANSCRIPTIONS: '/pg/audio/transcriptions',
   UPLOAD: '/api/user/media/upload',
 } as const
 
@@ -239,4 +245,98 @@ export async function fetchVideoTask(taskId: string): Promise<VideoTaskStatus> {
     >
   )
   return normalizeVideoTask(res.data ?? {})
+}
+
+/**
+ * Submit a speech-to-text (STT) transcription request through the dashboard
+ * playground proxy. The audio file is sent as multipart/form-data.
+ */
+export async function transcribeSpeech(
+  payload: SpeechToTextRequest
+): Promise<SpeechToTextResult> {
+  const formData = new FormData()
+  formData.append('file', payload.file)
+  formData.append('model', payload.model)
+  if (payload.language) formData.append('language', payload.language)
+  if (payload.prompt) formData.append('prompt', payload.prompt)
+  formData.append('response_format', payload.response_format ?? 'verbose_json')
+  if (typeof payload.temperature === 'number') {
+    formData.append('temperature', String(payload.temperature))
+  }
+  const res = await api.post(
+    MEDIA_API_ENDPOINTS.AUDIO_TRANSCRIPTIONS,
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      skipErrorHandler: true,
+    } as Record<string, unknown>
+  )
+  const data = res.data
+  if (typeof data === 'string') {
+    return { text: data }
+  }
+  if (data && typeof data === 'object' && typeof data.text === 'string') {
+    return {
+      text: data.text,
+      language: data.language,
+      duration: data.duration,
+      segments: Array.isArray(data.segments) ? data.segments : undefined,
+    }
+  }
+  throw new Error('Unexpected transcription response')
+}
+
+/**
+ * Synthesize speech audio from text via the dashboard playground proxy. The
+ * upstream returns raw audio bytes which are wrapped in a Blob URL for
+ * playback in the browser.
+ */
+export async function synthesizeSpeech(
+  payload: TextToSpeechRequest
+): Promise<TextToSpeechResult> {
+  const body: Record<string, unknown> = {
+    model: payload.model,
+    input: payload.input,
+    voice: payload.voice,
+    response_format: payload.response_format ?? 'mp3',
+  }
+  if (typeof payload.speed === 'number') {
+    body.speed = payload.speed
+  }
+  const res = await api.post(MEDIA_API_ENDPOINTS.AUDIO_SPEECH, body, {
+    responseType: 'blob',
+    skipErrorHandler: true,
+  } as Record<string, unknown>)
+  const raw = res.data as Blob
+  if (!(raw instanceof Blob)) {
+    throw new Error('Unexpected speech response')
+  }
+  // Some proxies return JSON errors with 200 status; sniff the blob.
+  if (raw.type && raw.type.startsWith('application/json')) {
+    const text = await raw.text()
+    try {
+      const err = JSON.parse(text)
+      throw new Error(err?.error?.message || err?.message || 'TTS failed')
+    } catch {
+      throw new Error(text || 'TTS failed')
+    }
+  }
+  const format = (payload.response_format ?? 'mp3').toLowerCase()
+  const mimeMap: Record<string, string> = {
+    mp3: 'audio/mpeg',
+    opus: 'audio/ogg',
+    aac: 'audio/aac',
+    flac: 'audio/flac',
+    wav: 'audio/wav',
+    pcm: 'audio/pcm',
+  }
+  const mimeType = raw.type || mimeMap[format] || 'audio/mpeg'
+  const blob = raw.type ? raw : new Blob([raw], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  return {
+    url,
+    blob,
+    mimeType,
+    byteSize: blob.size,
+  }
 }
