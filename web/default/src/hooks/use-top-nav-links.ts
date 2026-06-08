@@ -101,6 +101,11 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({ title: t('About'), href: '/about' })
   }
 
+  // Feedback
+  if (modules?.feedback !== false) {
+    links.push({ title: t('Feedback'), href: '/feedback' })
+  }
+
   const customLinks = Array.isArray(modules?.customLinks)
     ? modules.customLinks
     : []

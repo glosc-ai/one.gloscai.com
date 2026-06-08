@@ -17,7 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
-import type { QuotaDataItem, UptimeGroupResult } from './types'
+import type {
+  QuotaDataItem,
+  UptimeGroupResult,
+  UserPaymentTrendItem,
+  UserRegistrationTrendItem,
+} from './types'
 
 // ============================================================================
 // Dashboard APIs
@@ -58,6 +63,30 @@ export async function getUserQuotaDataByUsers(params: {
     '/api/data/users',
     { params }
   )
+  return res.data
+}
+
+export async function getUserRegistrationTrendData(params: {
+  start_timestamp: number
+  end_timestamp: number
+}) {
+  const res = await api.get<{
+    success: boolean
+    data: UserRegistrationTrendItem[]
+  }>('/api/data/users/registration-trend', { params })
+  return res.data
+}
+
+export async function getUserPaymentTrendData(params: {
+  start_timestamp: number
+  end_timestamp: number
+  status?: string
+  payment_method?: string
+}) {
+  const res = await api.get<{
+    success: boolean
+    data: UserPaymentTrendItem[]
+  }>('/api/data/users/payment-trend', { params })
   return res.data
 }
 

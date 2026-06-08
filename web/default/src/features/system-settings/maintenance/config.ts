@@ -33,6 +33,7 @@ export type HeaderNavModulesConfig = {
   rankings: HeaderNavAccessConfig
   docs: boolean
   about: boolean
+  feedback: boolean
   customLinks: HeaderNavCustomLinkConfig[]
   [key: string]: boolean | HeaderNavAccessConfig | HeaderNavCustomLinkConfig[]
 }
@@ -57,6 +58,7 @@ export const HEADER_NAV_DEFAULT: HeaderNavModulesConfig = {
   },
   docs: true,
   about: true,
+  feedback: true,
   customLinks: [],
 }
 

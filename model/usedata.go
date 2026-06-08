@@ -21,6 +21,22 @@ type QuotaData struct {
 	Quota     int    `json:"quota" gorm:"default:0"`
 }
 
+type UserRegistrationTrendData struct {
+	CreatedAt int64 `json:"created_at"`
+	Count     int64 `json:"count"`
+}
+
+type UserPaymentTrendData struct {
+	CreatedAt        int64   `json:"created_at"`
+	CompleteTime     int64   `json:"complete_time"`
+	Count            int64   `json:"count"`
+	Amount           int64   `json:"amount"`
+	Money            float64 `json:"money"`
+	Status           string  `json:"status"`
+	PaymentMethod    string  `json:"payment_method"`
+	PaymentProvider  string  `json:"payment_provider"`
+}
+
 func UpdateQuotaData() {
 	for {
 		if common.DataExportEnabled {
@@ -135,4 +151,80 @@ func GetAllQuotaDates(startTime int64, endTime int64, username string) (quotaDat
 	//err = DB.Table("quota_data").Where("created_at >= ? and created_at <= ?", startTime, endTime).Find(&quotaDatas).Error
 	err = DB.Table("quota_data").Select("model_name, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used, created_at").Where("created_at >= ? and created_at <= ?", startTime, endTime).Group("model_name, created_at").Find(&quotaDatas).Error
 	return quotaDatas, err
+}
+
+func GetUserRegistrationTrendData(
+	startTime int64,
+	endTime int64,
+) (trendData []*UserRegistrationTrendData, err error) {
+	var users []User
+	query := DB.Model(&User{}).Select("created_at")
+	if startTime > 0 {
+		query = query.Where("created_at >= ?", startTime)
+	}
+	if endTime > 0 {
+		query = query.Where("created_at <= ?", endTime)
+	}
+	if err = query.Find(&users).Error; err != nil {
+		return nil, err
+	}
+
+	trendData = make([]*UserRegistrationTrendData, 0, len(users))
+	for _, user := range users {
+		trendData = append(trendData, &UserRegistrationTrendData{
+			CreatedAt: user.CreatedAt,
+			Count:     1,
+		})
+	}
+	return trendData, nil
+}
+
+func GetUserPaymentTrendData(
+	startTime int64,
+	endTime int64,
+	status string,
+	paymentMethod string,
+) (trendData []*UserPaymentTrendData, err error) {
+	var topUps []TopUp
+	timeColumn := "create_time"
+	if status == common.TopUpStatusSuccess {
+		timeColumn = "complete_time"
+	}
+
+	query := DB.Model(&TopUp{}).
+		Select("create_time, complete_time, amount, money, status, payment_method, payment_provider")
+	if startTime > 0 {
+		query = query.Where(timeColumn+" >= ?", startTime)
+	}
+	if endTime > 0 {
+		query = query.Where(timeColumn+" <= ?", endTime)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if paymentMethod != "" {
+		query = query.Where(
+			"(payment_method = ? OR payment_provider = ?)",
+			paymentMethod,
+			paymentMethod,
+		)
+	}
+	if err = query.Find(&topUps).Error; err != nil {
+		return nil, err
+	}
+
+	trendData = make([]*UserPaymentTrendData, 0, len(topUps))
+	for _, topUp := range topUps {
+		trendData = append(trendData, &UserPaymentTrendData{
+			CreatedAt:        topUp.CreateTime,
+			CompleteTime:     topUp.CompleteTime,
+			Count:            1,
+			Amount:           topUp.Amount,
+			Money:            topUp.Money,
+			Status:           topUp.Status,
+			PaymentMethod:    topUp.PaymentMethod,
+			PaymentProvider:  topUp.PaymentProvider,
+		})
+	}
+	return trendData, nil
 }

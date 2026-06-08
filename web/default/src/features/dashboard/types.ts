@@ -33,6 +33,22 @@ export interface QuotaDataItem {
   quota?: number
 }
 
+export interface UserRegistrationTrendItem {
+  created_at: number
+  count: number
+}
+
+export interface UserPaymentTrendItem {
+  created_at: number
+  complete_time?: number
+  count: number
+  amount: number
+  money: number
+  status: string
+  payment_method: string
+  payment_provider: string
+}
+
 // ============================================================================
 // Uptime Monitoring Types
 // ============================================================================
@@ -110,6 +126,8 @@ export interface ProcessedChartData {
 export interface ProcessedUserChartData {
   spec_user_rank: VChartSpec
   spec_user_trend: VChartSpec
+  spec_registration_trend: VChartSpec
+  spec_payment_trend: VChartSpec
 }
 
 // ============================================================================

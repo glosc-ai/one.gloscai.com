@@ -64,6 +64,10 @@ export function useUpdateOption() {
           }
         }
 
+        if (variables.key === 'FeedbackContent') {
+          queryClient.invalidateQueries({ queryKey: ['feedback-content'] })
+        }
+
         toast.success(i18next.t('Setting updated successfully'))
       } else {
         toast.error(data.message || i18next.t('Failed to update setting'))

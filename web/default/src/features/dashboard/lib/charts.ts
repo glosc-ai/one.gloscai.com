@@ -24,6 +24,8 @@ import type {
   QuotaDataItem,
   ProcessedChartData,
   ProcessedUserChartData,
+  UserPaymentTrendItem,
+  UserRegistrationTrendItem,
 } from '@/features/dashboard/types'
 
 type TFunction = (key: string) => string
@@ -91,6 +93,9 @@ function renderQuotaCompat(rawQuota: number, digits = 4): string {
   return symbol + fixed
 }
 
+const formatInt = (value: number) =>
+  Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value)
+
 /**
  * Process and aggregate chart data
  */
@@ -104,8 +109,6 @@ export function processChartData(
   const tt: TFunction = t ?? ((x) => x)
   const otherLabel = tt('Other')
 
-  const formatInt = (value: number) =>
-    Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value)
   const formatQuotaValue = (value: number) => renderQuotaCompat(value, 4)
   const formatQuotaTotal = (value: number) => renderQuotaCompat(value, 2)
 
@@ -737,7 +740,9 @@ export function processUserChartData(
   timeGranularity: TimeGranularity = 'day',
   t?: TFunction,
   limit = 10,
-  themeKey?: string
+  themeKey?: string,
+  registrationData: UserRegistrationTrendItem[] = [],
+  paymentData: UserPaymentTrendItem[] = []
 ): ProcessedUserChartData {
   const tt: TFunction = t ?? ((x) => x)
   const { config } = getCurrencyDisplay()
@@ -752,6 +757,11 @@ export function processUserChartData(
       : USER_COLOR_FALLBACKS
 
   const formatVal = (raw: number) => renderQuotaCompat(raw, 2)
+  const formatMoney = (raw: number) =>
+    new Intl.NumberFormat(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(raw)
 
   const emptyResult: ProcessedUserChartData = {
     spec_user_rank: {
@@ -786,9 +796,172 @@ export function processUserChartData(
       point: { visible: false },
       background: { fill: 'transparent' },
     },
+    spec_registration_trend: {
+      type: 'line',
+      data: [{ id: 'registrationTrendData', values: [] }],
+      xField: 'Time',
+      yField: 'Count',
+      title: {
+        visible: true,
+        text: tt('User Registration Trend'),
+        subtext: tt('No data available'),
+      },
+      point: { visible: true },
+      background: { fill: 'transparent' },
+    },
+    spec_payment_trend: {
+      type: 'bar',
+      data: [{ id: 'paymentTrendData', values: [] }],
+      xField: 'Time',
+      yField: 'Money',
+      title: {
+        visible: true,
+        text: tt('User Payment Trend'),
+        subtext: tt('No data available'),
+      },
+      background: { fill: 'transparent' },
+    },
   }
 
-  if (!data || data.length === 0) return emptyResult
+  const registrationMap = new Map<string, number>()
+  registrationData.forEach((item) => {
+    const timeKey = formatChartTime(Number(item.created_at), timeGranularity)
+    registrationMap.set(
+      timeKey,
+      (registrationMap.get(timeKey) || 0) + (Number(item.count) || 0)
+    )
+  })
+  const registrationValues = Array.from(registrationMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([Time, Count]) => ({ Time, Count }))
+  const totalRegistrations = registrationValues.reduce(
+    (sum, item) => sum + item.Count,
+    0
+  )
+
+  const paymentMap = new Map<
+    string,
+    { Count: number; Money: number; Amount: number }
+  >()
+  paymentData.forEach((item) => {
+    const timestamp = Number(item.complete_time || item.created_at)
+    const timeKey = formatChartTime(timestamp, timeGranularity)
+    const current = paymentMap.get(timeKey) || { Count: 0, Money: 0, Amount: 0 }
+    current.Count += Number(item.count) || 0
+    current.Money += Number(item.money) || 0
+    current.Amount += Number(item.amount) || 0
+    paymentMap.set(timeKey, current)
+  })
+  const paymentValues = Array.from(paymentMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([Time, item]) => ({
+      Time,
+      Count: item.Count,
+      Money: Number(item.Money.toFixed(4)),
+      Amount: item.Amount,
+    }))
+  const totalPaymentMoney = paymentValues.reduce(
+    (sum, item) => sum + item.Money,
+    0
+  )
+
+  const registrationSpec = {
+    type: 'line',
+    data: [{ id: 'registrationTrendData', values: registrationValues }],
+    xField: 'Time',
+    yField: 'Count',
+    title: {
+      visible: true,
+      text: tt('User Registration Trend'),
+      subtext:
+        registrationValues.length > 0
+          ? `${tt('Total:')} ${formatInt(totalRegistrations)}`
+          : tt('No data available'),
+    },
+    point: { visible: true },
+    line: {
+      style: { lineWidth: 2 },
+    },
+    axes: [
+      { orient: 'bottom', type: 'band' },
+      {
+        orient: 'left',
+        type: 'linear',
+        label: {
+          formatMethod: (value: number) => formatInt(value),
+        },
+      },
+    ],
+    tooltip: {
+      mark: {
+        content: [
+          {
+            key: tt('Registrations'),
+            value: (datum: Record<string, unknown>) =>
+              formatInt(Number(datum?.Count) || 0),
+          },
+        ],
+      },
+    },
+    color: userColorRange[0],
+    background: { fill: 'transparent' },
+    animation: true,
+  }
+
+  const paymentSpec = {
+    type: 'bar',
+    data: [{ id: 'paymentTrendData', values: paymentValues }],
+    xField: 'Time',
+    yField: 'Money',
+    title: {
+      visible: true,
+      text: tt('User Payment Trend'),
+      subtext:
+        paymentValues.length > 0
+          ? `${tt('Total:')} ${formatMoney(totalPaymentMoney)}`
+          : tt('No data available'),
+    },
+    axes: [
+      { orient: 'bottom', type: 'band' },
+      {
+        orient: 'left',
+        type: 'linear',
+        label: {
+          formatMethod: (value: number) => formatMoney(value),
+        },
+      },
+    ],
+    tooltip: {
+      mark: {
+        content: [
+          {
+            key: tt('Payment Amount'),
+            value: (datum: Record<string, unknown>) =>
+              formatMoney(Number(datum?.Money) || 0),
+          },
+          {
+            key: tt('Payment Count'),
+            value: (datum: Record<string, unknown>) =>
+              formatInt(Number(datum?.Count) || 0),
+          },
+        ],
+      },
+    },
+    bar: {
+      state: { hover: { stroke: '#000', lineWidth: 1 } },
+    },
+    color: userColorRange[1] || userColorRange[0],
+    background: { fill: 'transparent' },
+    animation: true,
+  }
+
+  if (!data || data.length === 0) {
+    return {
+      ...emptyResult,
+      spec_registration_trend: registrationSpec,
+      spec_payment_trend: paymentSpec,
+    }
+  }
 
   const userQuotaTotal = new Map<string, number>()
   data.forEach((item) => {
@@ -990,5 +1163,7 @@ export function processUserChartData(
       background: { fill: 'transparent' },
       animation: true,
     },
+    spec_registration_trend: registrationSpec,
+    spec_payment_trend: paymentSpec,
   }
 }

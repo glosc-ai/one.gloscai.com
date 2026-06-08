@@ -19,15 +19,26 @@ For commercial licensing, please contact support@quantumnous.com
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { VChart } from '@visactor/react-vchart'
-import { Users, Loader2 } from 'lucide-react'
+import { CreditCard, Loader2, UserPlus, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { getRollingDateRange, type TimeGranularity } from '@/lib/time'
 import { VCHART_OPTION } from '@/lib/vchart'
 import { useThemeCustomization } from '@/context/theme-customization-provider'
 import { useTheme } from '@/context/theme-provider'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { getUserQuotaDataByUsers } from '@/features/dashboard/api'
+import {
+  getUserPaymentTrendData,
+  getUserQuotaDataByUsers,
+  getUserRegistrationTrendData,
+} from '@/features/dashboard/api'
 import {
   TIME_GRANULARITY_OPTIONS,
   TIME_RANGE_PRESETS,
@@ -48,20 +59,53 @@ const USER_CHARTS: {
   value: string
   labelKey: string
   specKey: keyof ProcessedUserChartData
+  icon: typeof Users
 }[] = [
   {
     value: 'rank',
     labelKey: 'User Consumption Ranking',
     specKey: 'spec_user_rank',
+    icon: Users,
   },
   {
     value: 'trend',
     labelKey: 'User Consumption Trend',
     specKey: 'spec_user_trend',
+    icon: Users,
+  },
+  {
+    value: 'registration',
+    labelKey: 'User Registration Trend',
+    specKey: 'spec_registration_trend',
+    icon: UserPlus,
+  },
+  {
+    value: 'payment',
+    labelKey: 'User Payment Trend',
+    specKey: 'spec_payment_trend',
+    icon: CreditCard,
   },
 ]
 
 const TOP_USER_LIMIT_OPTIONS = [5, 10, 20, 50]
+const PAYMENT_STATUS_OPTIONS = [
+  { value: 'success', labelKey: 'Paid' },
+  { value: 'all', labelKey: 'All Statuses' },
+  { value: 'pending', labelKey: 'Pending' },
+  { value: 'failed', labelKey: 'Failed' },
+  { value: 'expired', labelKey: 'Expired' },
+] as const
+const PAYMENT_METHOD_OPTIONS = [
+  { value: 'all', labelKey: 'All Payment Methods' },
+  { value: 'epay', labelKey: 'Epay' },
+  { value: 'stripe', labelKey: 'Stripe' },
+  { value: 'creem', labelKey: 'Creem' },
+  { value: 'waffo', labelKey: 'Waffo' },
+  { value: 'waffo_pancake', labelKey: 'Waffo Pancake' },
+  { value: 'alipay_official', labelKey: 'Alipay' },
+  { value: 'wechat_pay_official', labelKey: 'WeChat Pay' },
+  { value: 'balance', labelKey: 'Balance' },
+] as const
 
 export function UserCharts() {
   const { t } = useTranslation()
@@ -79,6 +123,8 @@ export function UserCharts() {
     getDefaultDays(timeGranularity)
   )
   const [topUserLimit, setTopUserLimit] = useState(10)
+  const [paymentStatus, setPaymentStatus] = useState('success')
+  const [paymentMethod, setPaymentMethod] = useState('all')
   const [timeRange, setTimeRange] = useState(() => {
     const days = getDefaultDays(timeGranularity)
     const { start, end } = getRollingDateRange(days)
@@ -132,6 +178,35 @@ export function UserCharts() {
     staleTime: 60_000,
   })
 
+  const { data: registrationData, isLoading: isRegistrationLoading } = useQuery(
+    {
+      queryKey: ['dashboard', 'user-registration-trend', timeRange],
+      queryFn: () => getUserRegistrationTrendData(timeRange),
+      select: (res) => (res.success ? res.data : []),
+      staleTime: 60_000,
+    }
+  )
+
+  const { data: paymentData, isLoading: isPaymentLoading } = useQuery({
+    queryKey: [
+      'dashboard',
+      'user-payment-trend',
+      timeRange,
+      paymentStatus,
+      paymentMethod,
+    ],
+    queryFn: () =>
+      getUserPaymentTrendData({
+        ...timeRange,
+        status: paymentStatus === 'all' ? undefined : paymentStatus,
+        payment_method: paymentMethod === 'all' ? undefined : paymentMethod,
+      }),
+    select: (res) => (res.success ? res.data : []),
+    staleTime: 60_000,
+  })
+
+  const loading = isLoading || isRegistrationLoading || isPaymentLoading
+
   const chartData = useMemo(
     () =>
       processUserChartData(
@@ -139,11 +214,17 @@ export function UserCharts() {
         timeGranularity,
         t,
         topUserLimit,
-        customization.preset
+        customization.preset,
+        isRegistrationLoading ? [] : (registrationData ?? []),
+        isPaymentLoading ? [] : (paymentData ?? [])
       ),
     [
       userData,
       isLoading,
+      registrationData,
+      isRegistrationLoading,
+      paymentData,
+      isPaymentLoading,
       timeGranularity,
       t,
       topUserLimit,
@@ -214,14 +295,53 @@ export function UserCharts() {
           </TabsList>
         </Tabs>
 
-        {isLoading && (
+        {loading && (
           <Loader2 className='text-muted-foreground size-4 animate-spin' />
         )}
+      </div>
+
+      <div className='flex flex-wrap items-center gap-1.5 sm:gap-2'>
+        <Select
+          value={paymentStatus}
+          onValueChange={(value) => {
+            if (value) setPaymentStatus(value)
+          }}
+        >
+          <SelectTrigger size='sm' className='min-w-32'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent alignItemWithTrigger={false}>
+            {PAYMENT_STATUS_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {t(option.labelKey)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={paymentMethod}
+          onValueChange={(value) => {
+            if (value) setPaymentMethod(value)
+          }}
+        >
+          <SelectTrigger size='sm' className='min-w-40'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent alignItemWithTrigger={false}>
+            {PAYMENT_METHOD_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {t(option.labelKey)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className='grid gap-3'>
         {USER_CHARTS.map((chart) => {
           const spec = chartData[chart.specKey]
+          const Icon = chart.icon
 
           return (
             <div
@@ -229,12 +349,12 @@ export function UserCharts() {
               className='overflow-hidden rounded-lg border'
             >
               <div className='flex w-full items-center gap-2 border-b px-3 py-2 sm:px-5 sm:py-3'>
-                <Users className='text-muted-foreground/60 size-4' />
+                <Icon className='text-muted-foreground/60 size-4' />
                 <div className='text-sm font-semibold'>{t(chart.labelKey)}</div>
               </div>
 
               <div className='h-[300px] p-1.5 sm:h-96 sm:p-2'>
-                {isLoading ? (
+                {loading ? (
                   <Skeleton className='h-full w-full' />
                 ) : (
                   themeReady &&

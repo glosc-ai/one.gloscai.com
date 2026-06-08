@@ -192,6 +192,17 @@ func GetAbout(c *gin.Context) {
 	return
 }
 
+func GetFeedback(c *gin.Context) {
+	common.OptionMapRWMutex.RLock()
+	defer common.OptionMapRWMutex.RUnlock()
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    common.OptionMap["FeedbackContent"],
+	})
+	return
+}
+
 func GetUserAgreement(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

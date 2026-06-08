@@ -63,6 +63,7 @@ type HeaderNavFormValues = {
   rankingsRequireAuth: boolean
   docs: boolean
   about: boolean
+  feedback: boolean
   customLinks: HeaderNavCustomLinkConfig[]
 }
 
@@ -102,6 +103,10 @@ const toFormValues = (config: HeaderNavModulesConfig): HeaderNavFormValues => ({
     config.about === undefined
       ? HEADER_NAV_DEFAULT.about
       : Boolean(config.about),
+  feedback:
+    config.feedback === undefined
+      ? HEADER_NAV_DEFAULT.feedback
+      : Boolean(config.feedback),
   customLinks: Array.isArray(config.customLinks)
     ? config.customLinks.map((link) => ({
         title: link.title,
@@ -136,6 +141,7 @@ export function HeaderNavigationSection({
         rankingsRequireAuth: z.boolean(),
         docs: z.boolean(),
         about: z.boolean(),
+        feedback: z.boolean(),
         customLinks: z
           .array(
             z.object({
@@ -185,6 +191,7 @@ export function HeaderNavigationSection({
       console: values.console,
       docs: values.docs,
       about: values.about,
+      feedback: values.feedback,
       pricing: {
         ...(config.pricing ?? HEADER_NAV_DEFAULT.pricing),
         enabled: values.pricingEnabled,
@@ -240,6 +247,11 @@ export function HeaderNavigationSection({
       key: 'about',
       title: t('About'),
       description: t('Static page describing the platform.'),
+    },
+    {
+      key: 'feedback',
+      title: t('Feedback'),
+      description: t('Markdown feedback page for support or contact details.'),
     },
   ]
 
