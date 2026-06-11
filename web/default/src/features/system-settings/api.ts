@@ -18,7 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
 import type {
+  AdminAPIKeyPayload,
+  AdminAPIKeysResponse,
   ConfirmPaymentComplianceResponse,
+  CreateAdminAPIKeyResponse,
   DeleteLogsResponse,
   FetchUpstreamRatiosRequest,
   SystemOptionsResponse,
@@ -71,6 +74,37 @@ export async function fetchUpstreamRatios(request: FetchUpstreamRatiosRequest) {
   const res = await api.post<UpstreamRatiosResponse>(
     '/api/ratio_sync/fetch',
     request
+  )
+  return res.data
+}
+
+export async function getAdminAPIKeys() {
+  const res = await api.get<AdminAPIKeysResponse>('/api/admin-api/keys/')
+  return res.data
+}
+
+export async function createAdminAPIKey(request: AdminAPIKeyPayload) {
+  const res = await api.post<CreateAdminAPIKeyResponse>(
+    '/api/admin-api/keys/',
+    request
+  )
+  return res.data
+}
+
+export async function updateAdminAPIKey(
+  id: number,
+  request: AdminAPIKeyPayload
+) {
+  const res = await api.put<UpdateOptionResponse>(
+    `/api/admin-api/keys/${id}`,
+    request
+  )
+  return res.data
+}
+
+export async function deleteAdminAPIKey(id: number) {
+  const res = await api.delete<UpdateOptionResponse>(
+    `/api/admin-api/keys/${id}`
   )
   return res.data
 }

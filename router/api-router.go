@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/QuantumNous/new-api/controller"
 	"github.com/QuantumNous/new-api/middleware"
+	"github.com/QuantumNous/new-api/model"
 
 	// Import oauth package to register providers via init()
 	_ "github.com/QuantumNous/new-api/oauth"
@@ -398,6 +399,24 @@ func SetApiRouter(router *gin.Engine) {
 			modelsRoute.PUT("/batch_tags", controller.BatchUpdateModelCategoryTags)
 			modelsRoute.PUT("/", controller.UpdateModelMeta)
 			modelsRoute.DELETE("/:id", controller.DeleteModelMeta)
+		}
+
+		adminAPIRoute := apiRouter.Group("/admin-api")
+		{
+			adminAPIManageRoute := adminAPIRoute.Group("/keys")
+			adminAPIManageRoute.Use(middleware.RootAuth())
+			{
+				adminAPIManageRoute.GET("/", controller.GetAdminAPIKeys)
+				adminAPIManageRoute.POST("/", controller.CreateAdminAPIKey)
+				adminAPIManageRoute.PUT("/:id", controller.UpdateAdminAPIKey)
+				adminAPIManageRoute.DELETE("/:id", controller.DeleteAdminAPIKey)
+			}
+			adminAPIRoute.GET("/scopes", middleware.RootAuth(), controller.AdminAPIScopes)
+			adminAPIRoute.GET("/users", middleware.AdminAPIKeyAuth(model.AdminAPIScopeUsers), controller.AdminAPIUsers)
+			adminAPIRoute.GET("/payments", middleware.AdminAPIKeyAuth(model.AdminAPIScopePayments), controller.AdminAPIPaymentLogs)
+			adminAPIRoute.GET("/usage-logs", middleware.AdminAPIKeyAuth(model.AdminAPIScopeUsageLogs), controller.AdminAPIUsageLogs)
+			adminAPIRoute.GET("/models", middleware.AdminAPIKeyAuth(model.AdminAPIScopeModels), controller.AdminAPIModels)
+			adminAPIRoute.GET("/model-call-logs", middleware.AdminAPIKeyAuth(model.AdminAPIScopeModelCallLogs), controller.AdminAPIModelCallLogs)
 		}
 
 		// Deployments (model deployment management)

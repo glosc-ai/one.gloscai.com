@@ -56,6 +56,50 @@ export type DeleteLogsResponse = {
   data?: number
 }
 
+export type AdminAPIKeyScope =
+  | 'users'
+  | 'payments'
+  | 'usage_logs'
+  | 'models'
+  | 'model_call_logs'
+
+export type AdminAPIKey = {
+  id: number
+  name: string
+  key_prefix: string
+  scope_list: AdminAPIKeyScope[]
+  status: number
+  created_by: number
+  created_at: number
+  updated_at: number
+  last_used_at: number
+  expired_at: number
+  description?: string
+}
+
+export type AdminAPIKeyPayload = {
+  name: string
+  scopes: AdminAPIKeyScope[]
+  status: number
+  expired_at: number
+  description: string
+}
+
+export type AdminAPIKeysResponse = {
+  success: boolean
+  message: string
+  data: AdminAPIKey[]
+}
+
+export type CreateAdminAPIKeyResponse = {
+  success: boolean
+  message: string
+  data?: {
+    key: string
+    item: AdminAPIKey
+  }
+}
+
 export type SiteSettings = {
   'theme.frontend': string
   Notice: string
