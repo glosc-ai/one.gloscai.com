@@ -2,6 +2,7 @@ package billing_setting
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	"github.com/QuantumNous/new-api/setting/config"
@@ -15,16 +16,23 @@ const (
 	BillingExprField      = "billing_expr"
 )
 
+type ModelDiscount struct {
+	Discount float64 `json:"discount"`
+	EndTime  int64   `json:"end_time,omitempty"`
+}
+
 // BillingSetting is managed by config.GlobalConfig.Register.
-// DB keys: billing_setting.billing_mode, billing_setting.billing_expr
+// DB keys: billing_setting.billing_mode, billing_setting.billing_expr, billing_setting.model_discounts
 type BillingSetting struct {
-	BillingMode map[string]string `json:"billing_mode"`
-	BillingExpr map[string]string `json:"billing_expr"`
+	BillingMode    map[string]string        `json:"billing_mode"`
+	BillingExpr    map[string]string        `json:"billing_expr"`
+	ModelDiscounts map[string]ModelDiscount `json:"model_discounts"`
 }
 
 var billingSetting = BillingSetting{
-	BillingMode: make(map[string]string),
-	BillingExpr: make(map[string]string),
+	BillingMode:    make(map[string]string),
+	BillingExpr:    make(map[string]string),
+	ModelDiscounts: make(map[string]ModelDiscount),
 }
 
 func init() {
@@ -53,6 +61,29 @@ func GetBillingModeCopy() map[string]string {
 
 func GetBillingExprCopy() map[string]string {
 	return lo.Assign(billingSetting.BillingExpr)
+}
+
+func GetModelDiscount(model string) (float64, bool) {
+	discount, ok := GetModelDiscountInfo(model)
+	if !ok {
+		return 1, false
+	}
+	return discount.Discount, true
+}
+
+func GetModelDiscountInfo(model string) (ModelDiscount, bool) {
+	discount, ok := billingSetting.ModelDiscounts[model]
+	if !ok || discount.Discount <= 0 {
+		return ModelDiscount{}, false
+	}
+	if discount.EndTime > 0 && discount.EndTime <= time.Now().Unix() {
+		return ModelDiscount{}, false
+	}
+	return discount, true
+}
+
+func GetModelDiscountCopy() map[string]ModelDiscount {
+	return lo.Assign(billingSetting.ModelDiscounts)
 }
 
 func GetPricingSyncData(base map[string]any) map[string]any {

@@ -24,6 +24,7 @@ import { PaymentSettingsSection } from '../integrations/payment-settings-section
 import { RatioSettingsCard } from '../models/ratio-settings-card'
 import type { BillingSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
+import { ModelDiscountSection } from './model-discount-section'
 
 const getModelDefaults = (settings: BillingSettings) => ({
   ModelPrice: settings.ModelPrice,
@@ -110,6 +111,16 @@ const BILLING_SECTIONS = [
         groupDefaults={getGroupDefaults(settings)}
         toolPricesDefault={settings['tool_price_setting.prices']}
         visibleTabs={['models', 'tool-prices', 'upstream-sync']}
+      />
+    ),
+  },
+  {
+    id: 'model-discounts',
+    titleKey: 'Model Discounts',
+    build: (settings: BillingSettings) => (
+      <ModelDiscountSection
+        key={settings['billing_setting.model_discounts']}
+        defaultValue={settings['billing_setting.model_discounts']}
       />
     ),
   },

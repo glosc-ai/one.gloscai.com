@@ -9,6 +9,7 @@ import (
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/QuantumNous/new-api/setting/config"
 	"github.com/shopspring/decimal"
 )
 
@@ -83,6 +84,38 @@ func TestTryTieredSettleUsesFrozenRequestInput(t *testing.T) {
 	}
 	if result == nil || result.MatchedTier != "fast" {
 		t.Fatalf("matched tier = %v, want fast", result)
+	}
+}
+
+func TestTryTieredSettleAppliesModelDiscount(t *testing.T) {
+	saved := map[string]string{}
+	if err := config.GlobalConfig.SaveToDB(func(key, value string) error {
+		saved[key] = value
+		return nil
+	}); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := config.GlobalConfig.LoadFromDB(saved); err != nil {
+			t.Fatalf("restore config: %v", err)
+		}
+	})
+
+	if err := config.GlobalConfig.LoadFromDB(map[string]string{
+		"billing_setting.model_discounts": `{"discounted-tiered-model":{"discount":0.8}}`,
+	}); err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+
+	info := makeRelayInfo(flatExpr, 1.0, 1000, 500)
+	info.TieredBillingSnapshot.ModelName = "discounted-tiered-model"
+
+	ok, quota, _ := TryTieredSettle(info, billingexpr.TokenParams{P: 1000, C: 500})
+	if !ok {
+		t.Fatal("expected tiered settle")
+	}
+	if quota != 2800 {
+		t.Fatalf("quota = %d, want 2800", quota)
 	}
 }
 

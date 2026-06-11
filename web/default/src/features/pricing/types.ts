@@ -54,6 +54,10 @@ export type PricingModel = {
   billing_mode?: string
   /** Raw expression describing dynamic / tiered billing */
   billing_expr?: string
+  /** Active discount multiplier for this model. 0.8 means 20% off. */
+  model_discount?: number
+  /** Discount end time as Unix seconds. Empty/0 means permanent. */
+  model_discount_end_time?: number
   /** Pricing version returned by backend, useful for cache busting */
   pricing_version?: string
   /**

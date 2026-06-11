@@ -38,9 +38,13 @@ import { isTokenBasedModel } from '../lib/model-helpers'
 import {
   formatPrice,
   formatRequestPrice,
+  getModelPriceAdjustmentType,
+  hasModelDiscount,
   stripTrailingZeros,
 } from '../lib/price'
 import type { PricingModel, TokenUnit } from '../types'
+import { DiscountedPrice } from './discounted-price'
+import { ModelDiscountBadge } from './model-discount-badge'
 
 // ----------------------------------------------------------------------------
 // Pricing Table Columns
@@ -112,9 +116,12 @@ export function usePricingColumns(
         return (
           <div className='flex min-w-[200px] items-center gap-2'>
             {modelIcon}
-            <span className='truncate font-mono text-sm font-medium'>
-              {model.model_name}
-            </span>
+            <div className='flex min-w-0 items-center gap-1.5'>
+              <span className='truncate font-mono text-sm font-medium'>
+                {model.model_name}
+              </span>
+              <ModelDiscountBadge model={model} />
+            </div>
           </div>
         )
       },
@@ -149,6 +156,8 @@ export function usePricingColumns(
       ),
       cell: ({ row }) => {
         const model = row.original
+        const discountEnabled = hasModelDiscount(model)
+        const adjustmentType = getModelPriceAdjustmentType(model)
         const dynamicSummary = getDynamicPricingSummary(model, {
           tokenUnit,
           showRechargePrice,
@@ -156,6 +165,16 @@ export function usePricingColumns(
           usdExchangeRate,
           groupRatioMultiplier: getDynamicDisplayGroupRatio(model),
         })
+        const originalDynamicSummary = discountEnabled
+          ? getDynamicPricingSummary(model, {
+              tokenUnit,
+              showRechargePrice,
+              priceRate,
+              usdExchangeRate,
+              groupRatioMultiplier: getDynamicDisplayGroupRatio(model),
+              discountMultiplier: 1,
+            })
+          : null
 
         if (dynamicSummary) {
           if (dynamicSummary.isSpecialExpression) {
@@ -191,7 +210,16 @@ export function usePricingColumns(
                     {index > 0 && (
                       <span className='text-muted-foreground/40 mx-1'>/</span>
                     )}
-                    {stripTrailingZeros(entry.formatted)}
+                    <DiscountedPrice
+                      original={stripTrailingZeros(
+                        originalDynamicSummary?.entries.find(
+                          (item) => item.key === entry.key
+                        )?.formatted ?? entry.formatted
+                      )}
+                      discounted={stripTrailingZeros(entry.formatted)}
+                      discountedEnabled={discountEnabled}
+                      adjustmentType={adjustmentType}
+                    />
                   </span>
                 ))}
               </span>
@@ -229,13 +257,45 @@ export function usePricingColumns(
               usdExchangeRate
             )
           )
+          const originalInputPrice = stripTrailingZeros(
+            formatPrice(
+              model,
+              'input',
+              tokenUnit,
+              showRechargePrice,
+              priceRate,
+              usdExchangeRate,
+              false
+            )
+          )
+          const originalOutputPrice = stripTrailingZeros(
+            formatPrice(
+              model,
+              'output',
+              tokenUnit,
+              showRechargePrice,
+              priceRate,
+              usdExchangeRate,
+              false
+            )
+          )
 
           return (
             <div className='min-w-[160px]'>
               <span className='font-mono text-sm tabular-nums'>
-                {inputPrice}
+                <DiscountedPrice
+                  original={originalInputPrice}
+                  discounted={inputPrice}
+                  discountedEnabled={discountEnabled}
+                  adjustmentType={adjustmentType}
+                />
                 <span className='text-muted-foreground/40 mx-1'>/</span>
-                {outputPrice}
+                <DiscountedPrice
+                  original={originalOutputPrice}
+                  discounted={outputPrice}
+                  discountedEnabled={discountEnabled}
+                  adjustmentType={adjustmentType}
+                />
               </span>
               <div className='text-muted-foreground/50 text-[10px]'>
                 / {tokenUnitLabel} tokens
@@ -252,10 +312,26 @@ export function usePricingColumns(
             usdExchangeRate
           )
         )
+        const originalPrice = stripTrailingZeros(
+          formatRequestPrice(
+            model,
+            showRechargePrice,
+            priceRate,
+            usdExchangeRate,
+            false
+          )
+        )
 
         return (
           <div className='min-w-[100px]'>
-            <span className='font-mono text-sm tabular-nums'>{price}</span>
+            <span className='font-mono text-sm tabular-nums'>
+              <DiscountedPrice
+                original={originalPrice}
+                discounted={price}
+                discountedEnabled={discountEnabled}
+                adjustmentType={adjustmentType}
+              />
+            </span>
             <div className='text-muted-foreground/50 text-[10px]'>
               / {t('request')}
             </div>
@@ -273,6 +349,8 @@ export function usePricingColumns(
       header: t('Cached'),
       cell: ({ row }) => {
         const model = row.original
+        const discountEnabled = hasModelDiscount(model)
+        const adjustmentType = getModelPriceAdjustmentType(model)
         const dynamicSummary = getDynamicPricingSummary(model, {
           tokenUnit,
           showRechargePrice,
@@ -280,6 +358,16 @@ export function usePricingColumns(
           usdExchangeRate,
           groupRatioMultiplier: getDynamicDisplayGroupRatio(model),
         })
+        const originalDynamicSummary = discountEnabled
+          ? getDynamicPricingSummary(model, {
+              tokenUnit,
+              showRechargePrice,
+              priceRate,
+              usdExchangeRate,
+              groupRatioMultiplier: getDynamicDisplayGroupRatio(model),
+              discountMultiplier: 1,
+            })
+          : null
 
         if (dynamicSummary) {
           if (dynamicSummary.isSpecialExpression) {
@@ -300,7 +388,16 @@ export function usePricingColumns(
           return (
             <div className='min-w-[80px]'>
               <span className='font-mono text-sm tabular-nums'>
-                {stripTrailingZeros(cacheEntry.formatted)}
+                <DiscountedPrice
+                  original={stripTrailingZeros(
+                    originalDynamicSummary?.entries.find(
+                      (entry) => entry.key === cacheEntry.key
+                    )?.formatted ?? cacheEntry.formatted
+                  )}
+                  discounted={stripTrailingZeros(cacheEntry.formatted)}
+                  discountedEnabled={discountEnabled}
+                  adjustmentType={adjustmentType}
+                />
               </span>
               <div className='text-muted-foreground/50 text-[10px]'>
                 / {tokenUnitLabel}
@@ -325,11 +422,27 @@ export function usePricingColumns(
             usdExchangeRate
           )
         )
+        const originalCachedPrice = stripTrailingZeros(
+          formatPrice(
+            model,
+            'cache',
+            tokenUnit,
+            showRechargePrice,
+            priceRate,
+            usdExchangeRate,
+            false
+          )
+        )
 
         return (
           <div className='min-w-[80px]'>
             <span className='font-mono text-sm tabular-nums'>
-              {cachedPrice}
+              <DiscountedPrice
+                original={originalCachedPrice}
+                discounted={cachedPrice}
+                discountedEnabled={discountEnabled}
+                adjustmentType={adjustmentType}
+              />
             </span>
             <div className='text-muted-foreground/50 text-[10px]'>
               / {tokenUnitLabel}

@@ -27,6 +27,7 @@ import {
   type BillingVar,
   type ParsedTier,
 } from './billing-expr'
+import { getModelDiscountMultiplier } from './price'
 
 type DynamicPriceOptions = {
   tokenUnit: TokenUnit
@@ -34,6 +35,7 @@ type DynamicPriceOptions = {
   priceRate?: number
   usdExchangeRate?: number
   groupRatioMultiplier?: number
+  discountMultiplier?: number
 }
 
 export type DynamicPriceEntry = {
@@ -95,10 +97,11 @@ export function formatDynamicUnitPrice(
   options: DynamicPriceOptions
 ): string {
   const groupRatio = options.groupRatioMultiplier ?? 1
+  const discountMultiplier = options.discountMultiplier ?? 1
   const priceRate = options.priceRate ?? 1
   const usdExchangeRate = options.usdExchangeRate ?? 1
   const priceUSD =
-    (valuePerMillionTokens * groupRatio) /
+    (valuePerMillionTokens * groupRatio * discountMultiplier) /
     TOKEN_UNIT_DIVISORS[options.tokenUnit]
   const displayPrice = applyRechargeRate(
     priceUSD,
@@ -168,7 +171,11 @@ export function getDynamicPricingSummary(
 
   const tiers = getDynamicPricingTiers(model)
   const tier = tiers[0] || null
-  const entries = getDynamicPriceEntries(tier, options)
+  const entries = getDynamicPriceEntries(tier, {
+    ...options,
+    discountMultiplier:
+      options.discountMultiplier ?? getModelDiscountMultiplier(model),
+  })
   const rawExpression = model.billing_expr || ''
 
   return {

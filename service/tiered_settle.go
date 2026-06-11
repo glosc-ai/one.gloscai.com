@@ -4,6 +4,7 @@ import (
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/QuantumNous/new-api/setting/billing_setting"
 )
 
 // TieredResultWrapper wraps billingexpr.TieredResult for use at the service layer.
@@ -112,5 +113,10 @@ func TryTieredSettle(relayInfo *relaycommon.RelayInfo, params billingexpr.TokenP
 		return true, quota, nil
 	}
 
-	return true, tr.ActualQuotaAfterGroup, &tr
+	actualQuota := tr.ActualQuotaAfterGroup
+	if discount, ok := billing_setting.GetModelDiscount(snap.ModelName); ok {
+		actualQuota = billingexpr.QuotaRound(float64(actualQuota) * discount)
+	}
+
+	return true, actualQuota, &tr
 }

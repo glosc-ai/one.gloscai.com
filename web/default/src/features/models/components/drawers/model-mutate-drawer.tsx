@@ -189,6 +189,7 @@ export function ModelMutateDrawer({
       ExposeRatioEnabled: false,
       'billing_setting.billing_mode': '{}',
       'billing_setting.billing_expr': '{}',
+      'billing_setting.model_discounts': '{}',
       'tool_price_setting.prices': '{}',
       TopupGroupRatio: '',
       GroupRatio: '',

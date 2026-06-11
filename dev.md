@@ -54,6 +54,7 @@ bun --version
 ```powershell
 cd web/default
 bun install
+bun run dev --port 3001  
 ```
 
 如果 `bun` 不在 PATH 中：
@@ -71,7 +72,7 @@ cd web/default
 
 ```powershell
 .\node_modules\.bin\rsbuild.exe dev --port 3001
-bun run dev --port 3001
+bun run dev --port 3001  
 ```
 
 启动成功后访问：

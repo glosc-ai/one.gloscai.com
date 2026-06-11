@@ -55,7 +55,13 @@ import {
 import { parseTags } from '../lib/filters'
 import { getAvailableGroups, isTokenBasedModel } from '../lib/model-helpers'
 import { inferModelMetadata } from '../lib/model-metadata'
-import { formatFixedPrice, formatGroupPrice } from '../lib/price'
+import {
+  formatFixedPrice,
+  formatGroupPrice,
+  getModelDiscountMultiplier,
+  getModelPriceAdjustmentType,
+  hasModelDiscount,
+} from '../lib/price'
 import type {
   Modality,
   ModelCapability,
@@ -64,6 +70,8 @@ import type {
   TokenUnit,
 } from '../types'
 import { DynamicPricingBreakdown } from './dynamic-pricing-breakdown'
+import { DiscountedPrice } from './discounted-price'
+import { ModelDiscountBadge } from './model-discount-badge'
 import { ModelDetailsApi, ModelDetailsProviderInfo } from './model-details-api'
 import { ModalityIcons } from './model-details-modalities'
 import { ModelDetailsPerformance } from './model-details-performance'
@@ -277,6 +285,7 @@ function ModelHeader(props: { model: PricingModel }) {
         <h1 className='font-mono text-xl font-bold tracking-tight sm:text-2xl'>
           {model.model_name}
         </h1>
+        <ModelDiscountBadge model={model} className='mt-0.5' />
         <CopyButton
           value={model.model_name || ''}
           className='size-6'
@@ -351,6 +360,18 @@ function PriceSection(props: {
     usdExchangeRate: props.usdExchangeRate,
     groupRatioMultiplier: 1,
   })
+  const discountEnabled = hasModelDiscount(props.model)
+  const adjustmentType = getModelPriceAdjustmentType(props.model)
+  const originalDynamicSummary = discountEnabled
+    ? getDynamicPricingSummary(props.model, {
+        tokenUnit: props.tokenUnit,
+        showRechargePrice: props.showRechargePrice,
+        priceRate: props.priceRate,
+        usdExchangeRate: props.usdExchangeRate,
+        groupRatioMultiplier: 1,
+        discountMultiplier: 1,
+      })
+    : null
 
   const primaryPriceTypes: { label: string; type: PriceType }[] = [
     { label: t('Input'), type: 'input' },
@@ -429,7 +450,16 @@ function PriceSection(props: {
                   {t(entry.shortLabel)}
                 </div>
                 <div className='text-foreground mt-1 font-mono text-base font-semibold tabular-nums'>
-                  {entry.formatted}
+                  <DiscountedPrice
+                    original={
+                      originalDynamicSummary?.entries.find(
+                        (item) => item.key === entry.key
+                      )?.formatted ?? entry.formatted
+                    }
+                    discounted={entry.formatted}
+                    discountedEnabled={discountEnabled}
+                    adjustmentType={adjustmentType}
+                  />
                   <span className='text-muted-foreground/40 ml-1 text-xs font-normal'>
                     / {tokenUnitLabel}
                   </span>
@@ -454,7 +484,16 @@ function PriceSection(props: {
                     {t(entry.shortLabel)}
                   </span>
                   <span className='text-muted-foreground font-mono text-sm tabular-nums'>
-                    {entry.formatted}
+                    <DiscountedPrice
+                      original={
+                        originalDynamicSummary?.entries.find(
+                          (item) => item.key === entry.key
+                        )?.formatted ?? entry.formatted
+                      }
+                      discounted={entry.formatted}
+                      discountedEnabled={discountEnabled}
+                      adjustmentType={adjustmentType}
+                    />
                     <span className='text-muted-foreground/40 ml-1 text-xs font-normal'>
                       / {tokenUnitLabel}
                     </span>
@@ -477,14 +516,27 @@ function PriceSection(props: {
             {t('Per request')}
           </span>
           <span className='text-foreground font-mono text-sm font-semibold tabular-nums'>
-            {formatFixedPrice(
-              props.model,
-              baseGroupKey,
-              props.showRechargePrice,
-              props.priceRate,
-              props.usdExchangeRate,
-              baseGroupRatioMap
-            )}
+            <DiscountedPrice
+              original={formatFixedPrice(
+                props.model,
+                baseGroupKey,
+                props.showRechargePrice,
+                props.priceRate,
+                props.usdExchangeRate,
+                baseGroupRatioMap,
+                false
+              )}
+              discounted={formatFixedPrice(
+                props.model,
+                baseGroupKey,
+                props.showRechargePrice,
+                props.priceRate,
+                props.usdExchangeRate,
+                baseGroupRatioMap
+              )}
+              discountedEnabled={discountEnabled}
+              adjustmentType={adjustmentType}
+            />
           </span>
         </div>
       </section>
@@ -494,16 +546,31 @@ function PriceSection(props: {
   const secondaryItems = secondaryPriceTypes.filter((p) => p.available)
   const renderPrice = (type: PriceType) => (
     <>
-      {formatGroupPrice(
-        props.model,
-        baseGroupKey,
-        type,
-        props.tokenUnit,
-        props.showRechargePrice,
-        props.priceRate,
-        props.usdExchangeRate,
-        baseGroupRatioMap
-      )}
+      <DiscountedPrice
+        original={formatGroupPrice(
+          props.model,
+          baseGroupKey,
+          type,
+          props.tokenUnit,
+          props.showRechargePrice,
+          props.priceRate,
+          props.usdExchangeRate,
+          baseGroupRatioMap,
+          false
+        )}
+        discounted={formatGroupPrice(
+          props.model,
+          baseGroupKey,
+          type,
+          props.tokenUnit,
+          props.showRechargePrice,
+          props.priceRate,
+          props.usdExchangeRate,
+          baseGroupRatioMap
+        )}
+        discountedEnabled={discountEnabled}
+        adjustmentType={adjustmentType}
+      />
       <span className='text-muted-foreground/40 ml-1 text-xs font-normal'>
         / {tokenUnitLabel}
       </span>
@@ -719,6 +786,7 @@ function GroupPricingSection(props: {
             priceRate: props.priceRate,
             usdExchangeRate: props.usdExchangeRate,
             groupRatioMultiplier: ratio,
+            discountMultiplier: getModelDiscountMultiplier(props.model),
           }),
         ] as const
       })

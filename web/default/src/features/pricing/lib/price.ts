@@ -121,6 +121,42 @@ function hasRatio(value: number | null | undefined): boolean {
   return value !== undefined && value !== null && Number.isFinite(Number(value))
 }
 
+export function getModelDiscountMultiplier(model: PricingModel): number {
+  const discount = Number(model.model_discount)
+  if (!Number.isFinite(discount) || discount <= 0) return 1
+
+  const endTime = Number(model.model_discount_end_time || 0)
+  if (endTime > 0 && endTime <= Date.now() / 1000) return 1
+
+  return discount
+}
+
+export function hasModelDiscount(model: PricingModel): boolean {
+  return getModelDiscountMultiplier(model) !== 1
+}
+
+export function getModelDiscountPercent(model: PricingModel): number {
+  return Math.round(Math.abs(1 - getModelDiscountMultiplier(model)) * 100)
+}
+
+export function getModelPriceAdjustmentType(
+  model: PricingModel
+): 'discount' | 'increase' | null {
+  const multiplier = getModelDiscountMultiplier(model)
+  if (multiplier < 1) return 'discount'
+  if (multiplier > 1) return 'increase'
+  return null
+}
+
+function applyModelDiscount(
+  model: PricingModel,
+  price: number,
+  includeDiscount: boolean
+): number {
+  if (!includeDiscount) return price
+  return price * getModelDiscountMultiplier(model)
+}
+
 /**
  * Apply recharge rate to price
  *
@@ -166,7 +202,8 @@ export function formatPrice(
   tokenUnit: TokenUnit,
   showWithRecharge = false,
   priceRate = 1,
-  usdExchangeRate = 1
+  usdExchangeRate = 1,
+  includeDiscount = true
 ): string {
   if (model.quota_type === QUOTA_TYPE_VALUES.REQUEST) {
     return '-'
@@ -179,6 +216,7 @@ export function formatPrice(
   const minRatio = getMinGroupRatio(enableGroups, groupRatio)
 
   let priceInUSD = calculateTokenPrice(model, type, minRatio)
+  priceInUSD = applyModelDiscount(model, priceInUSD, includeDiscount)
   priceInUSD = applyRechargeRate(
     priceInUSD,
     showWithRecharge,
@@ -205,7 +243,8 @@ export function formatGroupPrice(
   showWithRecharge = false,
   priceRate = 1,
   usdExchangeRate = 1,
-  groupRatio: Record<string, number>
+  groupRatio: Record<string, number>,
+  includeDiscount = true
 ): string {
   if (model.quota_type === QUOTA_TYPE_VALUES.REQUEST) {
     return '-'
@@ -213,6 +252,7 @@ export function formatGroupPrice(
 
   const ratio = groupRatio[group] || 1
   let priceInUSD = calculateTokenPrice(model, type, ratio)
+  priceInUSD = applyModelDiscount(model, priceInUSD, includeDiscount)
 
   priceInUSD = applyRechargeRate(
     priceInUSD,
@@ -238,7 +278,8 @@ export function formatFixedPrice(
   showWithRecharge = false,
   priceRate = 1,
   usdExchangeRate = 1,
-  groupRatio: Record<string, number>
+  groupRatio: Record<string, number>,
+  includeDiscount = true
 ): string {
   if (model.quota_type !== QUOTA_TYPE_VALUES.REQUEST) {
     return '-'
@@ -246,6 +287,7 @@ export function formatFixedPrice(
 
   const ratio = groupRatio[group] || 1
   let priceInUSD = (model.model_price || 0) * ratio
+  priceInUSD = applyModelDiscount(model, priceInUSD, includeDiscount)
 
   priceInUSD = applyRechargeRate(
     priceInUSD,
@@ -268,7 +310,8 @@ export function formatRequestPrice(
   model: PricingModel,
   showWithRecharge = false,
   priceRate = 1,
-  usdExchangeRate = 1
+  usdExchangeRate = 1,
+  includeDiscount = true
 ): string {
   if (model.quota_type !== QUOTA_TYPE_VALUES.REQUEST) {
     return '-'
@@ -281,6 +324,7 @@ export function formatRequestPrice(
   const minRatio = getMinGroupRatio(enableGroups, groupRatio)
 
   let priceInUSD = (model.model_price || 0) * minRatio
+  priceInUSD = applyModelDiscount(model, priceInUSD, includeDiscount)
 
   priceInUSD = applyRechargeRate(
     priceInUSD,
