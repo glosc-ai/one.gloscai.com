@@ -38,7 +38,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+import { MarkdownEditorDialog } from '../components/markdown-editor-dialog'
+import { useDialogState } from '@/hooks/use-dialog'
 import { FormDirtyIndicator } from '../components/form-dirty-indicator'
 import { FormNavigationGuard } from '../components/form-navigation-guard'
 import {
@@ -79,9 +80,69 @@ function normalizeValue(value: unknown): string {
   return typeof value === 'string' ? value : String(value)
 }
 
+type MarkdownFieldMeta = {
+  label: string
+  placeholder: string
+  description: string
+  span?: 'full'
+}
+
+type MarkdownFieldName =
+  | 'Footer'
+  | 'About'
+  | 'HomePageContent'
+  | 'FeedbackContent'
+  | 'legal.user_agreement'
+  | 'legal.privacy_policy'
+
+const MARKDOWN_FIELDS: Record<MarkdownFieldName, MarkdownFieldMeta> = {
+  Footer: {
+    label: 'Footer',
+    placeholder: '© 2025 Your Company. All rights reserved.',
+    description: 'Footer text displayed at the bottom of pages',
+  },
+  About: {
+    label: 'About',
+    placeholder:
+      'Enter HTML code (e.g., <p>About us...</p>) or a URL (e.g., https://example.com) to embed as iframe',
+    description:
+      'Supports HTML markup or iframe embedding. Enter HTML code directly, or provide a complete URL to automatically embed it as an iframe.',
+  },
+  HomePageContent: {
+    label: 'Home Page Content',
+    placeholder: 'Welcome to our New API...',
+    description: 'Content displayed on the home page (supports Markdown)',
+    span: 'full',
+  },
+  FeedbackContent: {
+    label: 'Feedback Page Content',
+    placeholder:
+      'Provide Markdown, HTML, or an external URL for the feedback page',
+    description:
+      'Content displayed on the feedback page. Supports Markdown, HTML, or a full URL.',
+    span: 'full',
+  },
+  'legal.user_agreement': {
+    label: 'User Agreement',
+    placeholder:
+      'Provide Markdown, HTML, or an external URL for the user agreement',
+    description:
+      'Leave empty to disable the agreement requirement. Supports Markdown, HTML, or a full URL to redirect users.',
+  },
+  'legal.privacy_policy': {
+    label: 'Privacy Policy',
+    placeholder:
+      'Provide Markdown, HTML, or an external URL for the privacy policy',
+    description:
+      'Leave empty to disable the privacy policy requirement. Supports Markdown, HTML, or a full URL to redirect users.',
+  },
+}
+
 export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
+  const [editingField, setEditingField, editingFieldState] =
+    useDialogState<MarkdownFieldName>()
 
   const normalizedDefaults: SystemInfoFormValues = {
     theme: {
@@ -141,6 +202,77 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
         }
       },
     })
+
+  const getMarkdownFieldValue = (field: MarkdownFieldName) => {
+    switch (field) {
+      case 'Footer':
+      case 'About':
+      case 'HomePageContent':
+      case 'FeedbackContent':
+        return form.getValues(field) ?? ''
+      case 'legal.user_agreement':
+        return form.getValues('legal.user_agreement') ?? ''
+      case 'legal.privacy_policy':
+        return form.getValues('legal.privacy_policy') ?? ''
+    }
+  }
+
+  const setMarkdownFieldValue = (field: MarkdownFieldName, value: string) => {
+    form.setValue(field, value, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    })
+  }
+
+  const renderMarkdownField = (name: MarkdownFieldName) => {
+    const meta = MARKDOWN_FIELDS[name]
+    const content = (
+      <FormField
+        control={form.control}
+        name={name}
+        render={({ field }) => {
+          const value = normalizeValue(field.value)
+          return (
+            <FormItem>
+              <FormLabel>{t(meta.label)}</FormLabel>
+              <FormControl>
+                <button
+                  type='button'
+                  className='border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex max-h-40 min-h-24 w-full items-start overflow-y-auto rounded-md border px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
+                  onClick={() => setEditingField(name)}
+                >
+                  {value ? (
+                    <span className='block min-w-0 break-words whitespace-pre-wrap'>
+                      {value}
+                    </span>
+                  ) : (
+                    <span className='text-muted-foreground'>
+                      {t('Click to edit...')}
+                    </span>
+                  )}
+                </button>
+              </FormControl>
+              <FormDescription>{t(meta.description)}</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )
+        }}
+      />
+    )
+
+    if (meta.span === 'full') {
+      return (
+        <SettingsFormGridItem key={name} span='full'>
+          {content}
+        </SettingsFormGridItem>
+      )
+    }
+
+    return <div key={name}>{content}</div>
+  }
+
+  const editingMeta = editingField ? MARKDOWN_FIELDS[editingField] : null
 
   return (
     <>
@@ -259,159 +391,33 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name='Footer'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('Footer')}</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder={t(
-                          '© 2025 Your Company. All rights reserved.'
-                        )}
-                        rows={4}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {t('Footer text displayed at the bottom of pages')}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name='About'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('About')}</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder={t(
-                          'Enter HTML code (e.g., <p>About us...</p>) or a URL (e.g., https://example.com) to embed as iframe'
-                        )}
-                        rows={4}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {t(
-                        'Supports HTML markup or iframe embedding. Enter HTML code directly, or provide a complete URL to automatically embed it as an iframe.'
-                      )}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <SettingsFormGridItem span='full'>
-                <FormField
-                  control={form.control}
-                  name='HomePageContent'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('Home Page Content')}</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder={t('Welcome to our New API...')}
-                          rows={6}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {t(
-                          'Content displayed on the home page (supports Markdown)'
-                        )}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </SettingsFormGridItem>
-
-              <SettingsFormGridItem span='full'>
-                <FormField
-                  control={form.control}
-                  name='FeedbackContent'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('Feedback Page Content')}</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder={t(
-                            'Provide Markdown, HTML, or an external URL for the feedback page'
-                          )}
-                          rows={6}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {t(
-                          'Content displayed on the feedback page. Supports Markdown, HTML, or a full URL.'
-                        )}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </SettingsFormGridItem>
-
-              <FormField
-                control={form.control}
-                name='legal.user_agreement'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('User Agreement')}</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder={t(
-                          'Provide Markdown, HTML, or an external URL for the user agreement'
-                        )}
-                        rows={6}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {t(
-                        'Leave empty to disable the agreement requirement. Supports Markdown, HTML, or a full URL to redirect users.'
-                      )}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name='legal.privacy_policy'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('Privacy Policy')}</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder={t(
-                          'Provide Markdown, HTML, or an external URL for the privacy policy'
-                        )}
-                        rows={6}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {t(
-                        'Leave empty to disable the privacy policy requirement. Supports Markdown, HTML, or a full URL to redirect users.'
-                      )}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {renderMarkdownField('Footer')}
+              {renderMarkdownField('About')}
+              {renderMarkdownField('HomePageContent')}
+              {renderMarkdownField('FeedbackContent')}
+              {renderMarkdownField('legal.user_agreement')}
+              {renderMarkdownField('legal.privacy_policy')}
             </SettingsFormGrid>
           </SettingsForm>
         </Form>
       </SettingsSection>
+
+      {editingField && editingMeta ? (
+        <MarkdownEditorDialog
+          key={editingField}
+          open={editingFieldState.isOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              editingFieldState.reset()
+            }
+          }}
+          title={t(editingMeta.label)}
+          description={t(editingMeta.description)}
+          value={getMarkdownFieldValue(editingField)}
+          onSave={(value) => setMarkdownFieldValue(editingField, value)}
+          placeholder={t(editingMeta.placeholder)}
+        />
+      ) : null}
     </>
   )
 }
