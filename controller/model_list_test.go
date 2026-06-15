@@ -292,6 +292,58 @@ func TestListModelsFiltersDisabledModelMetadata(t *testing.T) {
 	require.NotContains(t, ids, "blocked-model")
 }
 
+func TestListModelsIncludesCategories(t *testing.T) {
+	withSelfUseModeEnabled(t)
+
+	db := setupModelListControllerTestDB(t)
+	require.NoError(t, db.Create(&model.User{
+		Id:       1004,
+		Username: "v1-model-categories-user",
+		Password: "password",
+		Group:    "default",
+		Status:   common.UserStatusEnabled,
+	}).Error)
+	require.NoError(t, db.Create(&[]model.Ability{
+		{Group: "default", Model: "categorized-default", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "categorized-image", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "categorized-video", ChannelId: 1, Enabled: true},
+	}).Error)
+
+	videoEndpoints, err := common.Marshal([]string{string(constant.EndpointTypeOpenAIVideo)})
+	require.NoError(t, err)
+	require.NoError(t, (&model.Model{
+		ModelName: "categorized-image",
+		Tags:      "image,custom",
+		Status:    1,
+		NameRule:  model.NameRuleExact,
+	}).Insert())
+	require.NoError(t, (&model.Model{
+		ModelName: "categorized-video",
+		Endpoints: string(videoEndpoints),
+		Status:    1,
+		NameRule:  model.NameRuleExact,
+	}).Insert())
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
+	ctx.Set("id", 1004)
+
+	ListModels(ctx, constant.ChannelTypeOpenAI)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var payload listModelsResponse
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	modelsByID := make(map[string]dto.OpenAIModels, len(payload.Data))
+	for _, item := range payload.Data {
+		modelsByID[item.Id] = item
+	}
+	require.Equal(t, []string{"text"}, modelsByID["categorized-default"].Categories)
+	require.Equal(t, []string{"image"}, modelsByID["categorized-image"].Categories)
+	require.Equal(t, []string{"video"}, modelsByID["categorized-video"].Categories)
+}
+
 func TestBatchUpdateModelVendor(t *testing.T) {
 	db := setupModelListControllerTestDB(t)
 	vendor := model.Vendor{Name: "batch-vendor", Icon: "OpenAI", Status: 1}

@@ -169,6 +169,18 @@ func buildOpenAIModel(modelName string, ownerByModel map[string]string) dto.Open
 	return oaiModel
 }
 
+func getModelCategoriesByName(modelNames []string) (map[string][]string, error) {
+	infos, err := model.GetModelsCategoryInfo(modelNames)
+	if err != nil {
+		return nil, err
+	}
+	categoriesByName := make(map[string][]string, len(infos))
+	for _, info := range infos {
+		categoriesByName[info.ModelName] = info.Categories
+	}
+	return categoriesByName, nil
+}
+
 type modelListGroups struct {
 	userGroup   string
 	tokenGroup  string
@@ -278,9 +290,16 @@ func ListModels(c *gin.Context, modelType int) {
 	if len(ownerGroups) > 0 {
 		ownerByModel = getPreferredModelOwners(userModelNames, ownerGroups)
 	}
+	categoriesByModel, err := getModelCategoriesByName(userModelNames)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	userOpenAiModels := make([]dto.OpenAIModels, 0, len(userModelNames))
 	for _, modelName := range userModelNames {
-		userOpenAiModels = append(userOpenAiModels, buildOpenAIModel(modelName, ownerByModel))
+		openAIModel := buildOpenAIModel(modelName, ownerByModel)
+		openAIModel.Categories = categoriesByModel[modelName]
+		userOpenAiModels = append(userOpenAiModels, openAIModel)
 	}
 
 	switch modelType {
