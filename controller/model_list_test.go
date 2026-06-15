@@ -173,17 +173,23 @@ func withSelfUseModeEnabled(t *testing.T) {
 func decodeListModelsResponse(t *testing.T, recorder *httptest.ResponseRecorder) map[string]struct{} {
 	t.Helper()
 
+	data := decodeListModelsData(t, recorder)
+	ids := make(map[string]struct{}, len(data))
+	for _, item := range data {
+		ids[item.Id] = struct{}{}
+	}
+	return ids
+}
+
+func decodeListModelsData(t *testing.T, recorder *httptest.ResponseRecorder) []dto.OpenAIModels {
+	t.Helper()
+
 	require.Equal(t, http.StatusOK, recorder.Code)
 	var payload listModelsResponse
 	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &payload))
 	require.True(t, payload.Success)
 	require.Equal(t, "list", payload.Object)
-
-	ids := make(map[string]struct{}, len(payload.Data))
-	for _, item := range payload.Data {
-		ids[item.Id] = struct{}{}
-	}
-	return ids
+	return payload.Data
 }
 
 func decodeUserModelsResponse(t *testing.T, recorder *httptest.ResponseRecorder) []string {
@@ -342,6 +348,38 @@ func TestListModelsIncludesCategories(t *testing.T) {
 	require.Equal(t, []string{"text"}, modelsByID["categorized-default"].Categories)
 	require.Equal(t, []string{"image"}, modelsByID["categorized-image"].Categories)
 	require.Equal(t, []string{"video"}, modelsByID["categorized-video"].Categories)
+}
+
+func TestListModelsSortsAlphabetically(t *testing.T) {
+	withSelfUseModeEnabled(t)
+
+	db := setupModelListControllerTestDB(t)
+	require.NoError(t, db.Create(&model.User{
+		Id:       1005,
+		Username: "v1-model-sorted-user",
+		Password: "password",
+		Group:    "default",
+		Status:   common.UserStatusEnabled,
+	}).Error)
+	require.NoError(t, db.Create(&[]model.Ability{
+		{Group: "default", Model: "zeta-model", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "Alpha-model", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "beta-model", ChannelId: 1, Enabled: true},
+	}).Error)
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
+	ctx.Set("id", 1005)
+
+	ListModels(ctx, constant.ChannelTypeOpenAI)
+
+	data := decodeListModelsData(t, recorder)
+	ids := make([]string, 0, len(data))
+	for _, item := range data {
+		ids = append(ids, item.Id)
+	}
+	require.Equal(t, []string{"Alpha-model", "beta-model", "zeta-model"}, ids)
 }
 
 func TestBatchUpdateModelVendor(t *testing.T) {

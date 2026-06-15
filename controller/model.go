@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -285,6 +286,14 @@ func ListModels(c *gin.Context, modelType int) {
 		common.ApiError(c, err)
 		return
 	}
+	sort.Slice(userModelNames, func(leftIndex, rightIndex int) bool {
+		left := strings.ToLower(userModelNames[leftIndex])
+		right := strings.ToLower(userModelNames[rightIndex])
+		if left == right {
+			return userModelNames[leftIndex] < userModelNames[rightIndex]
+		}
+		return left < right
+	})
 
 	ownerByModel := map[string]string{}
 	if len(ownerGroups) > 0 {
