@@ -16,13 +16,30 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/auth-store'
 import { Markdown } from '@/components/ui/markdown'
 import { PublicLayout } from '@/components/layout'
 import { Footer } from '@/components/layout/components/footer'
-import { CTA, Features, Hero, HowItWorks, Stats } from './components'
+import { CTA, Features, Hero, HowItWorks, Models, Stats } from './components'
 import { useHomePageContent } from './hooks'
+
+const landingThemeVars = {
+  '--background': 'oklch(0.057 0 0)',
+  '--foreground': 'oklch(0.98 0 0)',
+  '--card': 'oklch(0.113 0 0)',
+  '--card-foreground': 'oklch(0.98 0 0)',
+  '--muted': 'oklch(0.15 0 0)',
+  '--muted-foreground': 'oklch(0.65 0 0)',
+  '--accent': 'oklch(0.15 0 0)',
+  '--accent-foreground': 'oklch(0.98 0 0)',
+  '--primary': 'oklch(0.67 0.195 165)',
+  '--primary-foreground': 'oklch(0.15 0 0)',
+  '--border': 'oklch(1 0 0 / 0.08)',
+  '--input': 'oklch(1 0 0 / 0.14)',
+  '--ring': 'oklch(0.67 0.195 165)',
+} as CSSProperties
 
 export function Home() {
   const { t } = useTranslation()
@@ -61,13 +78,22 @@ export function Home() {
   }
 
   return (
-    <PublicLayout showMainContainer={false}>
-      <Hero isAuthenticated={isAuthenticated} />
-      <Stats />
-      <Features />
-      <HowItWorks />
-      <CTA isAuthenticated={isAuthenticated} />
-      <Footer />
+    <PublicLayout
+      showMainContainer={false}
+      headerProps={{ className: 'dark text-foreground' }}
+    >
+      <div
+        className='dark bg-background text-foreground min-h-screen'
+        style={landingThemeVars}
+      >
+        <Hero isAuthenticated={isAuthenticated} />
+        <Stats />
+        <Features />
+        <Models />
+        <HowItWorks />
+        <CTA isAuthenticated={isAuthenticated} />
+        <Footer className='bg-background' />
+      </div>
     </PublicLayout>
   )
 }

@@ -16,225 +16,162 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import {
-  Zap,
-  Shield,
-  Globe,
-  Code,
-  Gauge,
-  DollarSign,
-  Users,
-  HeartHandshake,
-} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 import { AnimateInView } from '@/components/animate-in-view'
 
 interface FeaturesProps {
   className?: string
 }
 
+type FeatureApp = [initial: string, name: string, description: string]
+
 export function Features(_props: FeaturesProps) {
   const { t } = useTranslation()
 
   const features = [
     {
-      id: 'fast',
-      num: '01',
-      title: t('Lightning Fast'),
+      title: t('Unified API protocol'),
       desc: t(
-        'Optimized network architecture ensures millisecond response times'
+        'Use an OpenAI-compatible standard interface to call every model. Switching providers only changes one model parameter, so existing code keeps working with a single base URL update.'
       ),
-      span: 'md:col-span-2',
-      icon: <Zap className='size-4 text-blue-400' />,
-      visual: (
-        <div className='mt-4 grid grid-cols-3 gap-2'>
-          {['OpenAI', 'Claude', 'Gemini', 'DeepSeek', 'Qwen', 'Llama'].map(
-            (name) => (
-              <div
-                key={name}
-                className='border-border/30 bg-muted/20 text-muted-foreground flex items-center justify-center rounded-lg border px-3 py-2 text-xs transition-colors duration-300 hover:border-blue-500/30 hover:bg-blue-500/5'
-              >
-                {name}
-              </div>
-            )
-          )}
-        </div>
-      ),
+      meta: [t('OpenAI compatible'), t('Zero migration cost')],
+      panelTitle: t('Desktop clients'),
+      panelCount: t('3 verified apps'),
+      apps: [
+        ['C', 'Cherry Studio', t('Multi-model chat client')],
+        ['D', 'DeepChat', t('AI Agent client')],
+        ['A', 'AionUi', t('Desktop office agent')],
+      ] satisfies FeatureApp[],
     },
     {
-      id: 'secure',
-      num: '02',
-      title: t('Secure & Reliable'),
+      title: t('Smart routing and high availability'),
       desc: t(
-        'Enterprise-grade security with comprehensive permission management'
+        'Automatically choose the best model route with built-in load balancing and failover. When a provider is unavailable, traffic moves to a backup route without interrupting users.'
       ),
-      span: 'md:col-span-1',
-      icon: <Shield className='size-4 text-emerald-400' />,
-      visual: (
-        <div className='mt-4 flex items-center justify-center'>
-          <div className='relative'>
-            <div className='flex size-16 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/5'>
-              <Shield
-                className='size-7 text-emerald-500/70'
-                strokeWidth={1.5}
-              />
-            </div>
-            <div className='absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-emerald-500'>
-              <svg
-                className='size-2.5 text-white'
-                fill='none'
-                viewBox='0 0 24 24'
-                stroke='currentColor'
-                strokeWidth={3}
-              >
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  d='m4.5 12.75 6 6 9-13.5'
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
+      meta: [t('Automatic failover'), t('Cross-region routing')],
+      panelTitle: t('CLI coding assistants'),
+      panelCount: t('3 verified apps'),
+      reverse: true,
+      apps: [
+        ['C', 'Claude Code', t('Anthropic terminal assistant')],
+        ['O', 'OpenAI Codex CLI', t('Terminal coding assistant')],
+        ['K', 'Kilo Code', t('Editor extension')],
+      ] satisfies FeatureApp[],
+    },
+    {
+      title: t('Usage monitoring and cost control'),
+      desc: t(
+        'Track calls, latency, and spend for every API key in real time. Split usage by model or team, set budget limits, and prevent unexpected bills.'
       ),
-    },
-    {
-      id: 'global',
-      num: '03',
-      title: t('Global Coverage'),
-      desc: t('Multi-region deployment for stable global access'),
-      span: 'md:col-span-1',
-      icon: <Globe className='size-4 text-violet-400' />,
-      visual: (
-        <div className='mt-4 space-y-2'>
-          {[t('Load Balancing'), t('Rate Limiting'), t('Cost Tracking')].map(
-            (step, i) => (
-              <div key={step} className='flex items-center gap-2'>
-                <div
-                  className={`flex size-6 items-center justify-center rounded-full text-[10px] font-bold ${
-                    i === 1
-                      ? 'border border-blue-500/30 bg-blue-500/20 text-blue-500'
-                      : 'border-border/40 bg-muted text-muted-foreground border'
-                  }`}
-                >
-                  {i + 1}
-                </div>
-                <div className='bg-border/40 h-px flex-1' />
-                <span className='text-muted-foreground text-xs'>{step}</span>
-              </div>
-            )
-          )}
-        </div>
-      ),
-    },
-    {
-      id: 'developer',
-      num: '04',
-      title: t('Developer Friendly'),
-      desc: t('Compatible API routes for common AI application workflows'),
-      span: 'md:col-span-2',
-      icon: <Code className='size-4 text-amber-400' />,
-      visual: (
-        <div className='mt-4 flex items-center gap-3'>
-          <div className='flex -space-x-2'>
-            {['API', 'SDK', 'CLI', 'Docs'].map((n) => (
-              <div
-                key={n}
-                className='border-background from-muted to-muted/60 text-muted-foreground flex size-8 items-center justify-center rounded-full border-2 bg-gradient-to-br text-[9px] font-bold'
-              >
-                {n}
-              </div>
-            ))}
-          </div>
-          <div className='text-muted-foreground flex items-center gap-1.5 text-xs'>
-            <Code className='size-3.5 text-blue-500' />
-            {t('Multi-protocol Compatible')}
-          </div>
-        </div>
-      ),
-    },
-  ]
-
-  const additionalFeatures = [
-    {
-      icon: <Gauge className='size-5' strokeWidth={1.5} />,
-      title: t('High Performance'),
-      desc: t('Support for high concurrency with automatic load balancing'),
-    },
-    {
-      icon: <DollarSign className='size-5' strokeWidth={1.5} />,
-      title: t('Transparent Billing'),
-      desc: t('Pay-as-you-go with real-time usage monitoring'),
-    },
-    {
-      icon: <Users className='size-5' strokeWidth={1.5} />,
-      title: t('Team Collaboration'),
-      desc: t('Multi-user management with flexible permission allocation'),
-    },
-    {
-      icon: <HeartHandshake className='size-5' strokeWidth={1.5} />,
-      title: t('Open Source'),
-      desc: t('Community driven, self-hosted, and extensible'),
+      meta: [t('Realtime dashboard'), t('Budget limits'), t('Team allocation')],
+      panelTitle: t('AI agents and bots'),
+      panelCount: t('3 verified apps'),
+      apps: [
+        ['O', 'OpenClaw', t('Personal AI assistant platform')],
+        ['L', 'LangBot', t('IM bot framework')],
+        ['M', 'Memoh', t('Containerized agent platform')],
+      ] satisfies FeatureApp[],
     },
   ]
 
   return (
-    <section className='relative z-10 px-6 py-24 md:py-32'>
+    <section className='relative z-10 px-6 py-20 md:py-28'>
       <div className='mx-auto max-w-6xl'>
-        <AnimateInView className='mb-16 max-w-lg'>
+        <AnimateInView className='mb-10 max-w-xl md:mb-14'>
           <p className='text-muted-foreground mb-3 text-xs font-medium tracking-widest uppercase'>
-            {t('Core Features')}
+            {t('Product capabilities')}
           </p>
-          <h2 className='text-2xl leading-tight font-bold tracking-tight md:text-3xl'>
-            {t('Built for developers,')}
-            <br />
-            {t('designed for scale')}
+          <h2 className='text-3xl leading-tight font-bold tracking-normal md:text-4xl'>
+            {t('Built like infrastructure, not a wrapper')}
           </h2>
         </AnimateInView>
 
-        {/* Bento grid */}
-        <div className='border-border/40 bg-border/40 grid gap-px overflow-hidden rounded-xl border md:grid-cols-3'>
-          {features.map((f, i) => (
+        <div className='flex flex-col'>
+          {features.map((feature, index) => (
             <AnimateInView
-              key={f.id}
-              delay={i * 100}
-              animation='scale-in'
-              className={`bg-background group hover:bg-muted/20 p-7 transition-colors duration-300 md:p-8 ${f.span}`}
+              key={feature.title}
+              delay={index * 120}
+              className='border-border grid grid-cols-1 items-center gap-8 border-b py-10 last:border-b-0 md:py-14 lg:grid-cols-2 lg:gap-20'
             >
-              <div className='mb-3 flex items-center gap-3'>
-                <span className='border-border/40 bg-muted text-muted-foreground flex size-7 items-center justify-center rounded-md border text-[10px] font-semibold tabular-nums'>
-                  {f.num}
-                </span>
-                <h3 className='text-sm font-semibold'>{f.title}</h3>
+              <div className={cn(feature.reverse && 'lg:order-2')}>
+                <h3 className='mb-3 text-2xl leading-tight font-semibold tracking-normal md:text-3xl'>
+                  {feature.title}
+                </h3>
+                <p className='text-muted-foreground max-w-md text-sm leading-relaxed md:text-[15px]'>
+                  {feature.desc}
+                </p>
+                <div className='text-muted-foreground mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm'>
+                  {feature.meta.map((item) => (
+                    <span key={item} className='flex items-center gap-2'>
+                      <span className='bg-primary size-1.5 rounded-full' />
+                      {item}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <p className='text-muted-foreground text-sm leading-relaxed'>
-                {f.desc}
-              </p>
-              {f.visual}
-            </AnimateInView>
-          ))}
-        </div>
-
-        {/* Additional features row */}
-        <div className='mt-12 grid grid-cols-2 gap-8 md:grid-cols-4 md:gap-12'>
-          {additionalFeatures.map((f, i) => (
-            <AnimateInView
-              key={f.title}
-              delay={i * 100}
-              animation='fade-up'
-              className='flex flex-col items-center text-center'
-            >
-              <div className='text-muted-foreground border-border/50 bg-muted/30 group-hover:text-foreground mb-3 flex size-12 items-center justify-center rounded-xl border transition-colors'>
-                {f.icon}
-              </div>
-              <h3 className='mb-1.5 text-sm font-semibold'>{f.title}</h3>
-              <p className='text-muted-foreground max-w-[200px] text-xs leading-relaxed'>
-                {f.desc}
-              </p>
+              <AppPanel
+                title={feature.panelTitle}
+                count={feature.panelCount}
+                apps={feature.apps}
+                className={cn(feature.reverse && 'lg:order-1')}
+              />
             </AnimateInView>
           ))}
         </div>
       </div>
     </section>
+  )
+}
+
+function AppPanel(props: {
+  title: string
+  count: string
+  apps: FeatureApp[]
+  className?: string
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div
+      className={cn(
+        'border-border bg-card overflow-hidden rounded-[0.5rem] border',
+        props.className
+      )}
+    >
+      <div className='border-border bg-muted/30 flex items-center justify-between gap-4 border-b px-5 py-4'>
+        <span className='text-sm font-semibold'>{props.title}</span>
+        <Badge variant='outline' className='border-primary/30 text-primary'>
+          {props.count}
+        </Badge>
+      </div>
+      <div className='flex flex-col gap-2 p-3'>
+        {props.apps.map(([initial, name, desc]) => (
+          <div
+            key={name}
+            className='border-border bg-muted/20 hover:border-primary/60 hover:bg-muted/40 flex items-center gap-3 rounded-[0.5rem] border p-3 transition-colors'
+          >
+            <div className='bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-[0.5rem] text-sm font-bold'>
+              {initial}
+            </div>
+            <div className='min-w-0 flex-1'>
+              <span className='block truncate text-sm font-semibold'>
+                {name}
+              </span>
+              <span className='text-muted-foreground block truncate text-xs'>
+                {desc}
+              </span>
+            </div>
+            <Badge
+              variant='outline'
+              className='border-primary/30 bg-primary/10 text-primary'
+            >
+              {t('Integrated')}
+            </Badge>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
