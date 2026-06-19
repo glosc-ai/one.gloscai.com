@@ -5,13 +5,18 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 )
 
 // ModelCategoryInfo describes the usage-scenario classification of a model.
 type ModelCategoryInfo struct {
-	ModelName  string   `json:"model_name"`
-	Tags       []string `json:"tags"`
-	Categories []string `json:"categories"`
+	ModelName               string            `json:"model_name"`
+	Tags                    []string          `json:"tags"`
+	Categories              []string          `json:"categories"`
+	ChannelType             int               `json:"channel_type,omitempty"`
+	ChannelTypeName         string            `json:"channel_type_name,omitempty"`
+	ChannelTypesByGroup     map[string]int    `json:"channel_types_by_group,omitempty"`
+	ChannelTypeNamesByGroup map[string]string `json:"channel_type_names_by_group,omitempty"`
 }
 
 // metaForModelName resolves the configured tags/endpoints for a model name by
@@ -60,6 +65,16 @@ func parseEndpointsJSON(endpoints string) []string {
 // categories (text/image/video), combining configured metadata tags/endpoints
 // with name-based inference.
 func GetModelsCategoryInfo(modelNames []string) ([]ModelCategoryInfo, error) {
+	return GetModelsCategoryInfoWithChannelTypes(modelNames, nil, nil)
+}
+
+// GetModelsCategoryInfoWithChannelTypes classifies models and attaches the
+// preferred owner channel type when the caller already resolved it.
+func GetModelsCategoryInfoWithChannelTypes(
+	modelNames []string,
+	channelTypes map[string]int,
+	channelTypesByGroup map[string]map[string]int,
+) ([]ModelCategoryInfo, error) {
 	if len(modelNames) == 0 {
 		return []ModelCategoryInfo{}, nil
 	}
@@ -101,11 +116,23 @@ func GetModelsCategoryInfo(modelNames []string) ([]ModelCategoryInfo, error) {
 		tags := parseTagsCSV(tagsCSV)
 		endpoints := parseEndpointsJSON(endpointsJSON)
 		categories := common.ClassifyModelCategories(name, tags, endpoints)
-		result = append(result, ModelCategoryInfo{
+		item := ModelCategoryInfo{
 			ModelName:  name,
 			Tags:       tags,
 			Categories: categories,
-		})
+		}
+		if channelType := channelTypes[name]; channelType != 0 {
+			item.ChannelType = channelType
+			item.ChannelTypeName = constant.ChannelTypeNames[channelType]
+		}
+		if groupTypes := channelTypesByGroup[name]; len(groupTypes) > 0 {
+			item.ChannelTypesByGroup = groupTypes
+			item.ChannelTypeNamesByGroup = make(map[string]string, len(groupTypes))
+			for group, channelType := range groupTypes {
+				item.ChannelTypeNamesByGroup[group] = constant.ChannelTypeNames[channelType]
+			}
+		}
+		result = append(result, item)
 	}
 
 	sort.Slice(result, func(i, j int) bool {

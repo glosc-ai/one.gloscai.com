@@ -222,7 +222,52 @@ func isWan27Model(modelName string) bool {
 
 func isWan27I2VModel(modelName string) bool {
 	modelName = strings.ToLower(modelName)
-	return strings.Contains(modelName, "wan2.7") && strings.Contains(modelName, "i2v")
+	return strings.Contains(modelName, "wan2.7") &&
+		(strings.Contains(modelName, "i2v") || strings.Contains(modelName, "image2video"))
+}
+
+func appendModelCandidate(candidates []string, modelName string) []string {
+	modelName = strings.TrimSpace(modelName)
+	if modelName == "" {
+		return candidates
+	}
+	if lo.Contains(candidates, modelName) {
+		return candidates
+	}
+	return append(candidates, modelName)
+}
+
+func aliModelCandidates(info *relaycommon.RelayInfo, aliReq *AliVideoRequest, req relaycommon.TaskSubmitReq) []string {
+	candidates := make([]string, 0, 5)
+	if aliReq != nil {
+		candidates = appendModelCandidate(candidates, aliReq.Model)
+	}
+	candidates = appendModelCandidate(candidates, req.Model)
+	if info != nil {
+		candidates = appendModelCandidate(candidates, info.OriginModelName)
+		if info.ChannelMeta != nil {
+			candidates = appendModelCandidate(candidates, info.ChannelMeta.UpstreamModelName)
+		}
+	}
+	return candidates
+}
+
+func anyWan27Model(candidates []string) bool {
+	for _, candidate := range candidates {
+		if isWan27Model(candidate) {
+			return true
+		}
+	}
+	return false
+}
+
+func anyWan27I2VModel(candidates []string) bool {
+	for _, candidate := range candidates {
+		if isWan27I2VModel(candidate) {
+			return true
+		}
+	}
+	return false
 }
 
 func normalizeWan27Resolution(resolution string) string {
@@ -239,12 +284,54 @@ func normalizeWan27Resolution(resolution string) string {
 	return resolution
 }
 
+func stringFromMapValue(data map[string]interface{}, keys ...string) string {
+	current := any(data)
+	for _, key := range keys {
+		m, ok := current.(map[string]interface{})
+		if !ok {
+			return ""
+		}
+		current, ok = m[key]
+		if !ok {
+			return ""
+		}
+	}
+	if value, ok := current.(string); ok {
+		return strings.TrimSpace(value)
+	}
+	return ""
+}
+
+func firstMetadataMediaURL(metadata map[string]interface{}) string {
+	if metadata == nil {
+		return ""
+	}
+
+	for _, keys := range [][]string{
+		{"input", "img_url"},
+		{"input", "first_frame_url"},
+		{"input", "image"},
+		{"input", "input_reference"},
+		{"img_url"},
+		{"first_frame_url"},
+		{"image"},
+		{"input_reference"},
+	} {
+		if url := stringFromMapValue(metadata, keys...); url != "" {
+			return url
+		}
+	}
+
+	return ""
+}
+
 func firstAliMediaURL(aliReq *AliVideoRequest, req relaycommon.TaskSubmitReq) string {
 	for _, url := range []string{
 		aliReq.Input.ImgURL,
 		aliReq.Input.FirstFrameURL,
 		req.InputReference,
 		req.Image,
+		firstMetadataMediaURL(req.Metadata),
 	} {
 		if strings.TrimSpace(url) != "" {
 			return strings.TrimSpace(url)
@@ -256,17 +343,18 @@ func firstAliMediaURL(aliReq *AliVideoRequest, req relaycommon.TaskSubmitReq) st
 	return ""
 }
 
-func normalizeAliVideoRequestForModel(aliReq *AliVideoRequest, req relaycommon.TaskSubmitReq) error {
+func normalizeAliVideoRequestForModel(info *relaycommon.RelayInfo, aliReq *AliVideoRequest, req relaycommon.TaskSubmitReq) error {
 	if aliReq.Parameters == nil {
 		aliReq.Parameters = &AliVideoParameters{}
 	}
 
-	if isWan27Model(aliReq.Model) {
+	candidates := aliModelCandidates(info, aliReq, req)
+	if anyWan27Model(candidates) {
 		aliReq.Parameters.Resolution = normalizeWan27Resolution(aliReq.Parameters.Resolution)
 		aliReq.Parameters.Size = ""
 	}
 
-	if !isWan27I2VModel(aliReq.Model) {
+	if !anyWan27I2VModel(candidates) {
 		return nil
 	}
 
@@ -353,8 +441,10 @@ func ProcessAliOtherRatios(aliReq *AliVideoRequest) (map[string]float64, error) 
 
 func (a *TaskAdaptor) convertToAliRequest(info *relaycommon.RelayInfo, req relaycommon.TaskSubmitReq) (*AliVideoRequest, error) {
 	upstreamModel := req.Model
-	if info.IsModelMapped {
-		upstreamModel = info.UpstreamModelName
+	if info != nil && info.ChannelMeta != nil && info.ChannelMeta.UpstreamModelName != "" {
+		upstreamModel = info.ChannelMeta.UpstreamModelName
+	} else if info != nil && info.ChannelMeta != nil && info.ChannelMeta.IsModelMapped {
+		upstreamModel = info.ChannelMeta.UpstreamModelName
 	}
 	aliReq := &AliVideoRequest{
 		Model: upstreamModel,
@@ -435,7 +525,7 @@ func (a *TaskAdaptor) convertToAliRequest(info *relaycommon.RelayInfo, req relay
 		}
 	}
 
-	if err := normalizeAliVideoRequestForModel(aliReq, req); err != nil {
+	if err := normalizeAliVideoRequestForModel(info, aliReq, req); err != nil {
 		return nil, err
 	}
 

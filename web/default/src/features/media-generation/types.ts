@@ -28,12 +28,20 @@ export interface CategorizedModel {
   model_name: string
   tags?: string[]
   categories: ModelCategory[]
+  channel_type?: number
+  channel_type_name?: string
+  channel_types_by_group?: Record<string, number>
+  channel_type_names_by_group?: Record<string, string>
 }
 
 export interface ModelOption {
   label: string
   value: string
   category?: string
+  channel_type?: number
+  channel_type_name?: string
+  channel_types_by_group?: Record<string, number>
+  channel_type_names_by_group?: Record<string, string>
 }
 
 export interface GroupOption {

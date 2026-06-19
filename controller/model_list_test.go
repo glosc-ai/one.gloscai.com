@@ -32,6 +32,11 @@ type userModelsResponse struct {
 	Data    []string `json:"data"`
 }
 
+type categorizedModelsResponse struct {
+	Success bool                      `json:"success"`
+	Data    []model.ModelCategoryInfo `json:"data"`
+}
+
 type batchUpdateVendorResponse struct {
 	Success bool `json:"success"`
 	Data    struct {
@@ -202,6 +207,16 @@ func decodeUserModelsResponse(t *testing.T, recorder *httptest.ResponseRecorder)
 	return payload.Data
 }
 
+func decodeCategorizedModelsResponse(t *testing.T, recorder *httptest.ResponseRecorder) []model.ModelCategoryInfo {
+	t.Helper()
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var payload categorizedModelsResponse
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	return payload.Data
+}
+
 func pricingByModelName(pricings []model.Pricing) map[string]model.Pricing {
 	byName := make(map[string]model.Pricing, len(pricings))
 	for _, pricing := range pricings {
@@ -249,6 +264,42 @@ func TestGetUserModelsFiltersDisabledModelsAndSorts(t *testing.T) {
 	GetUserModels(ctx)
 
 	require.Equal(t, []string{"alpha-enabled", "zeta-custom"}, decodeUserModelsResponse(t, recorder))
+}
+
+func TestGetUserModelsCategorizedIncludesPreferredChannelType(t *testing.T) {
+	db := setupModelListControllerTestDB(t)
+	require.NoError(t, db.Create(&model.User{
+		Id:       1006,
+		Username: "categorized-channel-user",
+		Password: "password",
+		Group:    "default",
+		Status:   common.UserStatusEnabled,
+	}).Error)
+	require.NoError(t, db.Create(&[]model.Channel{
+		{Id: 1, Type: constant.ChannelTypeOpenAI, Key: "openai-key", Status: common.ChannelStatusEnabled, Name: "openai"},
+		{Id: 2, Type: constant.ChannelTypeAli, Key: "ali-key", Status: common.ChannelStatusEnabled, Name: "ali"},
+	}).Error)
+	lowPriority := int64(1)
+	highPriority := int64(2)
+	require.NoError(t, db.Create(&[]model.Ability{
+		{Group: "default", Model: "mapped-video-model", ChannelId: 1, Enabled: true, Priority: &lowPriority, Weight: 100},
+		{Group: "default", Model: "mapped-video-model", ChannelId: 2, Enabled: true, Priority: &highPriority, Weight: 0},
+	}).Error)
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/user/models/categorized", nil)
+	ctx.Set("id", 1006)
+
+	GetUserModelsCategorized(ctx)
+
+	items := decodeCategorizedModelsResponse(t, recorder)
+	require.Len(t, items, 1)
+	require.Equal(t, "mapped-video-model", items[0].ModelName)
+	require.Equal(t, constant.ChannelTypeAli, items[0].ChannelType)
+	require.Equal(t, constant.ChannelTypeNames[constant.ChannelTypeAli], items[0].ChannelTypeName)
+	require.Equal(t, constant.ChannelTypeAli, items[0].ChannelTypesByGroup["default"])
+	require.Equal(t, constant.ChannelTypeNames[constant.ChannelTypeAli], items[0].ChannelTypeNamesByGroup["default"])
 }
 
 func TestListModelsFiltersDisabledModelMetadata(t *testing.T) {

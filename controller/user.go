@@ -591,7 +591,9 @@ func GetUserModelsCategorized(c *gin.Context) {
 	}
 	groups := service.GetUserUsableGroups(user.Group)
 	var models []string
+	groupNames := make([]string, 0, len(groups))
 	for group := range groups {
+		groupNames = append(groupNames, group)
 		for _, g := range model.GetGroupEnabledModels(group) {
 			if !common.StringsContains(models, g) {
 				models = append(models, g)
@@ -603,7 +605,26 @@ func GetUserModelsCategorized(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	infos, err := model.GetModelsCategoryInfo(models)
+	channelTypes, err := model.GetPreferredModelOwnerChannelTypes(models, groupNames)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	channelTypesByGroup := make(map[string]map[string]int)
+	for _, group := range groupNames {
+		groupChannelTypes, err := model.GetPreferredModelOwnerChannelTypes(models, []string{group})
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		for modelName, channelType := range groupChannelTypes {
+			if channelTypesByGroup[modelName] == nil {
+				channelTypesByGroup[modelName] = make(map[string]int)
+			}
+			channelTypesByGroup[modelName][group] = channelType
+		}
+	}
+	infos, err := model.GetModelsCategoryInfoWithChannelTypes(models, channelTypes, channelTypesByGroup)
 	if err != nil {
 		common.ApiError(c, err)
 		return

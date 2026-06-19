@@ -65,7 +65,6 @@ import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ModelSelector, GroupSelector } from '@/components/model-group-selector'
 import { fetchVideoTask, submitVideoGeneration } from '../api'
 import {
@@ -142,6 +141,7 @@ const STANDARD_SIZE_OPTIONS = [
   '1792x1024',
   '1024x1792',
 ]
+const ALI_CHANNEL_TYPE = 17 // constant.ChannelTypeAli
 
 function getVideoStatusLabel(
   t: (key: string) => string,
@@ -163,10 +163,6 @@ function getVideoStatusBadgeVariant(status: VideoTaskStatus['status']) {
   if (status === 'completed') return 'default'
   if (status === 'failed') return 'destructive'
   return 'secondary'
-}
-
-function isWanModel(model: string) {
-  return /^wan/i.test(model.trim())
 }
 
 function includesModelPart(model: string, part: string) {
@@ -224,17 +220,26 @@ export function VideoGeneration() {
     useState<VideoGenerationHistoryItem[]>(getVideoHistory)
 
   const selectedModel = model || models[0]?.value || ''
+  const selectedModelInfo = models.find((item) => item.value === selectedModel)
   const selectedGroup =
     groups.length > 0 && !groups.some((g) => g.value === group)
       ? (groups.find((g) => g.value === 'default')?.value ?? groups[0].value)
       : group
+  const selectedChannelType =
+    selectedModelInfo?.channel_types_by_group?.[selectedGroup] ??
+    selectedModelInfo?.channel_type
 
-  const isAliModel = isWanModel(selectedModel)
+  const isAliModel = selectedChannelType === ALI_CHANNEL_TYPE
   const isWan27 = includesModelPart(selectedModel, 'wan2.7')
-  const isAliT2VModel = isAliModel && includesModelPart(selectedModel, 't2v')
-  const isAliI2VModel = isAliModel && includesModelPart(selectedModel, 'i2v')
+  const isT2VModel =
+    includesModelPart(selectedModel, 't2v') ||
+    includesModelPart(selectedModel, 'text2video')
+  const isI2VModel =
+    includesModelPart(selectedModel, 'i2v') ||
+    includesModelPart(selectedModel, 'image2video')
+  const isAliI2VModel = isAliModel && isI2VModel
   const isKeyframeModel = includesModelPart(selectedModel, 'kf2v')
-  const effectiveMode = isAliT2VModel
+  const effectiveMode = isT2VModel
     ? 'text'
     : isAliI2VModel && mode === 'text'
       ? 'first-frame'
@@ -257,16 +262,22 @@ export function VideoGeneration() {
       ? legacySize
       : effectiveResolution
     : standardSize
+  const selectedModeOption = MODE_OPTIONS.find(
+    (option) => option.value === effectiveMode
+  )
+  const isModeDisabled = (nextMode: VideoMode) =>
+    (isT2VModel && nextMode !== 'text') ||
+    (isAliI2VModel && nextMode === 'text')
 
   useEffect(() => {
-    if (isAliT2VModel && mode !== 'text') {
+    if (isT2VModel && mode !== 'text') {
       setMode('text')
       return
     }
     if (isAliI2VModel && mode === 'text') {
       setMode('first-frame')
     }
-  }, [isAliI2VModel, isAliT2VModel, mode])
+  }, [isAliI2VModel, isT2VModel, mode])
 
   useEffect(() => {
     if (!isAliModel || usesLegacyTextSize) return
@@ -479,6 +490,8 @@ export function VideoGeneration() {
       current?.status !== 'failed')
 
   const buildRequest = (): VideoGenerationRequest => {
+    const referenceImage =
+      effectiveMode === 'text' ? undefined : firstFrame.trim() || undefined
     const base: VideoGenerationRequest = {
       model: selectedModel,
       prompt: prompt.trim(),
@@ -490,14 +503,14 @@ export function VideoGeneration() {
     if (isAliModel) {
       return {
         ...base,
-        input_reference: firstFrame.trim() || undefined,
+        input_reference: referenceImage,
         metadata: aliMetadata,
       }
     }
 
     return {
       ...base,
-      image: firstFrame.trim() || undefined,
+      image: referenceImage,
       size: standardSize,
     }
   }
@@ -591,31 +604,34 @@ export function VideoGeneration() {
             <FieldGroup>
               <Field>
                 <FieldLabel>{t('Task type')}</FieldLabel>
-                <ToggleGroup
-                  value={[effectiveMode]}
-                  onValueChange={(value) => {
-                    const nextMode = value[0] as VideoMode | undefined
-                    if (nextMode) setMode(nextMode)
-                  }}
-                  className='grid w-full grid-cols-2'
-                  variant='outline'
-                  size='sm'
+                <Select
+                  value={effectiveMode}
+                  onValueChange={(value) => setMode(value as VideoMode)}
                 >
-                  {MODE_OPTIONS.map((option) => (
-                    <ToggleGroupItem
-                      key={option.value}
-                      value={option.value}
-                      className='h-auto min-h-12 flex-col items-start gap-0.5 px-2 py-2 text-left whitespace-normal'
-                    >
-                      <span className='text-sm font-medium'>
-                        {t(option.label)}
-                      </span>
-                      <span className='text-muted-foreground text-xs'>
-                        {t(option.description)}
-                      </span>
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
+                  <SelectTrigger className='w-full'>
+                    <SelectValue>
+                      {selectedModeOption ? t(selectedModeOption.label) : ''}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {MODE_OPTIONS.map((option) => (
+                        <SelectItem
+                          key={option.value}
+                          value={option.value}
+                          disabled={isModeDisabled(option.value)}
+                        >
+                          <span className='flex flex-col'>
+                            <span>{t(option.label)}</span>
+                            <span className='text-muted-foreground text-xs'>
+                              {t(option.description)}
+                            </span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </Field>
 
               <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
@@ -649,7 +665,7 @@ export function VideoGeneration() {
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder={t('Describe the video you want to generate')}
                 />
-                {mode !== 'text' && (
+                {effectiveMode !== 'text' && (
                   <FieldDescription>
                     {t('Guides motion and style for image-to-video models.')}
                   </FieldDescription>
@@ -666,7 +682,7 @@ export function VideoGeneration() {
                 setFirstClip={setFirstClip}
               />
 
-              {(isAliModel || mode !== 'continuation') && (
+              {(isAliModel || effectiveMode !== 'continuation') && (
                 <Field>
                   <FieldLabel>{t('Audio URL')}</FieldLabel>
                   <Input

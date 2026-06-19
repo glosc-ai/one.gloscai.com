@@ -45,6 +45,10 @@ export function useMediaModels(category: ModelCategory) {
         label: m.model_name,
         value: m.model_name,
         category,
+        channel_type: m.channel_type,
+        channel_type_name: m.channel_type_name,
+        channel_types_by_group: m.channel_types_by_group,
+        channel_type_names_by_group: m.channel_type_names_by_group,
       }))
   }, [categorized, category])
 

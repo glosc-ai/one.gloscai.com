@@ -140,6 +140,10 @@ func ValidateMultipartDirect(c *gin.Context, info *RelayInfo) *dto.TaskError {
 	if req.InputReference != "" {
 		req.Images = []string{req.InputReference}
 	}
+	if len(req.Images) == 0 && strings.TrimSpace(req.Image) != "" {
+		// 兼容只传 image 的图生视频请求。
+		req.Images = []string{req.Image}
+	}
 
 	if strings.TrimSpace(req.Model) == "" {
 		return createTaskError(fmt.Errorf("model field is required"), "missing_model", http.StatusBadRequest, true)
