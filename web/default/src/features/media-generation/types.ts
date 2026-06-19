@@ -78,9 +78,12 @@ export interface VideoGenerationRequest {
   prompt: string
   group?: string
   image?: string
+  images?: string[]
+  input_reference?: string
   size?: string
   seconds?: string
   duration?: number
+  metadata?: Record<string, unknown>
 }
 
 export interface VideoTaskStatus {
@@ -101,12 +104,28 @@ export interface VideoGenerationHistoryItem {
   id: string
   createdAt: number
   updatedAt: number
+  mode?: string
   model: string
   group?: string
   prompt: string
   image?: string
+  firstFrame?: string
+  lastFrame?: string
+  firstClip?: string
+  audioUrl?: string
+  negativePrompt?: string
+  template?: string
+  resolution?: string
+  ratio?: string
+  legacySize?: string
   size?: string
   seconds?: string
+  promptExtend?: boolean
+  watermark?: boolean
+  audioEnabled?: boolean
+  shotType?: string
+  seed?: string
+  metadata?: Record<string, unknown>
   task: VideoTaskStatus
 }
 

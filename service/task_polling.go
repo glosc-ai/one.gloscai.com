@@ -359,10 +359,17 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 	if privateData.Key != "" {
 		key = privateData.Key
 	}
-	resp, err := adaptor.FetchTask(baseURL, key, map[string]any{
+	fetchBody := map[string]any{
 		"task_id": task.GetUpstreamTaskID(),
 		"action":  task.Action,
-	}, proxy)
+	}
+	if modelName := firstNonEmpty(task.Properties.OriginModelName, task.Properties.UpstreamModelName); modelName != "" {
+		fetchBody["model"] = modelName
+	}
+	if videoID := extractTaskDataString(task.Data, "video_id"); videoID != "" {
+		fetchBody["video_id"] = videoID
+	}
+	resp, err := adaptor.FetchTask(baseURL, key, fetchBody, proxy)
 	if err != nil {
 		return fmt.Errorf("fetchTask failed for task %s: %w", taskId, err)
 	}
@@ -439,16 +446,22 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 		if task.FinishTime == 0 {
 			task.FinishTime = now
 		}
-		if strings.HasPrefix(taskResult.Url, "data:") {
-			// data: URI (e.g. Vertex base64 encoded video) — keep in Data, not in ResultURL
-			task.PrivateData.ResultURL = taskcommon.BuildProxyURL(task.TaskID)
-		} else if taskResult.Url != "" {
-			// Direct upstream URL (e.g. Kling, Ali, Doubao, etc.)
-			task.PrivateData.ResultURL = taskResult.Url
-		} else {
-			// No URL from adaptor — construct proxy URL using public task ID
-			task.PrivateData.ResultURL = taskcommon.BuildProxyURL(task.TaskID)
+		resultURL, resultErr := normalizeVideoResultLocation(ctx, task, taskResult.Url)
+		if resultErr != nil {
+			logger.LogError(ctx, fmt.Sprintf("Failed to normalize video result for task %s: %s", task.TaskID, resultErr.Error()))
 		}
+		if resultURL == "" && (ch.Type == constant.ChannelTypeOpenAI || ch.Type == constant.ChannelTypeSora) {
+			fetchedURL, fetchErr := fetchAndStoreVideoContent(ctx, task, baseURL, task.GetUpstreamTaskID(), key, proxy)
+			if fetchErr != nil {
+				logger.LogError(ctx, fmt.Sprintf("Failed to fetch and store video content for task %s: %s", task.TaskID, fetchErr.Error()))
+			} else {
+				resultURL = fetchedURL
+			}
+		}
+		if resultURL == "" {
+			resultURL = taskcommon.BuildProxyURL(task.TaskID)
+		}
+		task.PrivateData.ResultURL = resultURL
 		shouldSettle = true
 	case model.TaskStatusFailure:
 		logger.LogJson(ctx, fmt.Sprintf("Task %s failed", taskId), task)
@@ -533,6 +546,20 @@ func truncateBase64(s string) string {
 		return s
 	}
 	return s[:maxKeep] + "..."
+}
+
+func extractTaskDataString(data []byte, key string) string {
+	if len(data) == 0 || strings.TrimSpace(key) == "" {
+		return ""
+	}
+	var payload map[string]any
+	if err := common.Unmarshal(data, &payload); err != nil {
+		return ""
+	}
+	if value, ok := payload[key].(string); ok {
+		return strings.TrimSpace(value)
+	}
+	return ""
 }
 
 // settleTaskBillingOnComplete 任务完成时的统一计费调整。

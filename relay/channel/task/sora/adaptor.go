@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -41,6 +42,7 @@ type ImageURL struct {
 type responseTask struct {
 	ID                 string `json:"id"`
 	TaskID             string `json:"task_id,omitempty"` //兼容旧接口
+	VideoID            string `json:"video_id,omitempty"`
 	Object             string `json:"object"`
 	Model              string `json:"model"`
 	Status             string `json:"status"`
@@ -51,7 +53,19 @@ type responseTask struct {
 	Seconds            string `json:"seconds,omitempty"`
 	Size               string `json:"size,omitempty"`
 	RemixedFromVideoID string `json:"remixed_from_video_id,omitempty"`
-	Error              *struct {
+	URL                string `json:"url,omitempty"`
+	VideoURL           string `json:"video_url,omitempty"`
+	ResultURL          string `json:"result_url,omitempty"`
+	Output             string `json:"output,omitempty"`
+	Content            struct {
+		URL      string `json:"url,omitempty"`
+		VideoURL string `json:"video_url,omitempty"`
+	} `json:"content,omitempty"`
+	Metadata struct {
+		URL      string `json:"url,omitempty"`
+		VideoURL string `json:"video_url,omitempty"`
+	} `json:"metadata,omitempty"`
+	Error *struct {
 		Message string `json:"message"`
 		Code    string `json:"code"`
 	} `json:"error,omitempty"`
@@ -262,8 +276,18 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy 
 	if !ok {
 		return nil, fmt.Errorf("invalid task_id")
 	}
+	modelName, _ := body["model"].(string)
+	videoID, _ := body["video_id"].(string)
 
 	uri := fmt.Sprintf("%s/v1/videos/%s", baseUrl, taskID)
+	if shouldUseAgnesVideoIDFetch(baseUrl, modelName, videoID) {
+		values := url.Values{}
+		values.Set("video_id", videoID)
+		if strings.TrimSpace(modelName) != "" {
+			values.Set("model_name", modelName)
+		}
+		uri = fmt.Sprintf("%s/agnesapi?%s", strings.TrimRight(baseUrl, "/"), values.Encode())
+	}
 
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
@@ -304,7 +328,17 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 		taskResult.Status = model.TaskStatusInProgress
 	case "completed":
 		taskResult.Status = model.TaskStatusSuccess
-		// Url intentionally left empty — the caller constructs the proxy URL using the public task ID
+		taskResult.Url = firstPlayableVideoURL(
+			resTask.URL,
+			resTask.VideoURL,
+			resTask.ResultURL,
+			resTask.Output,
+			resTask.Content.URL,
+			resTask.Content.VideoURL,
+			resTask.Metadata.URL,
+			resTask.Metadata.VideoURL,
+			resTask.RemixedFromVideoID,
+		)
 	case "failed", "cancelled":
 		taskResult.Status = model.TaskStatusFailure
 		if resTask.Error != nil {
@@ -321,11 +355,45 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 	return &taskResult, nil
 }
 
+func shouldUseAgnesVideoIDFetch(baseURL string, modelName string, videoID string) bool {
+	if strings.TrimSpace(videoID) == "" {
+		return false
+	}
+	modelName = strings.ToLower(strings.TrimSpace(modelName))
+	baseURL = strings.ToLower(strings.TrimSpace(baseURL))
+	return strings.Contains(modelName, "agnes-video") || strings.Contains(baseURL, "agnes")
+}
+
+func firstPlayableVideoURL(values ...string) string {
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if strings.HasPrefix(value, "data:") {
+			return value
+		}
+		parsed, err := url.Parse(value)
+		if err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https") && parsed.Host != "" {
+			return value
+		}
+	}
+	return ""
+}
+
 func (a *TaskAdaptor) ConvertToOpenAIVideo(task *model.Task) ([]byte, error) {
 	data := task.Data
 	var err error
 	if data, err = sjson.SetBytes(data, "id", task.TaskID); err != nil {
 		return nil, errors.Wrap(err, "set id failed")
+	}
+	if data, err = sjson.SetBytes(data, "task_id", task.TaskID); err != nil {
+		return nil, errors.Wrap(err, "set task_id failed")
+	}
+	if resultURL := strings.TrimSpace(task.GetResultURL()); resultURL != "" {
+		if data, err = sjson.SetBytes(data, "metadata.url", resultURL); err != nil {
+			return nil, errors.Wrap(err, "set metadata url failed")
+		}
 	}
 	return data, nil
 }
