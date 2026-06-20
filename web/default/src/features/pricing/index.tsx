@@ -59,6 +59,7 @@ export function Pricing() {
     groupFilter,
     quotaTypeFilter,
     endpointTypeFilter,
+    discountFilter,
     tagFilter,
     tokenUnit,
     viewMode,
@@ -69,6 +70,7 @@ export function Pricing() {
     setGroupFilter,
     setQuotaTypeFilter,
     setEndpointTypeFilter,
+    setDiscountFilter,
     setTagFilter,
     setTokenUnit,
     setViewMode,
@@ -204,11 +206,13 @@ export function Pricing() {
               endpointTypeFilter={endpointTypeFilter}
               vendorFilter={vendorFilter}
               groupFilter={groupFilter}
+              discountFilter={discountFilter}
               tagFilter={tagFilter}
               onQuotaTypeChange={setQuotaTypeFilter}
               onEndpointTypeChange={setEndpointTypeFilter}
               onVendorChange={setVendorFilter}
               onGroupChange={setGroupFilter}
+              onDiscountChange={setDiscountFilter}
               onTagChange={setTagFilter}
               vendors={vendors || []}
               groups={availableGroups}
@@ -236,11 +240,13 @@ export function Pricing() {
                 endpointTypeFilter={endpointTypeFilter}
                 vendorFilter={vendorFilter}
                 groupFilter={groupFilter}
+                discountFilter={discountFilter}
                 tagFilter={tagFilter}
                 onQuotaTypeChange={setQuotaTypeFilter}
                 onEndpointTypeChange={setEndpointTypeFilter}
                 onVendorChange={setVendorFilter}
                 onGroupChange={setGroupFilter}
+                onDiscountChange={setDiscountFilter}
                 onTagChange={setTagFilter}
                 vendors={vendors || []}
                 groups={availableGroups}

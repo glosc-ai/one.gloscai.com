@@ -22,8 +22,10 @@ import {
   QUOTA_TYPES,
   QUOTA_TYPE_VALUES,
   ENDPOINT_TYPES,
+  DISCOUNT_FILTERS,
 } from '../constants'
 import type { PricingModel } from '../types'
+import { isModelDiscounting } from './price'
 
 // ----------------------------------------------------------------------------
 // Filter Utilities
@@ -99,6 +101,17 @@ export function filterByEndpointType(
 }
 
 /**
+ * Filter models by active discount status
+ */
+export function filterByDiscountStatus(
+  models: PricingModel[],
+  discount: string
+): PricingModel[] {
+  if (discount !== DISCOUNT_FILTERS.DISCOUNTING) return models
+  return models.filter(isModelDiscounting)
+}
+
+/**
  * Get model price for sorting
  */
 function getModelPrice(model: PricingModel): number {
@@ -142,6 +155,7 @@ export function filterAndSortModels(
     group: string
     quotaType: string
     endpointType: string
+    discount: string
     tag: string
     sortBy: string
   }
@@ -151,6 +165,7 @@ export function filterAndSortModels(
   result = filterByGroup(result, filters.group)
   result = filterByQuotaType(result, filters.quotaType)
   result = filterByEndpointType(result, filters.endpointType)
+  result = filterByDiscountStatus(result, filters.discount)
   result = filterByTag(result, filters.tag)
   result = sortModels(result, filters.sortBy)
 

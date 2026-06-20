@@ -96,12 +96,32 @@ export function getEndpointTypeLabels(
   }
 }
 
+/** Discount filter options */
+export const DISCOUNT_FILTERS = {
+  ALL: 'all',
+  DISCOUNTING: 'discounting',
+} as const
+
+export type DiscountFilterOption =
+  (typeof DISCOUNT_FILTERS)[keyof typeof DISCOUNT_FILTERS]
+
+/** Discount filter labels */
+export function getDiscountFilterLabels(
+  t: TFunction
+): Record<DiscountFilterOption, string> {
+  return {
+    [DISCOUNT_FILTERS.ALL]: t('All Models'),
+    [DISCOUNT_FILTERS.DISCOUNTING]: t('Discounting'),
+  }
+}
+
 /** Filter section keys */
 export const FILTER_SECTIONS = {
   PRICING_TYPE: 'pricingType',
   ENDPOINT_TYPE: 'endpointType',
   VENDOR: 'vendor',
   GROUP: 'group',
+  DISCOUNT: 'discount',
   TAG: 'tag',
 } as const
 

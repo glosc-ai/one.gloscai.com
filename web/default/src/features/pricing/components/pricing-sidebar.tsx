@@ -32,10 +32,13 @@ import {
   ENDPOINT_TYPES,
   FILTER_ALL,
   QUOTA_TYPES,
+  DISCOUNT_FILTERS,
+  getDiscountFilterLabels,
   getEndpointTypeLabels,
   getQuotaTypeLabels,
 } from '../constants'
 import { parseTags } from '../lib/filters'
+import { isModelDiscounting } from '../lib/price'
 import type { PricingModel, PricingVendor } from '../types'
 
 type FilterOption = {
@@ -58,11 +61,13 @@ export interface PricingSidebarProps {
   endpointTypeFilter: string
   vendorFilter: string
   groupFilter: string
+  discountFilter: string
   tagFilter: string
   onQuotaTypeChange: (value: string) => void
   onEndpointTypeChange: (value: string) => void
   onVendorChange: (value: string) => void
   onGroupChange: (value: string) => void
+  onDiscountChange: (value: string) => void
   onTagChange: (value: string) => void
   vendors: PricingVendor[]
   groups: string[]
@@ -158,6 +163,7 @@ export function PricingSidebar(props: PricingSidebarProps) {
   const { t } = useTranslation()
   const quotaTypeLabels = getQuotaTypeLabels(t)
   const endpointTypeLabels = getEndpointTypeLabels(t)
+  const discountFilterLabels = getDiscountFilterLabels(t)
 
   const vendorOptions: FilterOption[] = [
     {
@@ -205,6 +211,19 @@ export function PricingSidebar(props: PricingSidebarProps) {
       value: QUOTA_TYPES.REQUEST,
       label: quotaTypeLabels[QUOTA_TYPES.REQUEST],
       count: countBy(props.models, (model) => model.quota_type === 1),
+    },
+  ]
+
+  const discountOptions: FilterOption[] = [
+    {
+      value: DISCOUNT_FILTERS.ALL,
+      label: discountFilterLabels[DISCOUNT_FILTERS.ALL],
+      count: props.models.length,
+    },
+    {
+      value: DISCOUNT_FILTERS.DISCOUNTING,
+      label: discountFilterLabels[DISCOUNT_FILTERS.DISCOUNTING],
+      count: countBy(props.models, isModelDiscounting),
     },
   ]
 
@@ -295,6 +314,12 @@ export function PricingSidebar(props: PricingSidebarProps) {
           value={props.quotaTypeFilter}
           options={quotaOptions}
           onChange={props.onQuotaTypeChange}
+        />
+        <FilterSection
+          title={t('Discount')}
+          value={props.discountFilter}
+          options={discountOptions}
+          onChange={props.onDiscountChange}
         />
         <FilterSection
           title={t('Endpoint Type')}

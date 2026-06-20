@@ -148,6 +148,10 @@ export function getModelPriceAdjustmentType(
   return null
 }
 
+export function isModelDiscounting(model: PricingModel): boolean {
+  return getModelPriceAdjustmentType(model) === 'discount'
+}
+
 function applyModelDiscount(
   model: PricingModel,
   price: number,

@@ -76,11 +76,13 @@ export interface PricingToolbarProps {
   endpointTypeFilter: string
   vendorFilter: string
   groupFilter: string
+  discountFilter: string
   tagFilter: string
   onQuotaTypeChange: (value: string) => void
   onEndpointTypeChange: (value: string) => void
   onVendorChange: (value: string) => void
   onGroupChange: (value: string) => void
+  onDiscountChange: (value: string) => void
   onTagChange: (value: string) => void
   vendors: PricingVendor[]
   groups: string[]
@@ -288,11 +290,13 @@ export function PricingToolbar(props: PricingToolbarProps) {
               endpointTypeFilter={props.endpointTypeFilter}
               vendorFilter={props.vendorFilter}
               groupFilter={props.groupFilter}
+              discountFilter={props.discountFilter}
               tagFilter={props.tagFilter}
               onQuotaTypeChange={props.onQuotaTypeChange}
               onEndpointTypeChange={props.onEndpointTypeChange}
               onVendorChange={props.onVendorChange}
               onGroupChange={props.onGroupChange}
+              onDiscountChange={props.onDiscountChange}
               onTagChange={props.onTagChange}
               vendors={props.vendors}
               groups={props.groups}
