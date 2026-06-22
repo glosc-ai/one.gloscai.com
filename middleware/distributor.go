@@ -92,12 +92,18 @@ func Distribute() func(c *gin.Context) {
 						return
 					}
 					if playgroundRequest.Group != "" {
-						if !service.GroupInUserUsableGroups(usingGroup, playgroundRequest.Group) && playgroundRequest.Group != usingGroup {
-							abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgDistributorGroupAccessDenied))
+						var allowed bool
+						usingGroup, allowed = applyPlaygroundGroup(c, usingGroup, playgroundRequest.Group)
+						if !allowed {
 							return
 						}
-						usingGroup = playgroundRequest.Group
-						common.SetContextKey(c, constant.ContextKeyUsingGroup, usingGroup)
+					}
+				}
+				if strings.HasPrefix(c.Request.URL.Path, "/pg/images/generations") && modelRequest.Group != "" {
+					var allowed bool
+					usingGroup, allowed = applyPlaygroundGroup(c, usingGroup, modelRequest.Group)
+					if !allowed {
+						return
 					}
 				}
 
@@ -165,6 +171,19 @@ func Distribute() func(c *gin.Context) {
 			service.RecordChannelAffinity(c, channel.Id)
 		}
 	}
+}
+
+func applyPlaygroundGroup(c *gin.Context, usingGroup string, requestedGroup string) (string, bool) {
+	if requestedGroup == "" {
+		return usingGroup, true
+	}
+	if !service.GroupInUserUsableGroups(usingGroup, requestedGroup) && requestedGroup != usingGroup {
+		abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgDistributorGroupAccessDenied))
+		return usingGroup, false
+	}
+	common.SetContextKey(c, constant.ContextKeyUsingGroup, requestedGroup)
+	common.SetContextKey(c, constant.ContextKeyTokenGroup, requestedGroup)
+	return requestedGroup, true
 }
 
 // getModelFromRequest 从请求中读取模型信息

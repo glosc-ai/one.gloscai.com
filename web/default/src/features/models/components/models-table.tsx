@@ -16,9 +16,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
+import { type OnChangeFn, type SortingState } from '@tanstack/react-table'
 import { useMediaQuery } from '@/hooks'
 import { useTranslation } from 'react-i18next'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
@@ -31,17 +32,25 @@ import {
   getSyncStatusOptions,
 } from '../constants'
 import { modelsQueryKeys, vendorsQueryKeys } from '../lib'
+import type { ModelSortBy } from '../types'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { useModelsColumns } from './models-columns'
 import { useModels } from './models-provider'
 
 const route = getRouteApi('/_authenticated/models/$section')
 const EMPTY_TAG_FILTER_VALUE = '__empty__'
+const MODEL_SORTABLE_COLUMNS = new Set<ModelSortBy>([
+  'id',
+  'model_name',
+  'created_time',
+  'updated_time',
+])
 
 export function ModelsTable() {
   const { t } = useTranslation()
   const { selectedVendor } = useModels()
   const isMobile = useMediaQuery('(max-width: 640px)')
+  const [sorting, setSorting] = useState<SortingState>([])
 
   // URL state management
   const {
@@ -114,6 +123,31 @@ export function ModelsTable() {
       ? tagFilter[0]
       : undefined
 
+  const sortParams = useMemo(() => {
+    const activeSort = sorting[0]
+    if (
+      !activeSort ||
+      !MODEL_SORTABLE_COLUMNS.has(activeSort.id as ModelSortBy)
+    ) {
+      return {}
+    }
+
+    return {
+      sort_by: activeSort.id as ModelSortBy,
+      sort_order: activeSort.desc ? 'desc' : 'asc',
+    } as const
+  }, [sorting])
+
+  const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
+    setSorting((previous) => {
+      const next = typeof updater === 'function' ? updater(previous) : updater
+      if (pagination.pageIndex > 0) {
+        onPaginationChange({ ...pagination, pageIndex: 0 })
+      }
+      return next
+    })
+  }
+
   // Fetch models data
   // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const { data, isLoading, isFetching } = useQuery({
@@ -133,6 +167,7 @@ export function ModelsTable() {
         priceFilter.length > 0 && !priceFilter.includes('all')
           ? priceFilter[0]
           : undefined,
+      ...sortParams,
       p: pagination.pageIndex + 1,
       page_size: pagination.pageSize,
     }),
@@ -154,6 +189,7 @@ export function ModelsTable() {
             priceFilter.length > 0 && !priceFilter.includes('all')
               ? priceFilter[0]
               : undefined,
+          ...sortParams,
           p: pagination.pageIndex + 1,
           page_size: pagination.pageSize,
         })
@@ -172,6 +208,7 @@ export function ModelsTable() {
             priceFilter.length > 0 && !priceFilter.includes('all')
               ? priceFilter[0]
               : undefined,
+          ...sortParams,
           p: pagination.pageIndex + 1,
           page_size: pagination.pageSize,
         })
@@ -198,10 +235,12 @@ export function ModelsTable() {
       bound_channels: false,
       quota_types: false,
     },
+    sorting,
     columnFilters,
     pagination,
     globalFilter,
     enableRowSelection: true,
+    onSortingChange: handleSortingChange,
     onColumnFiltersChange,
     onPaginationChange,
     onGlobalFilterChange,

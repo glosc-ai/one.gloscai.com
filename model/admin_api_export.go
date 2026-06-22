@@ -90,8 +90,14 @@ func ListAdminAPIUsers(filter AdminAPIQuery) ([]*User, int64, error) {
 	return users, total, err
 }
 
-func ListAdminAPIPaymentLogs(filter TopUpLogFilter, sortBy string, sortOrder string, pageInfo *common.PageInfo) ([]*TopUpLog, int64, error) {
-	query := DB.Model(&TopUp{}).Joins("LEFT JOIN users ON users.id = top_ups.user_id")
+func ListAdminAPIPaymentLogs(
+	filter TopUpLogFilter,
+	sortBy string,
+	sortOrder string,
+	pageInfo *common.PageInfo,
+) ([]*TopUpLog, int64, error) {
+	query := DB.Model(&TopUp{}).
+		Joins("LEFT JOIN users ON users.id = top_ups.user_id")
 	var err error
 	query, err = applyTopUpLogFilters(query, filter)
 	if err != nil {
@@ -101,17 +107,9 @@ func ListAdminAPIPaymentLogs(filter TopUpLogFilter, sortBy string, sortOrder str
 	if err = query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	allowedSorts := map[string]string{
-		"id":            "top_ups.id",
-		"create_time":   "top_ups.create_time",
-		"complete_time": "top_ups.complete_time",
-		"amount":        "top_ups.amount",
-		"money":         "top_ups.money",
-		"status":        "top_ups.status",
-	}
 	var logs []*TopUpLog
-	err = query.Select("top_ups.id, top_ups.user_id, COALESCE(users.username, '') AS username, top_ups.amount, top_ups.money, top_ups.trade_no, top_ups.payment_method, top_ups.payment_provider, top_ups.create_time, top_ups.complete_time, top_ups.status").
-		Order(safeSortClause(sortBy, allowedSorts, "top_ups.id", sortOrder)).
+	err = query.Select(topUpLogSelect).
+		Order(topUpLogSortClause(sortBy, sortOrder)).
 		Limit(pageInfo.GetPageSize()).
 		Offset(pageInfo.GetStartIdx()).
 		Find(&logs).Error
@@ -157,21 +155,8 @@ func ListAdminAPIUsageLogs(logType int, filter AdminAPIQuery, modelName string, 
 	if err = tx.Model(&Log{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	allowedSorts := map[string]string{
-		"id":                "logs.id",
-		"created_at":        "logs.created_at",
-		"user_id":           "logs.user_id",
-		"username":          "logs.username",
-		"model_name":        "logs.model_name",
-		"prompt_tokens":     "logs.prompt_tokens",
-		"completion_tokens": "logs.completion_tokens",
-		"quota":             "logs.quota",
-		"use_time":          "logs.use_time",
-		"channel":           "logs.channel_id",
-		"type":              "logs.type",
-	}
 	var logs []*Log
-	err = tx.Order(safeSortClause(filter.SortBy, allowedSorts, "logs.created_at", filter.SortOrder)+", logs.id desc").
+	err = tx.Order(usageLogSortClause(filter.SortBy, filter.SortOrder, "logs.created_at")+", logs.id desc").
 		Limit(filter.PageInfo.GetPageSize()).
 		Offset(filter.PageInfo.GetStartIdx()).
 		Find(&logs).Error
@@ -190,17 +175,8 @@ func ListAdminAPIModels(filter ModelsMetaFilter, queryFilter AdminAPIQuery) ([]*
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	allowedSorts := map[string]string{
-		"id":            "models.id",
-		"model_name":    "models.model_name",
-		"created_time":  "models.created_time",
-		"updated_time":  "models.updated_time",
-		"status":        "models.status",
-		"vendor_id":     "models.vendor_id",
-		"sync_official": "models.sync_official",
-	}
 	var models []*Model
-	err := query.Order(safeSortClause(queryFilter.SortBy, allowedSorts, "models.id", queryFilter.SortOrder)).
+	err := query.Order(modelsMetaSortClause(queryFilter.SortBy, queryFilter.SortOrder)).
 		Limit(queryFilter.PageInfo.GetPageSize()).
 		Offset(queryFilter.PageInfo.GetStartIdx()).
 		Find(&models).Error
@@ -213,17 +189,8 @@ func ListAdminAPIModelCallLogs(filter ModelCallLogFilter, sortBy string, sortOrd
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	allowedSorts := map[string]string{
-		"id":                "logs.id",
-		"created_at":        "logs.created_at",
-		"user_id":           "logs.user_id",
-		"model_name":        "logs.model_name",
-		"prompt_tokens":     "logs.prompt_tokens",
-		"completion_tokens": "logs.completion_tokens",
-		"quota":             "logs.quota",
-	}
 	var logs []*Log
-	if err := query.Order(safeSortClause(sortBy, allowedSorts, "logs.id", sortOrder)).
+	if err := query.Order(modelCallLogSortClause(sortBy, sortOrder)).
 		Limit(pageInfo.GetPageSize()).
 		Offset(pageInfo.GetStartIdx()).
 		Find(&logs).Error; err != nil {

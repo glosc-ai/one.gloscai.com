@@ -70,6 +70,19 @@ export async function getUpstreamChannels() {
   return res.data
 }
 
+export async function getDiscountChannel(id: number) {
+  const res = await api.get<{
+    success: boolean
+    message: string
+    data?: {
+      id: number
+      name: string
+      models: string
+    }
+  }>(`/api/channel/${id}`)
+  return res.data
+}
+
 export async function fetchUpstreamRatios(request: FetchUpstreamRatiosRequest) {
   const res = await api.post<UpstreamRatiosResponse>(
     '/api/ratio_sync/fetch',

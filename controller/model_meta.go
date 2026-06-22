@@ -74,6 +74,8 @@ func getModelsMetaFilter(c *gin.Context) model.ModelsMetaFilter {
 			map[string]struct{}{"no": {}, "none": {}, "false": {}, "0": {}},
 		),
 		HasPrice: parseModelBoolFilter(priceFilter),
+		SortBy:   c.Query("sort_by"),
+		SortOrder: c.Query("sort_order"),
 	}
 }
 

@@ -19,6 +19,17 @@ export const modelCallLogSchema = z.object({
 
 export type ModelCallLog = z.infer<typeof modelCallLogSchema>
 
+export type SortOrder = 'asc' | 'desc'
+
+export type ModelCallLogSortBy =
+  | 'id'
+  | 'username'
+  | 'model_name'
+  | 'total_tokens'
+  | 'quota'
+  | 'status'
+  | 'created_at'
+
 export interface GetModelCallLogsParams {
   p?: number
   page_size?: number
@@ -26,6 +37,8 @@ export interface GetModelCallLogsParams {
   status?: string
   start_timestamp?: number
   end_timestamp?: number
+  sort_by?: ModelCallLogSortBy
+  sort_order?: SortOrder
 }
 
 export interface GetModelCallLogsResponse {

@@ -2,6 +2,7 @@ package billing_setting
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
@@ -72,18 +73,91 @@ func GetModelDiscount(model string) (float64, bool) {
 }
 
 func GetModelDiscountInfo(model string) (ModelDiscount, bool) {
-	discount, ok := billingSetting.ModelDiscounts[model]
-	if !ok || discount.Discount <= 0 {
-		return ModelDiscount{}, false
+	now := time.Now().Unix()
+	if discount, ok := billingSetting.ModelDiscounts[model]; ok {
+		if validModelDiscount(discount, now) {
+			return discount, true
+		}
 	}
-	if discount.EndTime > 0 && discount.EndTime <= time.Now().Unix() {
-		return ModelDiscount{}, false
+
+	bestPattern := ""
+	bestSpecificity := -1
+	var bestDiscount ModelDiscount
+	for pattern, discount := range billingSetting.ModelDiscounts {
+		if !strings.ContainsAny(pattern, "*?") {
+			continue
+		}
+		if !validModelDiscount(discount, now) {
+			continue
+		}
+		if !wildcardMatch(pattern, model) {
+			continue
+		}
+		specificity := wildcardSpecificity(pattern)
+		if specificity > bestSpecificity ||
+			(specificity == bestSpecificity && pattern < bestPattern) {
+			bestPattern = pattern
+			bestSpecificity = specificity
+			bestDiscount = discount
+		}
 	}
-	return discount, true
+	if bestSpecificity >= 0 {
+		return bestDiscount, true
+	}
+	return ModelDiscount{}, false
 }
 
 func GetModelDiscountCopy() map[string]ModelDiscount {
 	return lo.Assign(billingSetting.ModelDiscounts)
+}
+
+func validModelDiscount(discount ModelDiscount, now int64) bool {
+	if discount.Discount <= 0 {
+		return false
+	}
+	if discount.EndTime > 0 && discount.EndTime <= now {
+		return false
+	}
+	return true
+}
+
+func wildcardSpecificity(pattern string) int {
+	specificity := 0
+	for _, char := range pattern {
+		if char != '*' && char != '?' {
+			specificity++
+		}
+	}
+	return specificity
+}
+
+func wildcardMatch(pattern, value string) bool {
+	patternRunes := []rune(pattern)
+	valueRunes := []rune(value)
+	matches := make([]bool, len(valueRunes)+1)
+	matches[0] = true
+
+	for _, patternRune := range patternRunes {
+		next := make([]bool, len(valueRunes)+1)
+		switch patternRune {
+		case '*':
+			next[0] = matches[0]
+			for idx := 1; idx <= len(valueRunes); idx++ {
+				next[idx] = matches[idx] || next[idx-1]
+			}
+		case '?':
+			for idx := 1; idx <= len(valueRunes); idx++ {
+				next[idx] = matches[idx-1]
+			}
+		default:
+			for idx := 1; idx <= len(valueRunes); idx++ {
+				next[idx] = matches[idx-1] && valueRunes[idx-1] == patternRune
+			}
+		}
+		matches = next
+	}
+
+	return matches[len(valueRunes)]
 }
 
 func GetPricingSyncData(base map[string]any) map[string]any {

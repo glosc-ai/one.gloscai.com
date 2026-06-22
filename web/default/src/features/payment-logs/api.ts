@@ -18,6 +18,12 @@ export async function getPaymentLogs(
   if (params.payment_method) {
     searchParams.set('payment_method', params.payment_method)
   }
+  if (params.sort_by) {
+    searchParams.set('sort_by', params.sort_by)
+  }
+  if (params.sort_order) {
+    searchParams.set('sort_order', params.sort_order)
+  }
 
   const res = await api.get(`/api/user/topup?${searchParams.toString()}`)
   return res.data

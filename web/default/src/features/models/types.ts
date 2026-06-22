@@ -80,6 +80,12 @@ export interface PrefillGroup {
   description?: string
 }
 
+export type SortOrder = 'asc' | 'desc'
+
+export type ModelSortBy = 'id' | 'model_name' | 'created_time' | 'updated_time'
+
+export type DeploymentSortBy = 'id' | 'name' | 'created_at'
+
 // ============================================================================
 // API Request/Response Types
 // ============================================================================
@@ -95,6 +101,8 @@ export interface GetModelsParams {
   status?: string // filter by status
   sync_official?: string // filter by sync_official status
   has_price?: string // filter by pricing configuration status
+  sort_by?: ModelSortBy
+  sort_order?: SortOrder
 }
 
 /**
@@ -109,6 +117,8 @@ export interface SearchModelsParams {
   has_price?: string // filter by pricing configuration status
   p?: number
   page_size?: number
+  sort_by?: ModelSortBy
+  sort_order?: SortOrder
 }
 
 /**

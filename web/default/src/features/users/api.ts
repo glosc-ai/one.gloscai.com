@@ -38,8 +38,13 @@ import type {
 export async function getUsers(
   params: GetUsersParams = {}
 ): Promise<GetUsersResponse> {
-  const { p = 1, page_size = 10 } = params
-  const res = await api.get(`/api/user/?p=${p}&page_size=${page_size}`)
+  const searchParams = new URLSearchParams()
+  searchParams.set('p', String(params.p ?? 1))
+  searchParams.set('page_size', String(params.page_size ?? 10))
+  if (params.sort_by) searchParams.set('sort_by', params.sort_by)
+  if (params.sort_order) searchParams.set('sort_order', params.sort_order)
+
+  const res = await api.get(`/api/user/?${searchParams.toString()}`)
   return res.data
 }
 
@@ -64,6 +69,8 @@ export async function searchUsers(
   if (status) queryParams.set('status', status)
   queryParams.set('p', String(p))
   queryParams.set('page_size', String(page_size))
+  if (params.sort_by) queryParams.set('sort_by', params.sort_by)
+  if (params.sort_order) queryParams.set('sort_order', params.sort_order)
   const res = await api.get(`/api/user/search?${queryParams.toString()}`)
   return res.data
 }

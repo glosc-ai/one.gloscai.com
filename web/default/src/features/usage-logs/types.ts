@@ -30,6 +30,56 @@ import type { UsageLog } from './data/schema'
  */
 export type LogCategory = 'common' | 'drawing' | 'task'
 
+export type SortOrder = 'asc' | 'desc'
+
+export type CommonLogSortBy =
+  | 'id'
+  | 'created_at'
+  | 'user_id'
+  | 'username'
+  | 'model_name'
+  | 'token_name'
+  | 'group'
+  | 'prompt_tokens'
+  | 'completion_tokens'
+  | 'quota'
+  | 'use_time'
+  | 'channel'
+  | 'type'
+
+export type MidjourneyLogSortBy =
+  | 'id'
+  | 'submit_time'
+  | 'start_time'
+  | 'finish_time'
+  | 'channel_id'
+  | 'action'
+  | 'mj_id'
+  | 'code'
+  | 'progress'
+  | 'status'
+  | 'fail_reason'
+  | 'image_url'
+  | 'prompt'
+
+export type TaskLogSortBy =
+  | 'id'
+  | 'submit_time'
+  | 'finish_time'
+  | 'channel_id'
+  | 'user_id'
+  | 'task_id'
+  | 'status'
+  | 'progress'
+  | 'platform'
+  | 'action'
+  | 'fail_reason'
+
+export type UsageLogSortBy =
+  | CommonLogSortBy
+  | MidjourneyLogSortBy
+  | TaskLogSortBy
+
 // ============================================================================
 // Filter Types
 // ============================================================================
@@ -269,6 +319,8 @@ export interface GetLogsParams {
   group?: string
   request_id?: string
   upstream_request_id?: string
+  sort_by?: CommonLogSortBy
+  sort_order?: SortOrder
 }
 
 export interface GetLogsResponse {
@@ -312,6 +364,8 @@ export interface GetMidjourneyLogsParams {
   mj_id?: string
   start_timestamp?: number
   end_timestamp?: number
+  sort_by?: MidjourneyLogSortBy
+  sort_order?: SortOrder
 }
 
 // ============================================================================
@@ -325,6 +379,8 @@ export interface GetTaskLogsParams {
   task_id?: string
   start_timestamp?: number
   end_timestamp?: number
+  sort_by?: TaskLogSortBy
+  sort_order?: SortOrder
 }
 
 // ============================================================================
@@ -341,6 +397,8 @@ export interface FetchLogsConfig {
   pageSize: number
   searchParams: Record<string, unknown>
   columnFilters: Array<{ id: string; value: unknown }>
+  sort_by?: UsageLogSortBy
+  sort_order?: SortOrder
 }
 
 // ============================================================================

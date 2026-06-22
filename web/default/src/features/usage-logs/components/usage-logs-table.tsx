@@ -16,9 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
-import { type ColumnDef } from '@tanstack/react-table'
+import {
+  type ColumnDef,
+  type OnChangeFn,
+  type SortingState,
+} from '@tanstack/react-table'
 import { useMediaQuery } from '@/hooks'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -37,12 +42,48 @@ import {
 } from '../constants'
 import { useColumnsByCategory } from '../lib/columns'
 import { fetchLogsByCategory } from '../lib/utils'
-import type { LogCategory } from '../types'
+import type { LogCategory, UsageLogSortBy } from '../types'
 import { CommonLogsFilterBar } from './common-logs-filter-bar'
 import { TaskLogsFilterBar } from './task-logs-filter-bar'
 import { UsageLogsMobileList } from './usage-logs-mobile-card'
 
 const route = getRouteApi('/_authenticated/usage-logs/$section')
+
+const USAGE_LOG_SORT_COLUMN_MAP: Record<
+  LogCategory,
+  Record<string, UsageLogSortBy>
+> = {
+  common: {
+    created_at: 'created_at',
+    channel: 'channel',
+    user: 'username',
+    token_name: 'token_name',
+    model_name: 'model_name',
+    use_time: 'use_time',
+    prompt_tokens: 'prompt_tokens',
+    quota: 'quota',
+  },
+  drawing: {
+    submit_time: 'submit_time',
+    channel_id: 'channel_id',
+    action: 'action',
+    mj_id: 'mj_id',
+    code: 'code',
+    progress: 'progress',
+    image_url: 'image_url',
+    prompt: 'prompt',
+    fail_reason: 'fail_reason',
+  },
+  task: {
+    submit_time: 'submit_time',
+    channel_id: 'channel_id',
+    user: 'user_id',
+    task_id: 'task_id',
+    status: 'status',
+    progress: 'progress',
+    fail_reason: 'fail_reason',
+  },
+}
 
 const logTypeRowTint: Record<number, string> = {
   [LOG_TYPE_ENUM.ERROR]: 'bg-rose-50/40 dark:bg-rose-950/20',
@@ -63,6 +104,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
   const isAdmin = useIsAdmin()
   const isMobile = useMediaQuery('(max-width: 640px)')
   const searchParams = route.useSearch()
+  const [sorting, setSorting] = useState<SortingState>([])
 
   const {
     columnFilters,
@@ -102,6 +144,32 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
     ],
   })
 
+  const sortParams = useMemo(() => {
+    const activeSort = sorting[0]
+    const sortBy = activeSort
+      ? USAGE_LOG_SORT_COLUMN_MAP[logCategory][activeSort.id]
+      : undefined
+
+    if (!sortBy) {
+      return {}
+    }
+
+    return {
+      sort_by: sortBy,
+      sort_order: activeSort.desc ? 'desc' : 'asc',
+    } as const
+  }, [logCategory, sorting])
+
+  const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
+    setSorting((previous) => {
+      const next = typeof updater === 'function' ? updater(previous) : updater
+      if (pagination.pageIndex > 0) {
+        onPaginationChange({ ...pagination, pageIndex: 0 })
+      }
+      return next
+    })
+  }
+
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
       'logs',
@@ -111,6 +179,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
       pagination.pageSize,
       columnFilters,
       searchParams,
+      sortParams,
       t,
     ],
     queryFn: async () => {
@@ -121,6 +190,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
         pageSize: pagination.pageSize,
         searchParams,
         columnFilters,
+        ...sortParams,
       })
 
       if (!result?.success) {
@@ -146,12 +216,15 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
     data: logs as Record<string, unknown>[],
     columns: columns as ColumnDef<Record<string, unknown>>[],
     columnFilters,
+    sorting,
     pagination,
     enableRowSelection: false,
+    onSortingChange: handleSortingChange,
     onPaginationChange,
     onColumnFiltersChange,
     manualPagination: true,
     manualFiltering: true,
+    manualSorting: true,
     totalCount: data?.total || 0,
     ensurePageInRange,
   })

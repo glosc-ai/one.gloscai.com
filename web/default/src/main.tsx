@@ -100,7 +100,9 @@ const queryClient = new QueryClient({
 const router = createRouter({
   routeTree,
   context: { queryClient },
-  defaultPreload: 'intent',
+  // Intent preloading can race with guarded, code-split routes and log
+  // internal router errors in production. Keep navigation explicit.
+  defaultPreload: false,
   defaultPreloadStaleTime: 0,
 })
 

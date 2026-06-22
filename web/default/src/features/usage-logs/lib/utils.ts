@@ -33,11 +33,16 @@ import {
   TIMING_LOG_TYPES,
 } from '../constants'
 import type {
+  CommonLogSortBy,
   GetLogsParams,
   GetLogsResponse,
   FetchLogsConfig,
   GetMidjourneyLogsParams,
   GetTaskLogsParams,
+  MidjourneyLogSortBy,
+  SortOrder,
+  TaskLogSortBy,
+  UsageLogSortBy,
 } from '../types'
 
 // ============================================================================
@@ -146,14 +151,25 @@ export function buildBaseParams(config: {
   pageSize: number
   searchParams: Record<string, unknown>
   useMilliseconds?: boolean
+  sortBy?: UsageLogSortBy
+  sortOrder?: SortOrder
 }): {
   p: number
   page_size: number
   channel_id?: string
   start_timestamp?: number
   end_timestamp?: number
+  sort_by?: UsageLogSortBy
+  sort_order?: SortOrder
 } {
-  const { page, pageSize, searchParams, useMilliseconds = false } = config
+  const {
+    page,
+    pageSize,
+    searchParams,
+    useMilliseconds = false,
+    sortBy,
+    sortOrder,
+  } = config
 
   return {
     p: page,
@@ -164,6 +180,8 @@ export function buildBaseParams(config: {
         }
       : {}),
     ...buildTimeRangeParams(searchParams, useMilliseconds),
+    ...(sortBy ? { sort_by: sortBy } : {}),
+    ...(sortOrder ? { sort_order: sortOrder } : {}),
   }
 }
 
@@ -176,8 +194,18 @@ export function buildApiParams(config: {
   searchParams: Record<string, unknown>
   columnFilters?: Array<{ id: string; value: unknown }>
   isAdmin: boolean
+  sortBy?: CommonLogSortBy
+  sortOrder?: SortOrder
 }): GetLogsParams {
-  const { page, pageSize, searchParams, columnFilters = [], isAdmin } = config
+  const {
+    page,
+    pageSize,
+    searchParams,
+    columnFilters = [],
+    isAdmin,
+    sortBy,
+    sortOrder,
+  } = config
 
   // Helper to process type parameter (single value from array)
   const processType = (value: unknown): number | undefined => {
@@ -216,6 +244,8 @@ export function buildApiParams(config: {
       ? { upstream_request_id: String(searchParams.upstreamRequestId) }
       : {}),
     ...buildTimeRangeParams(searchParams, false),
+    ...(sortBy ? { sort_by: sortBy } : {}),
+    ...(sortOrder ? { sort_order: sortOrder } : {}),
   }
 
   // Override with column filters if present
@@ -259,8 +289,16 @@ export function buildApiParams(config: {
 export async function fetchLogsByCategory(
   config: FetchLogsConfig
 ): Promise<GetLogsResponse> {
-  const { logCategory, isAdmin, page, pageSize, searchParams, columnFilters } =
-    config
+  const {
+    logCategory,
+    isAdmin,
+    page,
+    pageSize,
+    searchParams,
+    columnFilters,
+    sort_by,
+    sort_order,
+  } = config
 
   if (logCategory === 'common') {
     const params = buildApiParams({
@@ -269,6 +307,8 @@ export async function fetchLogsByCategory(
       searchParams,
       columnFilters,
       isAdmin,
+      sortBy: sort_by as CommonLogSortBy | undefined,
+      sortOrder: sort_order,
     })
     return isAdmin ? await getAllLogs(params) : await getUserLogs(params)
   }
@@ -279,6 +319,8 @@ export async function fetchLogsByCategory(
     pageSize,
     searchParams,
     useMilliseconds: logCategory === 'drawing',
+    sortBy: sort_by,
+    sortOrder: sort_order,
   })
 
   const paramsWithFilter = {
@@ -293,12 +335,24 @@ export async function fetchLogsByCategory(
 
   if (logCategory === 'drawing') {
     return isAdmin
-      ? await getAllMidjourneyLogs(paramsWithFilter as GetMidjourneyLogsParams)
-      : await getUserMidjourneyLogs(paramsWithFilter as GetMidjourneyLogsParams)
+      ? await getAllMidjourneyLogs({
+          ...paramsWithFilter,
+          sort_by: sort_by as MidjourneyLogSortBy | undefined,
+        } as GetMidjourneyLogsParams)
+      : await getUserMidjourneyLogs({
+          ...paramsWithFilter,
+          sort_by: sort_by as MidjourneyLogSortBy | undefined,
+        } as GetMidjourneyLogsParams)
   }
 
   // task logs
   return isAdmin
-    ? await getAllTaskLogs(paramsWithFilter as GetTaskLogsParams)
-    : await getUserTaskLogs(paramsWithFilter as GetTaskLogsParams)
+    ? await getAllTaskLogs({
+        ...paramsWithFilter,
+        sort_by: sort_by as TaskLogSortBy | undefined,
+      } as GetTaskLogsParams)
+    : await getUserTaskLogs({
+        ...paramsWithFilter,
+        sort_by: sort_by as TaskLogSortBy | undefined,
+      } as GetTaskLogsParams)
 }

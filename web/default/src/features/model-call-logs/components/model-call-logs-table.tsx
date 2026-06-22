@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   type ColumnFiltersState,
+  type OnChangeFn,
   type SortingState,
   type VisibilityState,
   getCoreRowModel,
@@ -10,18 +11,28 @@ import {
   getFacetedUniqueValues,
   getFilteredRowModel,
   getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { useTranslation } from 'react-i18next'
 import { useMediaQuery } from '@/hooks'
+import { useTranslation } from 'react-i18next'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { DataTablePage } from '@/components/data-table'
 import { getModelCallLogs } from '../api'
 import { getModelCallLogStatusOptions } from '../constants'
+import type { ModelCallLogSortBy } from '../types'
 import { useModelCallLogsColumns } from './model-call-logs-columns'
 
 const route = getRouteApi('/_authenticated/model-call-logs/')
+
+const MODEL_CALL_LOG_SORTABLE_COLUMNS = new Set<ModelCallLogSortBy>([
+  'id',
+  'username',
+  'model_name',
+  'total_tokens',
+  'quota',
+  'status',
+  'created_at',
+])
 
 function getSingleFilterValue(
   columnFilters: ColumnFiltersState,
@@ -57,6 +68,30 @@ export function ModelCallLogsTable() {
   })
 
   const statusFilter = getSingleFilterValue(columnFilters, 'status')
+  const sortParams = useMemo(() => {
+    const activeSort = sorting[0]
+    if (
+      !activeSort ||
+      !MODEL_CALL_LOG_SORTABLE_COLUMNS.has(activeSort.id as ModelCallLogSortBy)
+    ) {
+      return {}
+    }
+
+    return {
+      sort_by: activeSort.id as ModelCallLogSortBy,
+      sort_order: activeSort.desc ? 'desc' : 'asc',
+    } as const
+  }, [sorting])
+
+  const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
+    setSorting((previous) => {
+      const next = typeof updater === 'function' ? updater(previous) : updater
+      if (pagination.pageIndex > 0) {
+        onPaginationChange({ ...pagination, pageIndex: 0 })
+      }
+      return next
+    })
+  }
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -65,6 +100,7 @@ export function ModelCallLogsTable() {
       pagination.pageSize,
       globalFilter,
       statusFilter,
+      sortParams,
     ],
     queryFn: async () => {
       const result = await getModelCallLogs({
@@ -72,6 +108,7 @@ export function ModelCallLogsTable() {
         page_size: pagination.pageSize,
         keyword: globalFilter,
         status: statusFilter,
+        ...sortParams,
       })
 
       return {
@@ -95,7 +132,7 @@ export function ModelCallLogsTable() {
       pagination,
     },
     enableRowSelection: false,
-    onSortingChange: setSorting,
+    onSortingChange: handleSortingChange,
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange,
     onGlobalFilterChange,
@@ -103,11 +140,11 @@ export function ModelCallLogsTable() {
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     manualPagination: true,
     manualFiltering: true,
+    manualSorting: true,
     pageCount: Math.ceil((data?.total || 0) / pagination.pageSize),
   })
 

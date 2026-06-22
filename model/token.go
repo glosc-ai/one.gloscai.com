@@ -56,6 +56,22 @@ func (token *Token) GetMaskedKey() string {
 	return MaskTokenKey(token.Key)
 }
 
+func tokenSortClause(sortBy string, sortOrder string) string {
+	allowedSorts := map[string]string{
+		"id":            "id",
+		"name":          "name",
+		"status":        "status",
+		"quota":         "remain_quota",
+		"remain_quota":  "remain_quota",
+		"used_quota":    "used_quota",
+		"group":         commonGroupCol,
+		"created_time":  "created_time",
+		"accessed_time": "accessed_time",
+		"expired_time":  "expired_time",
+	}
+	return safeSortClause(sortBy, allowedSorts, "id", sortOrder)
+}
+
 func (token *Token) GetIpLimits() []string {
 	// delete empty spaces
 	//split with \n
@@ -78,10 +94,10 @@ func (token *Token) GetIpLimits() []string {
 	return ipLimits
 }
 
-func GetAllUserTokens(userId int, startIdx int, num int) ([]*Token, error) {
+func GetAllUserTokens(userId int, startIdx int, num int, sortBy string, sortOrder string) ([]*Token, error) {
 	var tokens []*Token
 	var err error
-	err = DB.Where("user_id = ?", userId).Order("id desc").Limit(num).Offset(startIdx).Find(&tokens).Error
+	err = DB.Where("user_id = ?", userId).Order(tokenSortClause(sortBy, sortOrder)).Limit(num).Offset(startIdx).Find(&tokens).Error
 	return tokens, err
 }
 
@@ -124,7 +140,7 @@ func sanitizeLikePattern(input string) (string, error) {
 
 const searchHardLimit = 100
 
-func SearchUserTokens(userId int, keyword string, token string, offset int, limit int) (tokens []*Token, total int64, err error) {
+func SearchUserTokens(userId int, keyword string, token string, offset int, limit int, sortBy string, sortOrder string) (tokens []*Token, total int64, err error) {
 	// model 层强制截断
 	if limit <= 0 || limit > searchHardLimit {
 		limit = searchHardLimit
@@ -177,7 +193,7 @@ func SearchUserTokens(userId int, keyword string, token string, offset int, limi
 	}
 
 	// 再分页查数据
-	err = baseQuery.Order("id desc").Offset(offset).Limit(limit).Find(&tokens).Error
+	err = baseQuery.Order(tokenSortClause(sortBy, sortOrder)).Offset(offset).Limit(limit).Find(&tokens).Error
 	if err != nil {
 		common.SysError("failed to search tokens: " + err.Error())
 		return nil, 0, errors.New("搜索令牌失败")

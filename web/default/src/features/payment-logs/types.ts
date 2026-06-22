@@ -22,7 +22,19 @@ export interface GetPaymentLogsParams {
   keyword?: string
   status?: string
   payment_method?: string
+  sort_by?: PaymentLogSortBy
+  sort_order?: SortOrder
 }
+
+export type SortOrder = 'asc' | 'desc'
+
+export type PaymentLogSortBy =
+  | 'id'
+  | 'username'
+  | 'amount'
+  | 'payment_method'
+  | 'status'
+  | 'create_time'
 
 export interface GetPaymentLogsResponse {
   success: boolean

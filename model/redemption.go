@@ -26,7 +26,22 @@ type Redemption struct {
 	ExpiredTime  int64          `json:"expired_time" gorm:"bigint"` // 过期时间，0 表示不过期
 }
 
-func GetAllRedemptions(startIdx int, num int) (redemptions []*Redemption, total int64, err error) {
+var redemptionAllowedSorts = map[string]string{
+	"id":            "id",
+	"name":          "name",
+	"status":        "status",
+	"quota":         "quota",
+	"created_time":  "created_time",
+	"expired_time":  "expired_time",
+	"used_user_id":  "used_user_id",
+	"redeemed_time": "redeemed_time",
+}
+
+func redemptionSortClause(sortBy string, sortOrder string) string {
+	return safeSortClause(sortBy, redemptionAllowedSorts, "id", sortOrder)
+}
+
+func GetAllRedemptions(startIdx int, num int, sortBy string, sortOrder string) (redemptions []*Redemption, total int64, err error) {
 	// 开始事务
 	tx := DB.Begin()
 	if tx.Error != nil {
@@ -46,7 +61,7 @@ func GetAllRedemptions(startIdx int, num int) (redemptions []*Redemption, total 
 	}
 
 	// 获取分页数据
-	err = tx.Order("id desc").Limit(num).Offset(startIdx).Find(&redemptions).Error
+	err = tx.Order(redemptionSortClause(sortBy, sortOrder)).Limit(num).Offset(startIdx).Find(&redemptions).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
@@ -60,7 +75,7 @@ func GetAllRedemptions(startIdx int, num int) (redemptions []*Redemption, total 
 	return redemptions, total, nil
 }
 
-func SearchRedemptions(keyword string, startIdx int, num int) (redemptions []*Redemption, total int64, err error) {
+func SearchRedemptions(keyword string, startIdx int, num int, sortBy string, sortOrder string) (redemptions []*Redemption, total int64, err error) {
 	tx := DB.Begin()
 	if tx.Error != nil {
 		return nil, 0, tx.Error
@@ -89,7 +104,7 @@ func SearchRedemptions(keyword string, startIdx int, num int) (redemptions []*Re
 	}
 
 	// Get paginated data
-	err = query.Order("id desc").Limit(num).Offset(startIdx).Find(&redemptions).Error
+	err = query.Order(redemptionSortClause(sortBy, sortOrder)).Limit(num).Offset(startIdx).Find(&redemptions).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err

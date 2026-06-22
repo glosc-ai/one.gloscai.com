@@ -1,30 +1,34 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import {
   type ColumnFiltersState,
+  type OnChangeFn,
   type SortingState,
   type VisibilityState,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
 } from '@tanstack/react-table'
 import { useMediaQuery } from '@/hooks'
 import { useTranslation } from 'react-i18next'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { DataTablePage } from '@/components/data-table'
+import { DataTablePage, useDataTable } from '@/components/data-table'
 import { getPaymentLogs } from '../api'
 import {
   getPaymentLogStatusOptions,
   getPaymentMethodOptions,
 } from '../constants'
+import type { PaymentLogSortBy } from '../types'
 import { usePaymentLogsColumns } from './payment-logs-columns'
 
 const route = getRouteApi('/_authenticated/payment-logs/')
+
+const PAYMENT_LOG_SORTABLE_COLUMNS = new Set<PaymentLogSortBy>([
+  'id',
+  'username',
+  'amount',
+  'payment_method',
+  'status',
+  'create_time',
+])
 
 function getSingleFilterValue(
   columnFilters: ColumnFiltersState,
@@ -72,6 +76,34 @@ export function PaymentLogsTable() {
     'payment_method'
   )
 
+  const sortParams = useMemo(() => {
+    const activeSort = sorting[0]
+    if (
+      !activeSort ||
+      !PAYMENT_LOG_SORTABLE_COLUMNS.has(activeSort.id as PaymentLogSortBy)
+    ) {
+      return {}
+    }
+
+    return {
+      sort_by: activeSort.id as PaymentLogSortBy,
+      sort_order: activeSort.desc ? 'desc' : 'asc',
+    } as const
+  }, [sorting])
+
+  const sortBy = sortParams.sort_by
+  const sortOrder = sortParams.sort_order
+
+  const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
+    setSorting((previous) => {
+      const next = typeof updater === 'function' ? updater(previous) : updater
+      if (pagination.pageIndex > 0) {
+        onPaginationChange({ ...pagination, pageIndex: 0 })
+      }
+      return next
+    })
+  }
+
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
       'payment-logs',
@@ -80,6 +112,8 @@ export function PaymentLogsTable() {
       globalFilter,
       statusFilter,
       paymentMethodFilter,
+      sortBy,
+      sortOrder,
     ],
     queryFn: async () => {
       const result = await getPaymentLogs({
@@ -88,6 +122,9 @@ export function PaymentLogsTable() {
         keyword: globalFilter,
         status: statusFilter,
         payment_method: paymentMethodFilter,
+        ...(sortBy && sortOrder
+          ? { sort_by: sortBy, sort_order: sortOrder }
+          : {}),
       })
 
       return {
@@ -100,37 +137,26 @@ export function PaymentLogsTable() {
 
   const paymentLogs = data?.items || []
 
-  const table = useReactTable({
+  const { table } = useDataTable({
     data: paymentLogs,
     columns,
-    state: {
-      sorting,
-      columnVisibility,
-      columnFilters,
-      globalFilter,
-      pagination,
-    },
+    totalCount: data?.total || 0,
+    sorting,
+    columnVisibility,
+    columnFilters,
+    globalFilter,
+    pagination,
     enableRowSelection: false,
-    onSortingChange: setSorting,
+    onSortingChange: handleSortingChange,
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange,
     onGlobalFilterChange,
     onColumnFiltersChange,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
     manualPagination: true,
     manualFiltering: true,
-    pageCount: Math.ceil((data?.total || 0) / pagination.pageSize),
+    manualSorting: true,
+    ensurePageInRange,
   })
-
-  const pageCount = table.getPageCount()
-  useEffect(() => {
-    ensurePageInRange(pageCount)
-  }, [pageCount, ensurePageInRange])
 
   const statusOptions = useMemo(() => getPaymentLogStatusOptions(t), [t])
   const paymentMethodOptions = useMemo(() => getPaymentMethodOptions(t), [t])

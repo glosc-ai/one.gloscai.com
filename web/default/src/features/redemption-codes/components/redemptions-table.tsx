@@ -16,9 +16,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
+import { type OnChangeFn, type SortingState } from '@tanstack/react-table'
 import { useMediaQuery } from '@/hooks'
 import { useTranslation } from 'react-i18next'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
@@ -31,12 +32,22 @@ import {
 import { getRedemptions, searchRedemptions } from '../api'
 import { REDEMPTION_STATUS, getRedemptionStatusOptions } from '../constants'
 import { isRedemptionExpired } from '../lib'
-import type { Redemption } from '../types'
+import type { Redemption, RedemptionSortBy } from '../types'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { useRedemptionsColumns } from './redemptions-columns'
 import { useRedemptions } from './redemptions-provider'
 
 const route = getRouteApi('/_authenticated/redemption-codes/')
+
+const REDEMPTION_SORTABLE_COLUMNS = new Set<RedemptionSortBy>([
+  'id',
+  'name',
+  'status',
+  'quota',
+  'created_time',
+  'expired_time',
+  'used_user_id',
+])
 
 function isDisabledRedemptionRow(redemption: Redemption) {
   return (
@@ -50,6 +61,7 @@ export function RedemptionsTable() {
   const columns = useRedemptionsColumns()
   const { refreshTrigger } = useRedemptions()
   const isMobile = useMediaQuery('(max-width: 640px)')
+  const [sorting, setSorting] = useState<SortingState>([])
 
   const {
     globalFilter,
@@ -67,6 +79,31 @@ export function RedemptionsTable() {
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
 
+  const sortParams = useMemo(() => {
+    const activeSort = sorting[0]
+    if (
+      !activeSort ||
+      !REDEMPTION_SORTABLE_COLUMNS.has(activeSort.id as RedemptionSortBy)
+    ) {
+      return {}
+    }
+
+    return {
+      sort_by: activeSort.id as RedemptionSortBy,
+      sort_order: activeSort.desc ? 'desc' : 'asc',
+    } as const
+  }, [sorting])
+
+  const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
+    setSorting((previous) => {
+      const next = typeof updater === 'function' ? updater(previous) : updater
+      if (pagination.pageIndex > 0) {
+        onPaginationChange({ ...pagination, pageIndex: 0 })
+      }
+      return next
+    })
+  }
+
   // Fetch data with React Query
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -74,6 +111,7 @@ export function RedemptionsTable() {
       pagination.pageIndex + 1,
       pagination.pageSize,
       globalFilter,
+      sortParams,
       refreshTrigger,
     ],
     queryFn: async () => {
@@ -81,6 +119,7 @@ export function RedemptionsTable() {
       const params = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
+        ...sortParams,
       }
 
       const result = hasFilter
@@ -103,18 +142,16 @@ export function RedemptionsTable() {
     enableRowSelection: true,
     columnFilters,
     globalFilter,
+    sorting,
     pagination,
-    globalFilterFn: (row, _columnId, filterValue) => {
-      const name = String(row.getValue('name')).toLowerCase()
-      const id = String(row.getValue('id'))
-      const searchValue = String(filterValue).toLowerCase()
-
-      return name.includes(searchValue) || id.includes(searchValue)
-    },
+    globalFilterFn: () => true,
+    onSortingChange: handleSortingChange,
     onPaginationChange,
     onGlobalFilterChange,
     onColumnFiltersChange,
-    manualPagination: !globalFilter,
+    manualPagination: true,
+    manualSorting: true,
+    manualFiltering: true,
     totalCount: data?.total || 0,
     ensurePageInRange,
   })

@@ -48,6 +48,30 @@ type TopUpLogFilter struct {
 	EndTime       int64
 }
 
+const topUpLogSelect = "top_ups.id, top_ups.user_id, " +
+	"COALESCE(users.username, '') AS username, " +
+	"top_ups.amount, top_ups.money, top_ups.trade_no, " +
+	"top_ups.payment_method, top_ups.payment_provider, " +
+	"top_ups.create_time, top_ups.complete_time, top_ups.status"
+
+var topUpLogAllowedSorts = map[string]string{
+	"id":               "top_ups.id",
+	"user_id":          "top_ups.user_id",
+	"username":         "COALESCE(users.username, '')",
+	"amount":           "top_ups.amount",
+	"money":            "top_ups.money",
+	"trade_no":         "top_ups.trade_no",
+	"payment_method":   "top_ups.payment_method",
+	"payment_provider": "top_ups.payment_provider",
+	"status":           "top_ups.status",
+	"create_time":      "top_ups.create_time",
+	"complete_time":    "top_ups.complete_time",
+}
+
+func topUpLogSortClause(sortBy string, sortOrder string) string {
+	return safeSortClause(sortBy, topUpLogAllowedSorts, "top_ups.id", sortOrder)
+}
+
 const (
 	PaymentMethodStripe       = "stripe"
 	PaymentMethodCreem        = "creem"
@@ -305,7 +329,12 @@ func applyTopUpLogFilters(query *gorm.DB, filter TopUpLogFilter) (*gorm.DB, erro
 	return query, nil
 }
 
-func GetAllTopUpLogs(filter TopUpLogFilter, pageInfo *common.PageInfo) (logs []*TopUpLog, total int64, err error) {
+func GetAllTopUpLogs(
+	filter TopUpLogFilter,
+	pageInfo *common.PageInfo,
+	sortBy string,
+	sortOrder string,
+) (logs []*TopUpLog, total int64, err error) {
 	tx := DB.Begin()
 	if tx.Error != nil {
 		return nil, 0, tx.Error
@@ -316,7 +345,8 @@ func GetAllTopUpLogs(filter TopUpLogFilter, pageInfo *common.PageInfo) (logs []*
 		}
 	}()
 
-	query := tx.Model(&TopUp{}).Joins("LEFT JOIN users ON users.id = top_ups.user_id")
+	query := tx.Model(&TopUp{}).
+		Joins("LEFT JOIN users ON users.id = top_ups.user_id")
 	query, err = applyTopUpLogFilters(query, filter)
 	if err != nil {
 		tx.Rollback()
@@ -329,7 +359,12 @@ func GetAllTopUpLogs(filter TopUpLogFilter, pageInfo *common.PageInfo) (logs []*
 		return nil, 0, errors.New("获取支付日志失败")
 	}
 
-	if err = query.Select("top_ups.id, top_ups.user_id, COALESCE(users.username, '') AS username, top_ups.amount, top_ups.money, top_ups.trade_no, top_ups.payment_method, top_ups.payment_provider, top_ups.create_time, top_ups.complete_time, top_ups.status").Order("top_ups.id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&logs).Error; err != nil {
+	if err = query.
+		Select(topUpLogSelect).
+		Order(topUpLogSortClause(sortBy, sortOrder)).
+		Limit(pageInfo.GetPageSize()).
+		Offset(pageInfo.GetStartIdx()).
+		Find(&logs).Error; err != nil {
 		tx.Rollback()
 		common.SysError("failed to query topup logs: " + err.Error())
 		return nil, 0, errors.New("获取支付日志失败")

@@ -59,9 +59,23 @@ export interface ApiResponse<T = unknown> {
   data?: T
 }
 
+export type SortOrder = 'asc' | 'desc'
+
+export type ApiKeySortBy =
+  | 'id'
+  | 'name'
+  | 'status'
+  | 'quota'
+  | 'group'
+  | 'created_time'
+  | 'accessed_time'
+  | 'expired_time'
+
 export interface GetApiKeysParams {
   p?: number
   size?: number
+  sort_by?: ApiKeySortBy
+  sort_order?: SortOrder
 }
 
 export interface GetApiKeysResponse {
@@ -80,6 +94,8 @@ export interface SearchApiKeysParams {
   token?: string
   p?: number
   size?: number
+  sort_by?: ApiKeySortBy
+  sort_order?: SortOrder
 }
 
 export interface ApiKeyFormData {

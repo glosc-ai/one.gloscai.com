@@ -16,8 +16,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
+import { type OnChangeFn, type SortingState } from '@tanstack/react-table'
 import { useMediaQuery } from '@/hooks'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -35,12 +37,21 @@ import {
   getUserRoleOptions,
   isUserDeleted,
 } from '../constants'
-import type { User } from '../types'
+import type { User, UserSortBy } from '../types'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { useUsersColumns } from './users-columns'
 import { useUsers } from './users-provider'
 
 const route = getRouteApi('/_authenticated/users/')
+
+const USER_SORTABLE_COLUMNS = new Set<UserSortBy>([
+  'id',
+  'username',
+  'quota',
+  'group',
+  'created_at',
+  'last_login_at',
+])
 
 function isDisabledUserRow(user: User) {
   return isUserDeleted(user) || user.status === USER_STATUS.DISABLED
@@ -51,6 +62,7 @@ export function UsersTable() {
   const columns = useUsersColumns()
   const { refreshTrigger } = useUsers()
   const isMobile = useMediaQuery('(max-width: 640px)')
+  const [sorting, setSorting] = useState<SortingState>([])
 
   const {
     globalFilter,
@@ -82,6 +94,36 @@ export function UsersTable() {
   const groupFilter =
     (columnFilters.find((filter) => filter.id === 'group')?.value as string) ??
     ''
+  const selectedStatus = statusFilter[0] ?? ''
+  const selectedRole = roleFilter[0] ?? ''
+
+  const sortParams = useMemo(() => {
+    const activeSort = sorting[0]
+    if (
+      !activeSort ||
+      !USER_SORTABLE_COLUMNS.has(activeSort.id as UserSortBy)
+    ) {
+      return {}
+    }
+
+    return {
+      sort_by: activeSort.id as UserSortBy,
+      sort_order: activeSort.desc ? 'desc' : 'asc',
+    } as const
+  }, [sorting])
+
+  const sortBy = sortParams.sort_by
+  const sortOrder = sortParams.sort_order
+
+  const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
+    setSorting((previous) => {
+      const next = typeof updater === 'function' ? updater(previous) : updater
+      if (pagination.pageIndex > 0) {
+        onPaginationChange({ ...pagination, pageIndex: 0 })
+      }
+      return next
+    })
+  }
 
   // Fetch data with React Query
   const { data, isLoading, isFetching } = useQuery({
@@ -90,18 +132,23 @@ export function UsersTable() {
       pagination.pageIndex + 1,
       pagination.pageSize,
       globalFilter,
-      statusFilter,
-      roleFilter,
+      selectedStatus,
+      selectedRole,
       groupFilter,
+      sortBy,
+      sortOrder,
       refreshTrigger,
     ],
     queryFn: async () => {
       const hasFilter = globalFilter?.trim()
       const hasColumnFilter =
-        statusFilter.length > 0 || roleFilter.length > 0 || Boolean(groupFilter)
+        Boolean(selectedStatus) || Boolean(selectedRole) || Boolean(groupFilter)
       const params = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
+        ...(sortBy && sortOrder
+          ? { sort_by: sortBy, sort_order: sortOrder }
+          : {}),
       }
 
       const result =
@@ -109,8 +156,8 @@ export function UsersTable() {
           ? await searchUsers({
               ...params,
               keyword: globalFilter,
-              status: statusFilter[0] ?? '',
-              role: roleFilter[0] ?? '',
+              status: selectedStatus,
+              role: selectedRole,
               group: groupFilter,
             })
           : await getUsers(params)
@@ -138,6 +185,7 @@ export function UsersTable() {
     enableRowSelection: true,
     columnFilters,
     globalFilter,
+    sorting,
     pagination,
     globalFilterFn: (row, _columnId, filterValue) => {
       const searchValue = String(filterValue).toLowerCase()
@@ -153,9 +201,11 @@ export function UsersTable() {
       )
     },
     onPaginationChange,
+    onSortingChange: handleSortingChange,
     onGlobalFilterChange,
     onColumnFiltersChange,
     manualPagination: true,
+    manualSorting: true,
     totalCount: data?.total || 0,
     ensurePageInRange,
   })

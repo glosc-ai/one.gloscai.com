@@ -61,6 +61,22 @@ type ModelsMetaFilter struct {
 	Status       *int
 	SyncOfficial *int
 	HasPrice     *bool
+	SortBy       string
+	SortOrder    string
+}
+
+var modelsMetaAllowedSorts = map[string]string{
+	"id":            "models.id",
+	"model_name":    "models.model_name",
+	"created_time":  "models.created_time",
+	"updated_time":  "models.updated_time",
+	"status":        "models.status",
+	"vendor_id":     "models.vendor_id",
+	"sync_official": "models.sync_official",
+}
+
+func modelsMetaSortClause(sortBy string, sortOrder string) string {
+	return safeSortClause(sortBy, modelsMetaAllowedSorts, "models.id", sortOrder)
 }
 
 func (mi *Model) Insert() error {
@@ -279,6 +295,7 @@ func GetModelTagCounts(filter ModelsMetaFilter) (map[string]int64, error) {
 
 func ListModelsMeta(filter ModelsMetaFilter, offset int, limit int) ([]*Model, int64, error) {
 	db := applyModelsMetaFilters(DB.Model(&Model{}), filter)
+	orderClause := modelsMetaSortClause(filter.SortBy, filter.SortOrder)
 
 	if filter.HasPrice == nil {
 		var total int64
@@ -286,14 +303,14 @@ func ListModelsMeta(filter ModelsMetaFilter, offset int, limit int) ([]*Model, i
 			return nil, 0, err
 		}
 		var models []*Model
-		if err := db.Order("models.id DESC").Offset(offset).Limit(limit).Find(&models).Error; err != nil {
+		if err := db.Order(orderClause).Offset(offset).Limit(limit).Find(&models).Error; err != nil {
 			return nil, 0, err
 		}
 		return models, total, nil
 	}
 
 	var candidates []*Model
-	if err := db.Order("models.id DESC").Find(&candidates).Error; err != nil {
+	if err := db.Order(orderClause).Find(&candidates).Error; err != nil {
 		return nil, 0, err
 	}
 

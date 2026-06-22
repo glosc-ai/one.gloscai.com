@@ -530,7 +530,12 @@ func GetAllTopUps(c *gin.Context) {
 		total int64
 		err   error
 	)
-	logs, total, err = model.GetAllTopUpLogs(filter, pageInfo)
+	logs, total, err = model.GetAllTopUpLogs(
+		filter,
+		pageInfo,
+		c.Query("sort_by"),
+		c.Query("sort_order"),
+	)
 	if err != nil {
 		common.ApiError(c, err)
 		return

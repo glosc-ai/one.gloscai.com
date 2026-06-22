@@ -61,6 +61,8 @@ export const deploymentsQueryKeys = {
     status?: string
     p?: number
     page_size?: number
+    sort_by?: string
+    sort_order?: string
   }) => [...deploymentsQueryKeys.lists(), filters] as const,
   detail: (id: string | number) =>
     [...deploymentsQueryKeys.all, 'detail', id] as const,

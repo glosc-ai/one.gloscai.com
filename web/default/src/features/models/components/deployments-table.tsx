@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
+import { type OnChangeFn, type SortingState } from '@tanstack/react-table'
 import { useMediaQuery } from '@/hooks'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -37,7 +38,7 @@ import { DataTablePage, useDataTable } from '@/components/data-table'
 import { deleteDeployment, listDeployments, searchDeployments } from '../api'
 import { getDeploymentStatusOptions } from '../constants'
 import { deploymentsQueryKeys } from '../lib'
-import type { Deployment } from '../types'
+import type { Deployment, DeploymentSortBy } from '../types'
 import { useDeploymentsColumns } from './deployments-columns'
 import { ExtendDeploymentDialog } from './dialogs/extend-deployment-dialog'
 import { RenameDeploymentDialog } from './dialogs/rename-deployment-dialog'
@@ -46,11 +47,17 @@ import { ViewDetailsDialog } from './dialogs/view-details-dialog'
 import { ViewLogsDialog } from './dialogs/view-logs-dialog'
 
 const route = getRouteApi('/_authenticated/models/$section')
+const DEPLOYMENT_SORTABLE_COLUMNS = new Set<DeploymentSortBy>([
+  'id',
+  'name',
+  'created_at',
+])
 
 export function DeploymentsTable() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const isMobile = useMediaQuery('(max-width: 640px)')
+  const [sorting, setSorting] = useState<SortingState>([])
 
   // URL state (use dedicated keys so it won't collide with metadata table)
   const {
@@ -84,6 +91,31 @@ export function DeploymentsTable() {
       ? statusFilter[0]
       : undefined
 
+  const sortParams = useMemo(() => {
+    const activeSort = sorting[0]
+    if (
+      !activeSort ||
+      !DEPLOYMENT_SORTABLE_COLUMNS.has(activeSort.id as DeploymentSortBy)
+    ) {
+      return {}
+    }
+
+    return {
+      sort_by: activeSort.id as DeploymentSortBy,
+      sort_order: activeSort.desc ? 'desc' : 'asc',
+    } as const
+  }, [sorting])
+
+  const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
+    setSorting((previous) => {
+      const next = typeof updater === 'function' ? updater(previous) : updater
+      if (pagination.pageIndex > 0) {
+        onPaginationChange({ ...pagination, pageIndex: 0 })
+      }
+      return next
+    })
+  }
+
   // Dialog state
   const [logsOpen, setLogsOpen] = useState(false)
   const [logsDeploymentId, setLogsDeploymentId] = useState<
@@ -116,6 +148,7 @@ export function DeploymentsTable() {
     queryKey: deploymentsQueryKeys.list({
       keyword,
       status: activeStatus,
+      ...sortParams,
       p: pagination.pageIndex + 1,
       page_size: pagination.pageSize,
     }),
@@ -124,12 +157,14 @@ export function DeploymentsTable() {
         return searchDeployments({
           keyword,
           status: activeStatus,
+          ...sortParams,
           p: pagination.pageIndex + 1,
           page_size: pagination.pageSize,
         })
       }
       return listDeployments({
         status: activeStatus,
+        ...sortParams,
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
       })
@@ -195,12 +230,15 @@ export function DeploymentsTable() {
     columns,
     totalCount,
     columnFilters,
+    sorting,
     pagination,
     globalFilter,
     onColumnFiltersChange,
+    onSortingChange: handleSortingChange,
     onPaginationChange,
     onGlobalFilterChange,
     manualPagination: true,
+    manualSorting: true,
     manualFiltering: true,
     withSortedRowModel: false,
     ensurePageInRange,

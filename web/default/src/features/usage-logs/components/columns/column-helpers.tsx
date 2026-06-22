@@ -155,6 +155,7 @@ export function createDurationColumn<T>(config: {
       )
     },
     meta: { label: headerLabel },
+    enableSorting: false,
   }
 }
 

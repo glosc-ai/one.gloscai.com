@@ -22,7 +22,7 @@ func GetAllLogs(c *gin.Context) {
 	group := c.Query("group")
 	requestId := c.Query("request_id")
 	upstreamRequestId := c.Query("upstream_request_id")
-	logs, total, err := model.GetAllLogs(logType, startTimestamp, endTimestamp, modelName, username, tokenName, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), channel, group, requestId, upstreamRequestId)
+	logs, total, err := model.GetAllLogs(logType, startTimestamp, endTimestamp, modelName, username, tokenName, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), channel, group, requestId, upstreamRequestId, c.Query("sort_by"), c.Query("sort_order"))
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -42,6 +42,8 @@ func GetModelCallLogs(c *gin.Context) {
 		Status:         c.Query("status"),
 		StartTimestamp: startTimestamp,
 		EndTimestamp:   endTimestamp,
+		SortBy:         c.Query("sort_by"),
+		SortOrder:      c.Query("sort_order"),
 	}
 	logs, total, err := model.GetModelCallLogs(filter, pageInfo)
 	if err != nil {
@@ -64,7 +66,7 @@ func GetUserLogs(c *gin.Context) {
 	group := c.Query("group")
 	requestId := c.Query("request_id")
 	upstreamRequestId := c.Query("upstream_request_id")
-	logs, total, err := model.GetUserLogs(userId, logType, startTimestamp, endTimestamp, modelName, tokenName, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), group, requestId, upstreamRequestId)
+	logs, total, err := model.GetUserLogs(userId, logType, startTimestamp, endTimestamp, modelName, tokenName, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), group, requestId, upstreamRequestId, c.Query("sort_by"), c.Query("sort_order"))
 	if err != nil {
 		common.ApiError(c, err)
 		return

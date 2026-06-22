@@ -78,6 +78,8 @@ type ModelCallLogFilter struct {
 	Status         string
 	StartTimestamp int64
 	EndTimestamp   int64
+	SortBy         string
+	SortOrder      string
 }
 
 // don't use iota, avoid change log type value
@@ -95,6 +97,43 @@ const (
 	ModelCallLogStatusSuccess = "success"
 	ModelCallLogStatusFailed  = "failed"
 )
+
+var modelCallLogAllowedSorts = map[string]string{
+	"id":                "logs.id",
+	"created_at":        "logs.created_at",
+	"user_id":           "logs.user_id",
+	"username":          "logs.username",
+	"model_name":        "logs.model_name",
+	"prompt_tokens":     "logs.prompt_tokens",
+	"completion_tokens": "logs.completion_tokens",
+	"total_tokens":      "(logs.prompt_tokens + logs.completion_tokens)",
+	"quota":             "logs.quota",
+	"status":            "logs.type",
+}
+
+func modelCallLogSortClause(sortBy string, sortOrder string) string {
+	return safeSortClause(sortBy, modelCallLogAllowedSorts, "logs.id", sortOrder)
+}
+
+func usageLogSortClause(sortBy string, sortOrder string, fallback string) string {
+	allowedSorts := map[string]string{
+		"id":                "logs.id",
+		"created_at":        "logs.created_at",
+		"user_id":           "logs.user_id",
+		"username":          "logs.username",
+		"model_name":        "logs.model_name",
+		"token_name":        "logs.token_name",
+		"group":             "logs." + logGroupCol,
+		"prompt_tokens":     "logs.prompt_tokens",
+		"completion_tokens": "logs.completion_tokens",
+		"quota":             "logs.quota",
+		"use_time":          "logs.use_time",
+		"channel":           "logs.channel_id",
+		"channel_id":        "logs.channel_id",
+		"type":              "logs.type",
+	}
+	return safeSortClause(sortBy, allowedSorts, fallback, sortOrder)
+}
 
 func escapeLikeContainsPattern(input string) string {
 	input = strings.ReplaceAll(input, "!", "!!")
@@ -352,7 +391,7 @@ func RecordTaskBillingLog(params RecordTaskBillingLogParams) {
 	}
 }
 
-func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, startIdx int, num int, channel int, group string, requestId string, upstreamRequestId string) (logs []*Log, total int64, err error) {
+func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, startIdx int, num int, channel int, group string, requestId string, upstreamRequestId string, sortBy string, sortOrder string) (logs []*Log, total int64, err error) {
 	var tx *gorm.DB
 	if logType == LogTypeUnknown {
 		tx = LOG_DB
@@ -391,7 +430,7 @@ func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName
 	if err != nil {
 		return nil, 0, err
 	}
-	err = tx.Order("logs.created_at desc, logs.id desc").Limit(num).Offset(startIdx).Find(&logs).Error
+	err = tx.Order(usageLogSortClause(sortBy, sortOrder, "logs.created_at") + ", logs.id desc").Limit(num).Offset(startIdx).Find(&logs).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -525,7 +564,7 @@ func GetModelCallLogs(filter ModelCallLogFilter, pageInfo *common.PageInfo) (cal
 	}
 
 	var logs []*Log
-	if err = query.Order("logs.id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&logs).Error; err != nil {
+	if err = query.Order(modelCallLogSortClause(filter.SortBy, filter.SortOrder)).Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&logs).Error; err != nil {
 		common.SysError("failed to query model call logs: " + err.Error())
 		return nil, 0, errors.New("获取模型调用记录失败")
 	}
@@ -564,7 +603,7 @@ func GetModelCallLogs(filter ModelCallLogFilter, pageInfo *common.PageInfo) (cal
 
 const logSearchCountLimit = 10000
 
-func GetUserLogs(userId int, logType int, startTimestamp int64, endTimestamp int64, modelName string, tokenName string, startIdx int, num int, group string, requestId string, upstreamRequestId string) (logs []*Log, total int64, err error) {
+func GetUserLogs(userId int, logType int, startTimestamp int64, endTimestamp int64, modelName string, tokenName string, startIdx int, num int, group string, requestId string, upstreamRequestId string, sortBy string, sortOrder string) (logs []*Log, total int64, err error) {
 	var tx *gorm.DB
 	if logType == LogTypeUnknown {
 		tx = LOG_DB.Where("logs.user_id = ?", userId)
@@ -598,7 +637,7 @@ func GetUserLogs(userId int, logType int, startTimestamp int64, endTimestamp int
 		common.SysError("failed to count user logs: " + err.Error())
 		return nil, 0, errors.New("查询日志失败")
 	}
-	err = tx.Order("logs.id desc").Limit(num).Offset(startIdx).Find(&logs).Error
+	err = tx.Order(usageLogSortClause(sortBy, sortOrder, "logs.id")).Limit(num).Offset(startIdx).Find(&logs).Error
 	if err != nil {
 		common.SysError("failed to search user logs: " + err.Error())
 		return nil, 0, errors.New("查询日志失败")

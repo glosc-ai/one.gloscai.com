@@ -31,6 +31,28 @@ type TaskQueryParams struct {
 	MjID           string
 	StartTimestamp string
 	EndTimestamp   string
+	SortBy         string
+	SortOrder      string
+}
+
+var midjourneyAllowedSorts = map[string]string{
+	"id":          "id",
+	"submit_time": "submit_time",
+	"start_time":  "start_time",
+	"finish_time": "finish_time",
+	"channel_id":  "channel_id",
+	"action":      "action",
+	"mj_id":       "mj_id",
+	"code":        "code",
+	"progress":    "progress",
+	"status":      "status",
+	"fail_reason": "fail_reason",
+	"image_url":   "image_url",
+	"prompt":      "prompt",
+}
+
+func midjourneySortClause(sortBy string, sortOrder string) string {
+	return safeSortClause(sortBy, midjourneyAllowedSorts, "id", sortOrder)
 }
 
 func GetAllUserTask(userId int, startIdx int, num int, queryParams TaskQueryParams) []*Midjourney {
@@ -52,7 +74,7 @@ func GetAllUserTask(userId int, startIdx int, num int, queryParams TaskQueryPara
 	}
 
 	// 获取数据
-	err = query.Order("id desc").Limit(num).Offset(startIdx).Find(&tasks).Error
+	err = query.Order(midjourneySortClause(queryParams.SortBy, queryParams.SortOrder)).Limit(num).Offset(startIdx).Find(&tasks).Error
 	if err != nil {
 		return nil
 	}
@@ -82,7 +104,7 @@ func GetAllTasks(startIdx int, num int, queryParams TaskQueryParams) []*Midjourn
 	}
 
 	// 获取数据
-	err = query.Order("id desc").Limit(num).Offset(startIdx).Find(&tasks).Error
+	err = query.Order(midjourneySortClause(queryParams.SortBy, queryParams.SortOrder)).Limit(num).Offset(startIdx).Find(&tasks).Error
 	if err != nil {
 		return nil
 	}

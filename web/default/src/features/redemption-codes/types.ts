@@ -47,9 +47,22 @@ export interface ApiResponse<T = unknown> {
   data?: T
 }
 
+export type SortOrder = 'asc' | 'desc'
+
+export type RedemptionSortBy =
+  | 'id'
+  | 'name'
+  | 'status'
+  | 'quota'
+  | 'created_time'
+  | 'expired_time'
+  | 'used_user_id'
+
 export interface GetRedemptionsParams {
   p?: number
   page_size?: number
+  sort_by?: RedemptionSortBy
+  sort_order?: SortOrder
 }
 
 export interface GetRedemptionsResponse {
@@ -67,6 +80,8 @@ export interface SearchRedemptionsParams {
   keyword?: string
   p?: number
   page_size?: number
+  sort_by?: RedemptionSortBy
+  sort_order?: SortOrder
 }
 
 export interface RedemptionFormData {
