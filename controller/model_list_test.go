@@ -552,8 +552,18 @@ func TestBatchUpdateModelCategoryTags(t *testing.T) {
 func TestBatchUpdateModelCategories(t *testing.T) {
 	db := setupModelListControllerTestDB(t)
 
-	firstModel := model.Model{ModelName: "batch-categories-alpha", Tags: "legacy", Categories: "old", Status: 1}
-	secondModel := model.Model{ModelName: "batch-categories-beta", Tags: "custom", Categories: "old,Vision", Status: 1}
+	firstModel := model.Model{
+		ModelName:  "batch-categories-alpha",
+		Tags:       "legacy",
+		Categories: "old",
+		Status:     1,
+	}
+	secondModel := model.Model{
+		ModelName:  "batch-categories-beta",
+		Tags:       "custom",
+		Categories: "old,Vision",
+		Status:     1,
+	}
 	require.NoError(t, firstModel.Insert())
 	require.NoError(t, secondModel.Insert())
 
@@ -565,7 +575,11 @@ func TestBatchUpdateModelCategories(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
-	ctx.Request = httptest.NewRequest(http.MethodPut, "/api/models/batch_categories", bytes.NewReader(body))
+	ctx.Request = httptest.NewRequest(
+		http.MethodPut,
+		"/api/models/batch_categories",
+		bytes.NewReader(body),
+	)
 	ctx.Request.Header.Set("Content-Type", "application/json")
 
 	BatchUpdateModelCategories(ctx)
@@ -577,7 +591,9 @@ func TestBatchUpdateModelCategories(t *testing.T) {
 	require.Equal(t, int64(2), payload.Data.UpdatedCount)
 
 	var updatedModels []model.Model
-	require.NoError(t, db.Where("id IN ?", []int{firstModel.Id, secondModel.Id}).Order("model_name ASC").Find(&updatedModels).Error)
+	require.NoError(t, db.Where("id IN ?", []int{firstModel.Id, secondModel.Id}).
+		Order("model_name ASC").
+		Find(&updatedModels).Error)
 	require.Len(t, updatedModels, 2)
 	require.Equal(t, "legacy", updatedModels[0].Tags)
 	require.Equal(t, "custom", updatedModels[1].Tags)
@@ -592,14 +608,20 @@ func TestBatchUpdateModelCategories(t *testing.T) {
 
 	clearRecorder := httptest.NewRecorder()
 	clearCtx, _ := gin.CreateTestContext(clearRecorder)
-	clearCtx.Request = httptest.NewRequest(http.MethodPut, "/api/models/batch_categories", bytes.NewReader(clearBody))
+	clearCtx.Request = httptest.NewRequest(
+		http.MethodPut,
+		"/api/models/batch_categories",
+		bytes.NewReader(clearBody),
+	)
 	clearCtx.Request.Header.Set("Content-Type", "application/json")
 
 	BatchUpdateModelCategories(clearCtx)
 
 	require.Equal(t, http.StatusOK, clearRecorder.Code)
 	updatedModels = nil
-	require.NoError(t, db.Where("id IN ?", []int{firstModel.Id, secondModel.Id}).Order("model_name ASC").Find(&updatedModels).Error)
+	require.NoError(t, db.Where("id IN ?", []int{firstModel.Id, secondModel.Id}).
+		Order("model_name ASC").
+		Find(&updatedModels).Error)
 	require.Len(t, updatedModels, 2)
 	require.Empty(t, updatedModels[0].Categories)
 	require.Empty(t, updatedModels[1].Categories)
@@ -710,9 +732,27 @@ func TestGetAllModelsMetaFiltersByCategory(t *testing.T) {
 	setupModelListControllerTestDB(t)
 
 	records := []*model.Model{
-		{ModelName: "categorized-reasoning", Categories: "Reasoning,Vision", Status: 1, SyncOfficial: 1, NameRule: model.NameRuleExact},
-		{ModelName: "categorized-coding", Categories: "Coding", Status: 1, SyncOfficial: 1, NameRule: model.NameRuleExact},
-		{ModelName: "categorized-empty", Categories: "", Status: 1, SyncOfficial: 1, NameRule: model.NameRuleExact},
+		{
+			ModelName:    "categorized-reasoning",
+			Categories:   "Reasoning,Vision",
+			Status:       1,
+			SyncOfficial: 1,
+			NameRule:     model.NameRuleExact,
+		},
+		{
+			ModelName:    "categorized-coding",
+			Categories:   "Coding",
+			Status:       1,
+			SyncOfficial: 1,
+			NameRule:     model.NameRuleExact,
+		},
+		{
+			ModelName:    "categorized-empty",
+			Categories:   "",
+			Status:       1,
+			SyncOfficial: 1,
+			NameRule:     model.NameRuleExact,
+		},
 	}
 	for _, record := range records {
 		require.NoError(t, record.Insert())
@@ -720,7 +760,11 @@ func TestGetAllModelsMetaFiltersByCategory(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
-	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/models/?category=Reasoning", nil)
+	ctx.Request = httptest.NewRequest(
+		http.MethodGet,
+		"/api/models/?category=Reasoning",
+		nil,
+	)
 
 	GetAllModelsMeta(ctx)
 
@@ -734,7 +778,11 @@ func TestGetAllModelsMetaFiltersByCategory(t *testing.T) {
 
 	emptyRecorder := httptest.NewRecorder()
 	emptyCtx, _ := gin.CreateTestContext(emptyRecorder)
-	emptyCtx.Request = httptest.NewRequest(http.MethodGet, "/api/models/?category=__empty__", nil)
+	emptyCtx.Request = httptest.NewRequest(
+		http.MethodGet,
+		"/api/models/?category=__empty__",
+		nil,
+	)
 
 	GetAllModelsMeta(emptyCtx)
 

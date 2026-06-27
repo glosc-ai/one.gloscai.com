@@ -260,7 +260,13 @@ func GetAllModels(offset int, limit int) ([]*Model, error) {
 func applyModelsMetaFilters(db *gorm.DB, filter ModelsMetaFilter) *gorm.DB {
 	if filter.Keyword != "" {
 		like := "%" + filter.Keyword + "%"
-		db = db.Where("model_name LIKE ? OR description LIKE ? OR tags LIKE ? OR categories LIKE ?", like, like, like, like)
+		db = db.Where(
+			"model_name LIKE ? OR description LIKE ? OR tags LIKE ? OR categories LIKE ?",
+			like,
+			like,
+			like,
+			like,
+		)
 	}
 	if filter.Vendor != "" {
 		if vendorID, err := strconv.Atoi(filter.Vendor); err == nil {
