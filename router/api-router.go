@@ -398,6 +398,7 @@ func SetApiRouter(router *gin.Engine) {
 			modelsRoute.POST("/", controller.CreateModelMeta)
 			modelsRoute.PUT("/batch_vendor", controller.BatchUpdateModelVendor)
 			modelsRoute.PUT("/batch_tags", controller.BatchUpdateModelCategoryTags)
+			modelsRoute.PUT("/batch_categories", controller.BatchUpdateModelCategories)
 			modelsRoute.PUT("/", controller.UpdateModelMeta)
 			modelsRoute.DELETE("/:id", controller.DeleteModelMeta)
 		}

@@ -63,16 +63,19 @@ export interface PricingSidebarProps {
   groupFilter: string
   discountFilter: string
   tagFilter: string
+  categoryFilter: string
   onQuotaTypeChange: (value: string) => void
   onEndpointTypeChange: (value: string) => void
   onVendorChange: (value: string) => void
   onGroupChange: (value: string) => void
   onDiscountChange: (value: string) => void
   onTagChange: (value: string) => void
+  onCategoryChange: (value: string) => void
   vendors: PricingVendor[]
   groups: string[]
   groupRatios?: Record<string, number>
   tags: string[]
+  categories: string[]
   models: PricingModel[]
   hasActiveFilters: boolean
   onClearFilters: () => void
@@ -244,6 +247,23 @@ export function PricingSidebar(props: PricingSidebarProps) {
     })),
   ]
 
+  const categoryOptions: FilterOption[] = [
+    {
+      value: FILTER_ALL,
+      label: t('All Categories'),
+      count: props.models.length,
+    },
+    ...props.categories.map((category) => ({
+      value: category,
+      label: category,
+      count: countBy(props.models, (model) =>
+        parseTags(model.categories)
+          .map((item) => item.toLowerCase())
+          .includes(category.toLowerCase())
+      ),
+    })),
+  ]
+
   const endpointOptions: FilterOption[] = [
     {
       value: ENDPOINT_TYPES.ALL,
@@ -268,7 +288,7 @@ export function PricingSidebar(props: PricingSidebarProps) {
         <div>
           <h2 className='text-foreground text-sm font-bold'>{t('Filter')}</h2>
           <p className='text-muted-foreground mt-1 text-xs'>
-            {t('Refine models by provider, group, type, and tags.')}
+            {t('Refine models by provider, group, type, tags, and categories.')}
           </p>
         </div>
         <Button
@@ -308,6 +328,12 @@ export function PricingSidebar(props: PricingSidebarProps) {
           value={props.tagFilter}
           options={tagOptions}
           onChange={props.onTagChange}
+        />
+        <FilterSection
+          title={t('Categories')}
+          value={props.categoryFilter}
+          options={categoryOptions}
+          onChange={props.onCategoryChange}
         />
         <FilterSection
           title={t('Pricing Type')}

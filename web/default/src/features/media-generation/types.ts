@@ -182,6 +182,7 @@ export interface TextToSpeechRequest {
   voice: string
   response_format?: 'mp3' | 'opus' | 'aac' | 'flac' | 'wav' | 'pcm'
   speed?: number
+  estimated_duration?: number
 }
 
 export interface TextToSpeechResult {

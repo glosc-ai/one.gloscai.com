@@ -66,10 +66,10 @@ export function getNameRuleConfig(
 }
 
 // ============================================================================
-// Usage-scenario category tags (control which generation page shows the model)
+// Usage-scenario tags (control which generation page shows the model)
 // ============================================================================
 
-// Reserved category tags recognized by the backend classifier.
+// Reserved tags recognized by the backend classifier.
 export const MODEL_CATEGORY_TAGS = [
   'text',
   'image',

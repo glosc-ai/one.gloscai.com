@@ -18,6 +18,14 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { splitBillingExprAndRequestRules } from '@/features/pricing/lib/billing-expr'
 import { safeJsonParse } from '../utils/json-parser'
+import {
+  detectMediaPricingMode,
+  getMediaModeLabel,
+  isExpressionBackedPricingMode,
+  isMediaPricingMode,
+  tryParseMediaUnitConfig,
+} from './model-media-pricing'
+import { type PricingMode } from './model-pricing-core'
 import { formatPricingNumber } from './pricing-format'
 
 export type ModelPricingSnapshotInput = {
@@ -43,7 +51,7 @@ export type ModelPricingSnapshot = {
   imageRatio?: string
   audioRatio?: string
   audioCompletionRatio?: string
-  billingMode?: string
+  billingMode?: PricingMode
   billingExpr?: string
   requestRuleExpr?: string
   hasConflict: boolean
@@ -75,6 +83,7 @@ const ratioToPrice = (ratio?: string, denominator?: string) => {
 
 export const getModeLabel = (mode?: string) => {
   if (mode === 'per-request') return 'Per-request'
+  if (isMediaPricingMode(mode)) return getMediaModeLabel(mode)
   if (mode === 'tiered_expr') return 'Expression'
   return 'Per-token'
 }
@@ -83,7 +92,7 @@ export const getModeVariant = (
   mode?: string
 ): 'warning' | 'info' | 'success' => {
   if (mode === 'per-request') return 'warning'
-  if (mode === 'tiered_expr') return 'info'
+  if (isExpressionBackedPricingMode(mode)) return 'info'
   return 'success'
 }
 
@@ -102,6 +111,23 @@ export const getPriceSummary = (
   row: ModelPricingSnapshot,
   t: (key: string) => string
 ) => {
+  if (isMediaPricingMode(row.billingMode)) {
+    const config = tryParseMediaUnitConfig(row.billingExpr)
+    if (row.billingMode === 'media-image') {
+      return config
+        ? `$${formatPricingNumber(config.imageBasePrice)} / ${t('Image')}`
+        : t('Image size and count')
+    }
+    if (row.billingMode === 'media-video') {
+      return config
+        ? `$${formatPricingNumber(config.videoSecondPrice)} / ${t('seconds')}`
+        : t('Video seconds and size')
+    }
+    return config
+      ? `$${formatPricingNumber(config.speechSecondPrice)} / ${t('seconds')}`
+      : t('Speech seconds')
+  }
+
   if (row.billingMode === 'tiered_expr') {
     return getExpressionSummary(row, t)
   }
@@ -130,6 +156,26 @@ export const getPriceDetail = (
   row: ModelPricingSnapshot,
   t: (key: string) => string
 ) => {
+  if (isMediaPricingMode(row.billingMode)) {
+    const config = tryParseMediaUnitConfig(row.billingExpr)
+    if (row.billingMode === 'media-image') {
+      return config
+        ? `${t('Default image count')} ${formatPricingNumber(config.imageDefaultCount)}`
+        : t('Image size and count')
+    }
+    if (row.billingMode === 'media-video') {
+      return config
+        ? `${t('Default seconds')} ${formatPricingNumber(config.videoDefaultSeconds)}`
+        : t('Video seconds and size')
+    }
+    if (!config) return t('Speech seconds')
+    return config.speechSide === 'input'
+      ? t('Input audio only')
+      : config.speechSide === 'output'
+        ? t('Output audio only')
+        : t('Input and output audio')
+  }
+
   if (row.billingMode === 'tiered_expr') {
     return row.requestRuleExpr
       ? t('Includes request rules')
@@ -237,9 +283,10 @@ export const buildModelSnapshots = ({
       const fullExpr = billingExprMap[name] || ''
       const { billingExpr: pureExpr, requestRuleExpr } =
         splitBillingExprAndRequestRules(fullExpr)
+      const displayMode = detectMediaPricingMode(pureExpr) || 'tiered_expr'
       return {
         name,
-        billingMode: 'tiered_expr',
+        billingMode: displayMode,
         billingExpr: pureExpr,
         requestRuleExpr,
         price,

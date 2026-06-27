@@ -27,6 +27,7 @@ import {
   Building2,
   Loader2,
   Tags,
+  Shapes,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -55,7 +56,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
-import { MultiSelect } from '@/components/multi-select'
+import { MultiSelect, type Option } from '@/components/multi-select'
 import { MODEL_CATEGORY_TAGS, getModelCategoryTagOptions } from '../constants'
 import {
   handleBatchEnableModels,
@@ -63,6 +64,8 @@ import {
   handleBatchDeleteModels,
   handleBatchUpdateModelVendor,
   handleBatchUpdateModelTags,
+  handleBatchUpdateModelCategories,
+  parseModelCategories,
   parseModelTags,
 } from '../lib'
 import type { Model, Vendor } from '../types'
@@ -70,22 +73,27 @@ import type { Model, Vendor } from '../types'
 interface DataTableBulkActionsProps<TData> {
   table: Table<TData>
   vendors: Vendor[]
+  categoryOptions: Option[]
 }
 
 export function DataTableBulkActions<TData>({
   table,
   vendors,
+  categoryOptions,
 }: DataTableBulkActionsProps<TData>) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showVendorDialog, setShowVendorDialog] = useState(false)
   const [showTagsDialog, setShowTagsDialog] = useState(false)
+  const [showCategoriesDialog, setShowCategoriesDialog] = useState(false)
   const [selectedVendorId, setSelectedVendorId] = useState<string>('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [modelIcon, setModelIcon] = useState('')
   const [isUpdatingVendor, setIsUpdatingVendor] = useState(false)
   const [isUpdatingTags, setIsUpdatingTags] = useState(false)
+  const [isUpdatingCategories, setIsUpdatingCategories] = useState(false)
 
   const selectedRows = table.getFilteredSelectedRowModel().rows
   const selectedIds = selectedRows.reduce<number[]>((ids, row) => {
@@ -144,6 +152,22 @@ export function DataTableBulkActions<TData>({
     setShowTagsDialog(true)
   }
 
+  const openCategoriesDialog = () => {
+    const commonCategories = selectedModels.reduce<string[] | null>(
+      (acc, model) => {
+        const modelCategories = parseModelCategories(model.categories)
+        if (acc === null) {
+          return modelCategories
+        }
+        return acc.filter((category) => modelCategories.includes(category))
+      },
+      null
+    )
+
+    setSelectedCategories(commonCategories || [])
+    setShowCategoriesDialog(true)
+  }
+
   const handleUpdateVendor = async () => {
     if (!selectedVendorId) {
       toast.error(t('Please select a vendor'))
@@ -184,6 +208,24 @@ export function DataTableBulkActions<TData>({
       )
     } finally {
       setIsUpdatingTags(false)
+    }
+  }
+
+  const handleUpdateCategories = async () => {
+    setIsUpdatingCategories(true)
+    try {
+      await handleBatchUpdateModelCategories(
+        selectedIds,
+        selectedCategories,
+        queryClient,
+        () => {
+          setShowCategoriesDialog(false)
+          setSelectedCategories([])
+          handleClearSelection()
+        }
+      )
+    } finally {
+      setIsUpdatingCategories(false)
     }
   }
 
@@ -239,6 +281,29 @@ export function DataTableBulkActions<TData>({
           </TooltipTrigger>
           <TooltipContent>
             <p>{t('Update selected models tags')}</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant='outline'
+                size='icon'
+                onClick={openCategoriesDialog}
+                className='size-8'
+                aria-label={t('Update selected models categories')}
+                title={t('Update selected models categories')}
+              />
+            }
+          >
+            <Shapes />
+            <span className='sr-only'>
+              {t('Update selected models categories')}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{t('Update selected models categories')}</p>
           </TooltipContent>
         </Tooltip>
 
@@ -372,7 +437,7 @@ export function DataTableBulkActions<TData>({
             </DialogTitle>
             <DialogDescription>
               {t(
-                'Choose text, image, or video tags for {{count}} selected model(s). Custom tags will be kept.',
+                'Choose tags for {{count}} selected model(s). Custom tags outside this set will be kept.',
                 { count: selectedIds.length }
               )}
             </DialogDescription>
@@ -384,11 +449,11 @@ export function DataTableBulkActions<TData>({
               options={getModelCategoryTagOptions(t)}
               selected={selectedTags}
               onChange={setSelectedTags}
-              placeholder={t('Select category tags...')}
+              placeholder={t('Select tags...')}
             />
             <p className='text-muted-foreground text-xs'>
               {t(
-                'Leaving this empty removes text, image, and video category tags from the selected models.'
+                'Leaving this empty removes the supported tag values from selected models.'
               )}
             </p>
           </div>
@@ -403,6 +468,60 @@ export function DataTableBulkActions<TData>({
             </Button>
             <Button onClick={handleUpdateTags} disabled={isUpdatingTags}>
               {isUpdatingTags && <Loader2 className='animate-spin' />}
+              {t('Update')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showCategoriesDialog}
+        onOpenChange={(open) => {
+          setShowCategoriesDialog(open)
+          if (!open) {
+            setSelectedCategories([])
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t('Update')} {t('Categories')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('Replace categories for {{count}} selected model(s).', {
+                count: selectedIds.length,
+              })}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className='flex flex-col gap-2'>
+            <label className='text-sm font-medium'>{t('Categories')}</label>
+            <MultiSelect
+              options={categoryOptions}
+              selected={selectedCategories}
+              onChange={setSelectedCategories}
+              allowCreate
+              placeholder={t('Select or add categories...')}
+            />
+            <p className='text-muted-foreground text-xs'>
+              {t('Leaving this empty clears categories from selected models.')}
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => setShowCategoriesDialog(false)}
+              disabled={isUpdatingCategories}
+            >
+              {t('Cancel')}
+            </Button>
+            <Button
+              onClick={handleUpdateCategories}
+              disabled={isUpdatingCategories}
+            >
+              {isUpdatingCategories && <Loader2 className='animate-spin' />}
               {t('Update')}
             </Button>
           </DialogFooter>

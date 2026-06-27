@@ -39,7 +39,11 @@ import {
   getNameRuleConfig,
   getQuotaTypeConfig,
 } from '../constants'
-import { parseModelTags, formatEndpointsDisplay } from '../lib'
+import {
+  parseModelCategories,
+  parseModelTags,
+  formatEndpointsDisplay,
+} from '../lib'
 import type { Model, Vendor } from '../types'
 import { DataTableRowActions } from './data-table-row-actions'
 import { DescriptionCell } from './description-cell'
@@ -339,6 +343,56 @@ export function useModelsColumns(vendors: Vendor[] = []): ColumnDef<Model>[] {
         const tags = parseModelTags(row.getValue(id) as string)
         if (value.includes('__empty__')) return tags.length === 0
         return value.some((tag: string) => tags.includes(tag))
+      },
+      size: 150,
+      enableSorting: false,
+    },
+
+    // Categories column
+    {
+      accessorKey: 'categories',
+      meta: { label: t('Categories'), mobileHidden: true },
+      header: t('Categories'),
+      cell: ({ row }) => {
+        const categories = row.getValue('categories') as string
+        const categoryArray = parseModelCategories(categories)
+
+        if (categoryArray.length === 0) {
+          return <span className='text-muted-foreground text-xs'>-</span>
+        }
+
+        const categoryBadges = categoryArray.map((category, idx) => (
+          <StatusBadge
+            key={idx}
+            label={category}
+            autoColor={category}
+            size='sm'
+          />
+        ))
+
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger render={<div />}>
+                {renderLimitedItems(categoryBadges, 2)}
+              </TooltipTrigger>
+              {categoryArray.length > 2 && (
+                <TooltipContent
+                  side='top'
+                  className='border-border bg-popover max-h-48 max-w-[320px] overflow-y-auto p-2'
+                >
+                  <div className='flex flex-wrap gap-1'>{categoryBadges}</div>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+        )
+      },
+      filterFn: (row, id, value) => {
+        if (!value || value.length === 0 || value.includes('all')) return true
+        const categories = parseModelCategories(row.getValue(id) as string)
+        if (value.includes('__empty__')) return categories.length === 0
+        return value.some((category: string) => categories.includes(category))
       },
       size: 150,
       enableSorting: false,

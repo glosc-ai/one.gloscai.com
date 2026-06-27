@@ -269,23 +269,6 @@ export function VideoGeneration() {
     (isT2VModel && nextMode !== 'text') ||
     (isAliI2VModel && nextMode === 'text')
 
-  useEffect(() => {
-    if (isT2VModel && mode !== 'text') {
-      setMode('text')
-      return
-    }
-    if (isAliI2VModel && mode === 'text') {
-      setMode('first-frame')
-    }
-  }, [isAliI2VModel, isT2VModel, mode])
-
-  useEffect(() => {
-    if (!isAliModel || usesLegacyTextSize) return
-    if (!resolutionOptions.includes(resolution)) {
-      setResolution(resolutionOptions[0])
-    }
-  }, [isAliModel, resolution, resolutionOptions, usesLegacyTextSize])
-
   const aliMetadata = useMemo(() => {
     if (!isAliModel) return undefined
 
@@ -392,7 +375,6 @@ export function VideoGeneration() {
     isAliModel,
     lastFrame,
     legacySize,
-    mode,
     negativePrompt,
     promptExtend,
     ratio,
@@ -496,6 +478,7 @@ export function VideoGeneration() {
       model: selectedModel,
       prompt: prompt.trim(),
       group: selectedGroup,
+      size: selectedSize,
       seconds: effectiveDuration,
       duration: durationNumber,
     }
@@ -713,7 +696,7 @@ export function VideoGeneration() {
                     <>
                       <SelectField
                         label={t('Resolution')}
-                        value={resolution}
+                        value={effectiveResolution}
                         options={resolutionOptions}
                         onChange={setResolution}
                       />
@@ -734,7 +717,7 @@ export function VideoGeneration() {
                   ) : isAliModel ? (
                     <SelectField
                       label={t('Resolution')}
-                      value={resolution}
+                      value={effectiveResolution}
                       options={resolutionOptions}
                       onChange={setResolution}
                     />

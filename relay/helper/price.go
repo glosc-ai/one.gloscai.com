@@ -9,6 +9,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	relayconstant "github.com/QuantumNous/new-api/relay/constant"
 	"github.com/QuantumNous/new-api/setting/billing_setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
@@ -173,6 +174,10 @@ func ModelPriceHelperPerCall(c *gin.Context, info *relaycommon.RelayInfo) (types
 	groupRatioInfo := HandleGroupRatio(c, info)
 	modelDiscount, hasModelDiscount := billing_setting.GetModelDiscount(info.OriginModelName)
 
+	if billing_setting.GetBillingMode(info.OriginModelName) == billing_setting.BillingModeTieredExpr {
+		return modelPriceHelperTieredPerCall(c, info, groupRatioInfo)
+	}
+
 	modelPrice, success := ratio_setting.GetModelPrice(info.OriginModelName, true)
 	usePrice := success
 	var modelRatio float64
@@ -248,27 +253,36 @@ func HasModelBillingConfig(modelName string) bool {
 }
 
 func modelPriceHelperTiered(c *gin.Context, info *relaycommon.RelayInfo, promptTokens int, meta *types.TokenCountMeta, groupRatioInfo types.GroupRatioInfo) (types.PriceData, error) {
+	estimatedCompletionTokens := 0
+	if meta != nil && meta.MaxTokens != 0 {
+		estimatedCompletionTokens = meta.MaxTokens
+	}
+
+	return modelPriceHelperTieredWithParams(c, info, groupRatioInfo, billingexpr.TokenParams{
+		P:   float64(promptTokens),
+		C:   float64(estimatedCompletionTokens),
+		Len: float64(promptTokens),
+	}, promptTokens, estimatedCompletionTokens)
+}
+
+func modelPriceHelperTieredPerCall(c *gin.Context, info *relaycommon.RelayInfo, groupRatioInfo types.GroupRatioInfo) (types.PriceData, error) {
+	return modelPriceHelperTieredWithParams(c, info, groupRatioInfo, billingexpr.TokenParams{}, 0, 0)
+}
+
+func modelPriceHelperTieredWithParams(c *gin.Context, info *relaycommon.RelayInfo, groupRatioInfo types.GroupRatioInfo, params billingexpr.TokenParams, estimatedPromptTokens int, estimatedCompletionTokens int) (types.PriceData, error) {
 	exprStr, ok := billing_setting.GetBillingExpr(info.OriginModelName)
 	if !ok {
 		return types.PriceData{}, fmt.Errorf("model %s is configured as tiered_expr but has no billing expression", info.OriginModelName)
 	}
 	modelDiscount, hasModelDiscount := billing_setting.GetModelDiscount(info.OriginModelName)
-
-	estimatedCompletionTokens := 0
-	if meta.MaxTokens != 0 {
-		estimatedCompletionTokens = meta.MaxTokens
-	}
+	params = applyTieredAudioPreConsumeEstimate(info, exprStr, params)
 
 	requestInput, err := ResolveIncomingBillingExprRequestInput(c, info)
 	if err != nil {
 		return types.PriceData{}, err
 	}
 
-	rawCost, trace, err := billingexpr.RunExprWithRequest(exprStr, billingexpr.TokenParams{
-		P:   float64(promptTokens),
-		C:   float64(estimatedCompletionTokens),
-		Len: float64(promptTokens),
-	}, requestInput)
+	rawCost, trace, err := billingexpr.RunExprWithRequest(exprStr, params, requestInput)
 	if err != nil {
 		return types.PriceData{}, fmt.Errorf("model %s tiered expr run failed: %w", info.OriginModelName, err)
 	}
@@ -295,7 +309,7 @@ func modelPriceHelperTiered(c *gin.Context, info *relaycommon.RelayInfo, promptT
 		ExprString:                exprStr,
 		ExprHash:                  exprHash,
 		GroupRatio:                groupRatioInfo.GroupRatio,
-		EstimatedPromptTokens:     promptTokens,
+		EstimatedPromptTokens:     estimatedPromptTokens,
 		EstimatedCompletionTokens: estimatedCompletionTokens,
 		EstimatedQuotaBeforeGroup: quotaBeforeGroup,
 		EstimatedQuotaAfterGroup:  preConsumedQuota,
@@ -309,6 +323,8 @@ func modelPriceHelperTiered(c *gin.Context, info *relaycommon.RelayInfo, promptT
 	priceData := types.PriceData{
 		FreeModel:         freeModel,
 		GroupRatioInfo:    groupRatioInfo,
+		UseTieredBilling:  true,
+		Quota:             preConsumedQuota,
 		QuotaToPreConsume: preConsumedQuota,
 	}
 	if hasModelDiscount {
@@ -319,4 +335,24 @@ func modelPriceHelperTiered(c *gin.Context, info *relaycommon.RelayInfo, promptT
 
 	info.PriceData = priceData
 	return priceData, nil
+}
+
+func applyTieredAudioPreConsumeEstimate(info *relaycommon.RelayInfo, exprStr string, params billingexpr.TokenParams) billingexpr.TokenParams {
+	if info == nil || exprStr == "" {
+		return params
+	}
+	usedVars := billingexpr.UsedVars(exprStr)
+	switch info.RelayMode {
+	case relayconstant.RelayModeAudioTranscription, relayconstant.RelayModeAudioTranslation:
+		if usedVars["ai"] && params.AI == 0 && params.P > 0 {
+			params.AI = params.P
+			params.P = 0
+		}
+	case relayconstant.RelayModeAudioSpeech:
+		if usedVars["ao"] && params.AO == 0 && params.C > 0 {
+			params.AO = params.C
+			params.C = 0
+		}
+	}
+	return params
 }

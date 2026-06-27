@@ -28,7 +28,11 @@ import {
   VIEW_MODES,
   type ViewMode,
 } from '../constants'
-import { filterAndSortModels, extractAllTags } from '../lib/filters'
+import {
+  filterAndSortModels,
+  extractAllCategories,
+  extractAllTags,
+} from '../lib/filters'
 import type { PricingModel, TokenUnit } from '../types'
 
 type FilterState = {
@@ -40,6 +44,7 @@ type FilterState = {
   endpointType?: string
   discount?: string
   tag?: string
+  category?: string
   tokenUnit?: TokenUnit
   view?: ViewMode
   rechargePrice?: boolean
@@ -63,6 +68,7 @@ export function useFilters(models: PricingModel[]) {
     endpointType: search.endpointType,
     discount: search.discount,
     tag: search.tag,
+    category: search.category,
     tokenUnit: search.tokenUnit,
     view: search.view,
     rechargePrice: search.rechargePrice,
@@ -76,6 +82,7 @@ export function useFilters(models: PricingModel[]) {
   const endpointTypeFilter = filterState.endpointType || ENDPOINT_TYPES.ALL
   const discountFilter = filterState.discount || DISCOUNT_FILTERS.ALL
   const tagFilter = filterState.tag || FILTER_ALL
+  const categoryFilter = filterState.category || FILTER_ALL
   const tokenUnit: TokenUnit =
     filterState.tokenUnit === 'K' ? 'K' : DEFAULT_TOKEN_UNIT
   const viewMode = normalizeViewMode(filterState.view)
@@ -133,6 +140,11 @@ export function useFilters(models: PricingModel[]) {
     (v: string) => updateFilters({ tag: v === FILTER_ALL ? undefined : v }),
     [updateFilters]
   )
+  const setCategoryFilter = useCallback(
+    (v: string) =>
+      updateFilters({ category: v === FILTER_ALL ? undefined : v }),
+    [updateFilters]
+  )
   const setTokenUnit = useCallback(
     (v: TokenUnit) =>
       updateFilters({ tokenUnit: v === DEFAULT_TOKEN_UNIT ? undefined : v }),
@@ -153,6 +165,11 @@ export function useFilters(models: PricingModel[]) {
     return extractAllTags(models)
   }, [models])
 
+  const availableCategories = useMemo(() => {
+    if (!models || models.length === 0) return []
+    return extractAllCategories(models)
+  }, [models])
+
   const filteredModels = useMemo(() => {
     if (!models || models.length === 0) return []
 
@@ -164,6 +181,7 @@ export function useFilters(models: PricingModel[]) {
       endpointType: endpointTypeFilter,
       discount: discountFilter,
       tag: tagFilter,
+      category: categoryFilter,
       sortBy,
     })
   }, [
@@ -175,6 +193,7 @@ export function useFilters(models: PricingModel[]) {
     endpointTypeFilter,
     discountFilter,
     tagFilter,
+    categoryFilter,
     sortBy,
   ])
 
@@ -185,7 +204,8 @@ export function useFilters(models: PricingModel[]) {
       quotaTypeFilter !== QUOTA_TYPES.ALL ||
       endpointTypeFilter !== ENDPOINT_TYPES.ALL ||
       discountFilter !== DISCOUNT_FILTERS.ALL ||
-      tagFilter !== FILTER_ALL,
+      tagFilter !== FILTER_ALL ||
+      categoryFilter !== FILTER_ALL,
     [
       vendorFilter,
       groupFilter,
@@ -193,6 +213,7 @@ export function useFilters(models: PricingModel[]) {
       endpointTypeFilter,
       discountFilter,
       tagFilter,
+      categoryFilter,
     ]
   )
 
@@ -203,7 +224,8 @@ export function useFilters(models: PricingModel[]) {
       (quotaTypeFilter !== QUOTA_TYPES.ALL ? 1 : 0) +
       (endpointTypeFilter !== ENDPOINT_TYPES.ALL ? 1 : 0) +
       (discountFilter !== DISCOUNT_FILTERS.ALL ? 1 : 0) +
-      (tagFilter !== FILTER_ALL ? 1 : 0),
+      (tagFilter !== FILTER_ALL ? 1 : 0) +
+      (categoryFilter !== FILTER_ALL ? 1 : 0),
     [
       vendorFilter,
       groupFilter,
@@ -211,6 +233,7 @@ export function useFilters(models: PricingModel[]) {
       endpointTypeFilter,
       discountFilter,
       tagFilter,
+      categoryFilter,
     ]
   )
 
@@ -222,6 +245,7 @@ export function useFilters(models: PricingModel[]) {
       endpointType: undefined,
       discount: undefined,
       tag: undefined,
+      category: undefined,
     })
   }, [updateFilters])
 
@@ -238,6 +262,7 @@ export function useFilters(models: PricingModel[]) {
     endpointTypeFilter,
     discountFilter,
     tagFilter,
+    categoryFilter,
     tokenUnit,
     viewMode,
     showRechargePrice,
@@ -249,6 +274,7 @@ export function useFilters(models: PricingModel[]) {
     setEndpointTypeFilter,
     setDiscountFilter,
     setTagFilter,
+    setCategoryFilter,
     setTokenUnit,
     setViewMode,
     setShowRechargePrice,
@@ -256,6 +282,7 @@ export function useFilters(models: PricingModel[]) {
     hasActiveFilters,
     activeFilterCount,
     availableTags,
+    availableCategories,
     clearFilters,
     clearSearch,
   }

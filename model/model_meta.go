@@ -35,6 +35,7 @@ type Model struct {
 	Description  string         `json:"description,omitempty" gorm:"type:text"`
 	Icon         string         `json:"icon,omitempty" gorm:"type:varchar(128)"`
 	Tags         string         `json:"tags,omitempty" gorm:"type:varchar(255)"`
+	Categories   string         `json:"categories,omitempty" gorm:"type:text"`
 	VendorID     int            `json:"vendor_id,omitempty" gorm:"index"`
 	Endpoints    string         `json:"endpoints,omitempty" gorm:"type:text"`
 	Status       int            `json:"status" gorm:"default:1"`
@@ -58,6 +59,7 @@ type ModelsMetaFilter struct {
 	Keyword      string
 	Vendor       string
 	Tag          string
+	Category     string
 	Status       *int
 	SyncOfficial *int
 	HasPrice     *bool
@@ -114,7 +116,7 @@ func (mi *Model) Update() error {
 	mi.UpdatedTime = common.GetTimestamp()
 	// 使用 Select 强制更新所有字段，包括零值
 	return DB.Model(&Model{}).Where("id = ?", mi.Id).
-		Select("model_name", "description", "icon", "tags", "vendor_id", "endpoints", "status", "sync_official", "billing_type", "name_rule", "updated_time").
+		Select("model_name", "description", "icon", "tags", "categories", "vendor_id", "endpoints", "status", "sync_official", "billing_type", "name_rule", "updated_time").
 		Updates(mi).Error
 }
 
@@ -198,6 +200,35 @@ func BatchUpdateModelCategoryTags(ids []int, categoryTags []string) (int64, erro
 	return updatedCount, err
 }
 
+func normalizeModelCategories(categories []string) []string {
+	normalized := make([]string, 0, len(categories))
+	seen := make(map[string]struct{}, len(categories))
+	for _, category := range categories {
+		for _, part := range strings.Split(category, ",") {
+			value := strings.TrimSpace(part)
+			if value == "" {
+				continue
+			}
+			key := strings.ToLower(value)
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			normalized = append(normalized, value)
+		}
+	}
+	return normalized
+}
+
+func BatchUpdateModelCategories(ids []int, categories []string) (int64, error) {
+	nextCategories := normalizeModelCategories(categories)
+	result := DB.Model(&Model{}).Where("id IN ?", ids).Updates(map[string]interface{}{
+		"categories":   strings.Join(nextCategories, ","),
+		"updated_time": common.GetTimestamp(),
+	})
+	return result.RowsAffected, result.Error
+}
+
 func (mi *Model) Delete() error {
 	return DB.Delete(mi).Error
 }
@@ -229,7 +260,7 @@ func GetAllModels(offset int, limit int) ([]*Model, error) {
 func applyModelsMetaFilters(db *gorm.DB, filter ModelsMetaFilter) *gorm.DB {
 	if filter.Keyword != "" {
 		like := "%" + filter.Keyword + "%"
-		db = db.Where("model_name LIKE ? OR description LIKE ? OR tags LIKE ?", like, like, like)
+		db = db.Where("model_name LIKE ? OR description LIKE ? OR tags LIKE ? OR categories LIKE ?", like, like, like, like)
 	}
 	if filter.Vendor != "" {
 		if vendorID, err := strconv.Atoi(filter.Vendor); err == nil {
@@ -254,6 +285,19 @@ func applyModelsMetaFilters(db *gorm.DB, filter ModelsMetaFilter) *gorm.DB {
 				filter.Tag+",%",
 				"%,"+filter.Tag,
 				"%,"+filter.Tag+",%",
+			)
+		}
+	}
+	if filter.Category != "" {
+		if filter.Category == "__empty__" {
+			db = db.Where("models.categories IS NULL OR TRIM(models.categories) = ''")
+		} else {
+			db = db.Where(
+				"models.categories = ? OR models.categories LIKE ? OR models.categories LIKE ? OR models.categories LIKE ?",
+				filter.Category,
+				filter.Category+",%",
+				"%,"+filter.Category,
+				"%,"+filter.Category+",%",
 			)
 		}
 	}
@@ -287,6 +331,39 @@ func GetModelTagCounts(filter ModelsMetaFilter) (map[string]int64, error) {
 			hasTag = true
 		}
 		if !hasTag {
+			counts["__empty__"]++
+		}
+	}
+	return counts, nil
+}
+
+func GetModelCategoryCounts(filter ModelsMetaFilter) (map[string]int64, error) {
+	filter.Category = ""
+	db := applyModelsMetaFilters(DB.Model(&Model{}), filter)
+
+	var models []Model
+	if err := db.Select("categories").Find(&models).Error; err != nil {
+		return nil, err
+	}
+
+	counts := make(map[string]int64)
+	for _, modelMeta := range models {
+		categories := strings.Split(modelMeta.Categories, ",")
+		hasCategory := false
+		seen := make(map[string]struct{}, len(categories))
+		for _, category := range categories {
+			category = strings.TrimSpace(category)
+			if category == "" {
+				continue
+			}
+			if _, ok := seen[category]; ok {
+				continue
+			}
+			seen[category] = struct{}{}
+			counts[category]++
+			hasCategory = true
+		}
+		if !hasCategory {
 			counts["__empty__"]++
 		}
 	}

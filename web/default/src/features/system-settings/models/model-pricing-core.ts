@@ -18,6 +18,14 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import * as z from 'zod'
 import { combineBillingExpr } from '@/features/pricing/lib/billing-expr'
+import {
+  detectMediaPricingMode,
+  generateMediaUnitExpr,
+  getMediaModeLabel,
+  isMediaPricingMode,
+  type MediaPricingMode,
+  type MediaUnitConfig,
+} from './model-media-pricing'
 import { formatPricingNumber } from './pricing-format'
 
 export const createModelPricingSchema = (t: (key: string) => string) =>
@@ -37,7 +45,11 @@ export type ModelPricingFormValues = z.infer<
   ReturnType<typeof createModelPricingSchema>
 >
 
-export type PricingMode = 'per-token' | 'per-request' | 'tiered_expr'
+export type PricingMode =
+  | 'per-token'
+  | 'per-request'
+  | 'tiered_expr'
+  | MediaPricingMode
 
 export type LaneKey =
   | 'completion'
@@ -205,6 +217,17 @@ export function createInitialLaneState(data?: ModelRatioData | null) {
   }
 }
 
+export function getEffectivePricingMode(
+  data?: ModelRatioData | null
+): PricingMode {
+  if (!data) return 'per-token'
+  if (isMediaPricingMode(data.billingMode)) return data.billingMode
+  if (data.billingMode === 'tiered_expr') {
+    return detectMediaPricingMode(data.billingExpr) || 'tiered_expr'
+  }
+  return data.price ? 'per-request' : 'per-token'
+}
+
 export function buildPreviewRows(
   values: ModelPricingFormValues,
   mode: PricingMode,
@@ -213,8 +236,78 @@ export function buildPreviewRows(
   promptPrice: string,
   lanePrices: Record<LaneKey, string>,
   laneEnabled: Record<LaneKey, boolean>,
-  t: (key: string) => string
+  t: (key: string) => string,
+  mediaConfig?: MediaUnitConfig
 ): PreviewRow[] {
+  if (isMediaPricingMode(mode)) {
+    const mediaExpr = mediaConfig
+      ? combineBillingExpr(generateMediaUnitExpr(mediaConfig), requestRuleExpr)
+      : ''
+    const rows: PreviewRow[] = [
+      { key: 'mode', label: 'BillingMode', value: 'tiered_expr' },
+      {
+        key: 'mediaMode',
+        label: t('Media billing type'),
+        value: t(getMediaModeLabel(mode)),
+      },
+    ]
+
+    if (mediaConfig?.kind === 'image') {
+      rows.push(
+        {
+          key: 'imageBase',
+          label: t('USD per 1024x1024 image'),
+          value: `$${formatPricingNumber(mediaConfig.imageBasePrice)}`,
+        },
+        {
+          key: 'imageCount',
+          label: t('Default image count'),
+          value: formatPricingNumber(mediaConfig.imageDefaultCount),
+        }
+      )
+    } else if (mediaConfig?.kind === 'video') {
+      rows.push(
+        {
+          key: 'videoSecond',
+          label: t('USD per video second'),
+          value: `$${formatPricingNumber(mediaConfig.videoSecondPrice)}`,
+        },
+        {
+          key: 'videoSeconds',
+          label: t('Default seconds'),
+          value: formatPricingNumber(mediaConfig.videoDefaultSeconds),
+        }
+      )
+    } else if (mediaConfig?.kind === 'speech') {
+      rows.push(
+        {
+          key: 'audioSecond',
+          label: t('USD per audio second'),
+          value: `$${formatPricingNumber(mediaConfig.speechSecondPrice)}`,
+        },
+        {
+          key: 'audioSide',
+          label: t('Bill audio side'),
+          value:
+            mediaConfig.speechSide === 'input'
+              ? t('Input audio only')
+              : mediaConfig.speechSide === 'output'
+                ? t('Output audio only')
+                : t('Input and output audio'),
+        }
+      )
+    }
+
+    rows.push({
+      key: 'expr',
+      label: t('Expression'),
+      value: mediaExpr || t('Empty'),
+      multiline: true,
+    })
+
+    return rows
+  }
+
   if (mode === 'tiered_expr') {
     const effectiveExpr = combineBillingExpr(billingExpr, requestRuleExpr)
     return [

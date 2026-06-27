@@ -39,6 +39,7 @@ import { useModels } from './models-provider'
 
 const route = getRouteApi('/_authenticated/models/$section')
 const EMPTY_TAG_FILTER_VALUE = '__empty__'
+const EMPTY_CATEGORY_FILTER_VALUE = '__empty__'
 const MODEL_SORTABLE_COLUMNS = new Set<ModelSortBy>([
   'id',
   'model_name',
@@ -73,6 +74,7 @@ export function ModelsTable() {
       { columnId: 'status', searchKey: 'status', type: 'array' },
       { columnId: 'vendor_id', searchKey: 'vendor', type: 'array' },
       { columnId: 'tags', searchKey: 'tag', type: 'array' },
+      { columnId: 'categories', searchKey: 'category', type: 'array' },
       { columnId: 'sync_official', searchKey: 'sync', type: 'array' },
       { columnId: 'has_price', searchKey: 'price', type: 'array' },
     ],
@@ -85,6 +87,8 @@ export function ModelsTable() {
     (columnFilters.find((f) => f.id === 'vendor_id')?.value as string[]) || []
   const tagFilter =
     (columnFilters.find((f) => f.id === 'tags')?.value as string[]) || []
+  const categoryFilter =
+    (columnFilters.find((f) => f.id === 'categories')?.value as string[]) || []
   const syncFilter =
     (columnFilters.find((f) => f.id === 'sync_official')?.value as string[]) ||
     []
@@ -122,6 +126,10 @@ export function ModelsTable() {
     tagFilter.length > 0 && !tagFilter.includes('all')
       ? tagFilter[0]
       : undefined
+  const activeCategoryFilter =
+    categoryFilter.length > 0 && !categoryFilter.includes('all')
+      ? categoryFilter[0]
+      : undefined
 
   const sortParams = useMemo(() => {
     const activeSort = sorting[0]
@@ -155,6 +163,7 @@ export function ModelsTable() {
       keyword: globalFilter,
       vendor: activeVendorFilter,
       tag: activeTagFilter,
+      category: activeCategoryFilter,
       status:
         statusFilter.length > 0 && !statusFilter.includes('all')
           ? statusFilter[0]
@@ -177,6 +186,7 @@ export function ModelsTable() {
           keyword: globalFilter,
           vendor: activeVendorFilter,
           tag: activeTagFilter,
+          category: activeCategoryFilter,
           status:
             statusFilter.length > 0 && !statusFilter.includes('all')
               ? statusFilter[0]
@@ -196,6 +206,7 @@ export function ModelsTable() {
       } else {
         return getModels({
           tag: activeTagFilter,
+          category: activeCategoryFilter,
           status:
             statusFilter.length > 0 && !statusFilter.includes('all')
               ? statusFilter[0]
@@ -221,6 +232,7 @@ export function ModelsTable() {
   const totalCount = data?.data?.total || 0
   const vendorCounts = data?.data?.vendor_counts
   const tagCounts = data?.data?.tag_counts
+  const categoryCounts = data?.data?.category_counts
 
   // Columns configuration
   const columns = useModelsColumns(vendors)
@@ -278,6 +290,28 @@ export function ModelsTable() {
         value: tag,
       })),
   ]
+  const categoryFilterOptions = [
+    {
+      label: t('All Categories'),
+      value: 'all',
+    },
+    {
+      label: `${t('No Categories')}${categoryCounts?.[EMPTY_CATEGORY_FILTER_VALUE] ? ` (${categoryCounts[EMPTY_CATEGORY_FILTER_VALUE]})` : ''}`,
+      value: EMPTY_CATEGORY_FILTER_VALUE,
+    },
+    ...Object.entries(categoryCounts || {})
+      .filter(([category]) => category !== EMPTY_CATEGORY_FILTER_VALUE)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([category, count]) => ({
+        label: `${category}${count ? ` (${count})` : ''}`,
+        value: category,
+      })),
+  ]
+
+  const categoryOptions = categoryFilterOptions.filter(
+    (option) =>
+      option.value !== 'all' && option.value !== EMPTY_CATEGORY_FILTER_VALUE
+  )
 
   return (
     <DataTablePage
@@ -313,6 +347,12 @@ export function ModelsTable() {
             singleSelect: true,
           },
           {
+            columnId: 'categories',
+            title: t('Categories'),
+            options: categoryFilterOptions,
+            singleSelect: true,
+          },
+          {
             columnId: 'sync_official',
             title: t('Official Sync'),
             options: [...getSyncStatusOptions(t)],
@@ -326,7 +366,13 @@ export function ModelsTable() {
           },
         ],
       }}
-      bulkActions={<DataTableBulkActions table={table} vendors={vendors} />}
+      bulkActions={
+        <DataTableBulkActions
+          table={table}
+          vendors={vendors}
+          categoryOptions={categoryOptions}
+        />
+      }
     />
   )
 }

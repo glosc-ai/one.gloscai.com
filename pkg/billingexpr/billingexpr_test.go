@@ -160,6 +160,76 @@ func TestRequestProbeHelpers(t *testing.T) {
 	}
 }
 
+func TestRequestValueHelpersForDirectUSD(t *testing.T) {
+	cost, trace, err := billingexpr.RunExprWithRequest(
+		`tier("video", usd(num(param("seconds"), num(param("duration"), 1)) * (str(param("size")) == "1024x1792" ? 0.08 : 0.05)))`,
+		billingexpr.TokenParams{},
+		billingexpr.RequestInput{
+			Body: []byte(`{"seconds":"6","size":"1024x1792"}`),
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := 6 * 0.08 * 1_000_000
+	if math.Abs(cost-want) > 1e-6 {
+		t.Errorf("cost = %f, want %f", cost, want)
+	}
+	if trace.MatchedTier != "video" {
+		t.Errorf("tier = %q, want video", trace.MatchedTier)
+	}
+}
+
+func TestSecondsHelper(t *testing.T) {
+	cost, _, err := billingexpr.RunExpr(
+		`tier("speech", usd(seconds(ai + ao) * 0.006))`,
+		billingexpr.TokenParams{AI: 1000, AO: 500},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := 90 * 0.006 * 1_000_000
+	if math.Abs(cost-want) > 1e-6 {
+		t.Errorf("cost = %f, want %f", cost, want)
+	}
+}
+
+func TestSecondsHelperWithRequestDurationFallback(t *testing.T) {
+	expr := `tier("speech", usd((seconds(ao) > 0 ? seconds(ao) : max(num(param("seconds"), num(param("duration"), num(param("estimated_duration"), 0))), 0)) * 0.006))`
+	cost, trace, err := billingexpr.RunExprWithRequest(
+		expr,
+		billingexpr.TokenParams{},
+		billingexpr.RequestInput{
+			Body: []byte(`{"estimated_duration":12}`),
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := 12 * 0.006 * 1_000_000
+	if math.Abs(cost-want) > 1e-6 {
+		t.Errorf("cost = %f, want %f", cost, want)
+	}
+	if trace.MatchedTier != "speech" {
+		t.Errorf("tier = %q, want speech", trace.MatchedTier)
+	}
+
+	cost, _, err = billingexpr.RunExprWithRequest(
+		expr,
+		billingexpr.TokenParams{AO: 1000},
+		billingexpr.RequestInput{
+			Body: []byte(`{"estimated_duration":12}`),
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = 60 * 0.006 * 1_000_000
+	if math.Abs(cost-want) > 1e-6 {
+		t.Errorf("cost with audio tokens = %f, want %f", cost, want)
+	}
+}
+
 func TestHeaderProbeHelper(t *testing.T) {
 	cost, _, err := billingexpr.RunExprWithRequest(
 		`p * 0.5 + c * 1.0 * (has(header("anthropic-beta"), "fast-mode") ? 2 : 1)`,

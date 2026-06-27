@@ -78,16 +78,19 @@ export interface PricingToolbarProps {
   groupFilter: string
   discountFilter: string
   tagFilter: string
+  categoryFilter: string
   onQuotaTypeChange: (value: string) => void
   onEndpointTypeChange: (value: string) => void
   onVendorChange: (value: string) => void
   onGroupChange: (value: string) => void
   onDiscountChange: (value: string) => void
   onTagChange: (value: string) => void
+  onCategoryChange: (value: string) => void
   vendors: PricingVendor[]
   groups: string[]
   groupRatios?: Record<string, number>
   tags: string[]
+  categories: string[]
   models: PricingModel[]
   hasActiveFilters: boolean
   activeFilterCount: number
@@ -281,7 +284,9 @@ export function PricingToolbar(props: PricingToolbarProps) {
           <SheetHeader className={sideDrawerHeaderClassName()}>
             <SheetTitle>{t('Filter')}</SheetTitle>
             <SheetDescription>
-              {t('Filter models by provider, group, type, endpoint, and tags.')}
+              {t(
+                'Filter models by provider, group, type, endpoint, tags, and categories.'
+              )}
             </SheetDescription>
           </SheetHeader>
           <div className={sideDrawerFormClassName('gap-0')}>
@@ -292,16 +297,19 @@ export function PricingToolbar(props: PricingToolbarProps) {
               groupFilter={props.groupFilter}
               discountFilter={props.discountFilter}
               tagFilter={props.tagFilter}
+              categoryFilter={props.categoryFilter}
               onQuotaTypeChange={props.onQuotaTypeChange}
               onEndpointTypeChange={props.onEndpointTypeChange}
               onVendorChange={props.onVendorChange}
               onGroupChange={props.onGroupChange}
               onDiscountChange={props.onDiscountChange}
               onTagChange={props.onTagChange}
+              onCategoryChange={props.onCategoryChange}
               vendors={props.vendors}
               groups={props.groups}
               groupRatios={props.groupRatios}
               tags={props.tags}
+              categories={props.categories}
               models={props.models}
               hasActiveFilters={props.hasActiveFilters}
               onClearFilters={props.onClearFilters}

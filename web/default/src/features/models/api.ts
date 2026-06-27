@@ -23,6 +23,7 @@ import type {
   GetModelResponse,
   BatchUpdateModelVendorResponse,
   BatchUpdateModelTagsResponse,
+  BatchUpdateModelCategoriesResponse,
   GetVendorsResponse,
   GetVendorResponse,
   Model,
@@ -118,13 +119,24 @@ export async function batchUpdateModelVendor(data: {
 }
 
 /**
- * Batch update selected models' category tags (text, image, video)
+ * Batch update selected models' supported model tags
  */
 export async function batchUpdateModelTags(data: {
   ids: number[]
   tags: string[]
 }): Promise<BatchUpdateModelTagsResponse> {
   const res = await api.put('/api/models/batch_tags', data)
+  return res.data
+}
+
+/**
+ * Batch replace selected models' categories
+ */
+export async function batchUpdateModelCategories(data: {
+  ids: number[]
+  categories: string[]
+}): Promise<BatchUpdateModelCategoriesResponse> {
+  const res = await api.put('/api/models/batch_categories', data)
   return res.data
 }
 

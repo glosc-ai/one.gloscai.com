@@ -257,6 +257,7 @@ export async function transcribeSpeech(
   const formData = new FormData()
   formData.append('file', payload.file)
   formData.append('model', payload.model)
+  if (payload.group) formData.append('group', payload.group)
   if (payload.language) formData.append('language', payload.language)
   if (payload.prompt) formData.append('prompt', payload.prompt)
   formData.append('response_format', payload.response_format ?? 'verbose_json')
@@ -296,12 +297,16 @@ export async function synthesizeSpeech(
 ): Promise<TextToSpeechResult> {
   const body: Record<string, unknown> = {
     model: payload.model,
+    group: payload.group,
     input: payload.input,
     voice: payload.voice,
     response_format: payload.response_format ?? 'mp3',
   }
   if (typeof payload.speed === 'number') {
     body.speed = payload.speed
+  }
+  if (typeof payload.estimated_duration === 'number') {
+    body.estimated_duration = payload.estimated_duration
   }
   const res = await api.post(MEDIA_API_ENDPOINTS.AUDIO_SPEECH, body, {
     responseType: 'blob',

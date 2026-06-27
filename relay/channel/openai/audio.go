@@ -136,12 +136,16 @@ func OpenaiSTTHandler(c *gin.Context, resp *http.Response, info *relaycommon.Rel
 			if usage.CompletionTokens == 0 {
 				usage.CompletionTokens = usage.OutputTokens
 			}
+			if usage.PromptTokensDetails.AudioTokens == 0 && usage.PromptTokens > 0 {
+				usage.PromptTokensDetails.AudioTokens = usage.PromptTokens
+			}
 			return nil, usage
 		}
 	}
 
 	usage := &dto.Usage{}
 	usage.PromptTokens = info.GetEstimatePromptTokens()
+	usage.PromptTokensDetails.AudioTokens = usage.PromptTokens
 	usage.CompletionTokens = 0
 	usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
 	return nil, usage

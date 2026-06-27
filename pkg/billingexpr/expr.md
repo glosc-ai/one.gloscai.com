@@ -78,6 +78,10 @@ Powered by [expr-lang/expr](https://github.com/expr-lang/expr). Expressions are 
 | `tier` | `tier(name, value) → float64` | Records which pricing tier matched; must wrap the cost expression |
 | `param` | `param(path) → any` | Reads a JSON path from the request body (uses gjson) |
 | `header` | `header(key) → string` | Reads a request header value |
+| `num` | `num(value, fallback) → float64` | Converts a request value to a number, returning fallback when missing/invalid |
+| `str` | `str(value) → string` | Converts a request value to a trimmed string |
+| `usd` | `usd(amount) → float64` | Converts a direct USD amount into the expression's $/1M-token output scale |
+| `seconds` | `seconds(tokens) → float64` | Converts audio tokens encoded as `ceil(duration)/60*1000` back to seconds |
 | `has` | `has(source, substr) → bool` | Substring check |
 | `hour` | `hour(tz) → int` | Current hour in timezone (0-23) |
 | `minute` | `minute(tz) → int` | Current minute (0-59) |
@@ -106,6 +110,11 @@ tier("base", p * 2 + c * 8 + img * 2.5)
 
 # Multimodal with audio
 tier("base", p * 0.43 + c * 3.06 + img * 0.78 + ai * 3.81 + ao * 15.11)
+
+# Direct request-unit pricing (video/image/audio duration)
+tier("video", usd(num(param("seconds"), num(param("duration"), 1)) * (str(param("size")) == "1024x1792" ? 0.08 : 0.05)))
+tier("image", usd(num(param("n"), 1) * (str(param("size")) == "1024x1792" ? 0.08 : 0.04)))
+tier("speech", usd((seconds(ai + ao) > 0 ? seconds(ai + ao) : max(num(param("seconds"), num(param("duration"), num(param("estimated_duration"), 0))), 0)) * 0.006))
 ```
 
 ### Request Rules (appended after `|||`)

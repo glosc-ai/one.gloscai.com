@@ -46,6 +46,7 @@ export function filterBySearch(
       m.model_name?.toLowerCase().includes(lowerQuery) ||
       m.description?.toLowerCase().includes(lowerQuery) ||
       m.tags?.toLowerCase().includes(lowerQuery) ||
+      m.categories?.toLowerCase().includes(lowerQuery) ||
       m.vendor_name?.toLowerCase().includes(lowerQuery)
   )
 }
@@ -157,6 +158,7 @@ export function filterAndSortModels(
     endpointType: string
     discount: string
     tag: string
+    category: string
     sortBy: string
   }
 ): PricingModel[] {
@@ -167,6 +169,7 @@ export function filterAndSortModels(
   result = filterByEndpointType(result, filters.endpointType)
   result = filterByDiscountStatus(result, filters.discount)
   result = filterByTag(result, filters.tag)
+  result = filterByCategory(result, filters.category)
   result = sortModels(result, filters.sortBy)
 
   return result
@@ -202,6 +205,27 @@ export function extractAllTags(models: PricingModel[]): string[] {
 }
 
 /**
+ * Extract all unique categories from models
+ */
+export function extractAllCategories(models: PricingModel[]): string[] {
+  const categoryMap = new Map<string, string>()
+
+  models.forEach((model) => {
+    if (model.categories) {
+      const categories = parseTags(model.categories)
+      categories.forEach((category) => {
+        const key = category.toLowerCase()
+        if (!categoryMap.has(key)) {
+          categoryMap.set(key, category)
+        }
+      })
+    }
+  })
+
+  return Array.from(categoryMap.values()).sort((a, b) => a.localeCompare(b))
+}
+
+/**
  * Filter models by tag
  */
 export function filterByTag(
@@ -215,5 +239,22 @@ export function filterByTag(
     if (!m.tags) return false
     const modelTags = parseTags(m.tags).map((t) => t.toLowerCase())
     return modelTags.includes(tagLower)
+  })
+}
+
+/**
+ * Filter models by category
+ */
+export function filterByCategory(
+  models: PricingModel[],
+  category: string
+): PricingModel[] {
+  if (category === FILTER_ALL) return models
+
+  const categoryLower = category.toLowerCase()
+  return models.filter((m) => {
+    if (!m.categories) return false
+    const modelCategories = parseTags(m.categories).map((t) => t.toLowerCase())
+    return modelCategories.includes(categoryLower)
   })
 }

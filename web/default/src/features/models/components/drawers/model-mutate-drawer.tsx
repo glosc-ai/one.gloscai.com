@@ -79,14 +79,25 @@ import { useUpdateOption } from '@/features/system-settings/hooks/use-update-opt
 import { normalizeJsonString } from '@/features/system-settings/models/utils'
 import type { ModelSettings } from '@/features/system-settings/types'
 import { safeJsonParse } from '@/features/system-settings/utils/json-parser'
-import { createModel, updateModel, getModel, getVendors } from '../../api'
+import {
+  createModel,
+  updateModel,
+  getModel,
+  getModels,
+  getVendors,
+} from '../../api'
 import {
   getNameRuleOptions,
   ENDPOINT_TEMPLATES,
   getModelCategoryTagOptions,
   getBillingTypeOptions,
 } from '../../constants'
-import { modelsQueryKeys, vendorsQueryKeys, parseModelTags } from '../../lib'
+import {
+  modelsQueryKeys,
+  vendorsQueryKeys,
+  parseModelCategories,
+  parseModelTags,
+} from '../../lib'
 import type { Model } from '../../types'
 
 // Extended schema for ratio configuration (internal form state only)
@@ -96,6 +107,7 @@ const extendedModelFormSchema = z.object({
   description: z.string(),
   icon: z.string(),
   tags: z.array(z.string()),
+  categories: z.array(z.string()),
   vendor_id: z.number().optional(),
   endpoints: z.string(),
   name_rule: z.number(),
@@ -146,6 +158,23 @@ export function ModelMutateDrawer({
   })
 
   const vendors = vendorsData?.data?.items || []
+
+  const { data: categoryData } = useQuery({
+    queryKey: modelsQueryKeys.list({ page_size: 1000 }),
+    queryFn: () => getModels({ page_size: 1000 }),
+    enabled: open,
+  })
+
+  const categoryOptions = useMemo(() => {
+    const counts = categoryData?.data?.category_counts || {}
+    return Object.keys(counts)
+      .filter((category) => category !== '__empty__')
+      .sort((a, b) => a.localeCompare(b))
+      .map((category) => ({
+        label: category,
+        value: category,
+      }))
+  }, [categoryData?.data?.category_counts])
 
   // Fetch model detail if editing
   const { data: modelData } = useQuery({
@@ -220,6 +249,7 @@ export function ModelMutateDrawer({
       description: '',
       icon: '',
       tags: [],
+      categories: [],
       vendor_id: undefined,
       endpoints: '',
       name_rule: 0,
@@ -280,6 +310,7 @@ export function ModelMutateDrawer({
         description: model.description || '',
         icon: model.icon || '',
         tags: parseModelTags(model.tags),
+        categories: parseModelCategories(model.categories),
         vendor_id: model.vendor_id,
         endpoints: model.endpoints || '',
         name_rule: model.name_rule || 0,
@@ -385,6 +416,7 @@ export function ModelMutateDrawer({
         description: '',
         icon: '',
         tags: [],
+        categories: [],
         vendor_id: undefined,
         endpoints: '',
         name_rule: 0,
@@ -410,6 +442,9 @@ export function ModelMutateDrawer({
           ...values,
           id: isEditing ? currentRow!.id : undefined,
           tags: Array.isArray(values.tags) ? values.tags.join(',') : '',
+          categories: Array.isArray(values.categories)
+            ? values.categories.join(',')
+            : '',
           status: values.status ? 1 : 0,
           sync_official: values.sync_official ? 1 : 0,
           billing_type: values.billing_type ?? 0,
@@ -613,6 +648,7 @@ export function ModelMutateDrawer({
               : 'Model created successfully'
           )
           queryClient.invalidateQueries({ queryKey: modelsQueryKeys.lists() })
+          queryClient.invalidateQueries({ queryKey: ['pricing'] })
           queryClient.invalidateQueries({ queryKey: ['system-options'] })
           onOpenChange(false)
         } else {
@@ -791,6 +827,31 @@ export function ModelMutateDrawer({
                     <FormDescription>
                       {t(
                         'Use the tags text / image / video to control which generation page shows this model. You can also add custom tags.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='categories'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Categories')}</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={categoryOptions}
+                        selected={field.value || []}
+                        onChange={field.onChange}
+                        allowCreate
+                        placeholder={t('Select or add categories...')}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Categories are used for Model Square filtering and do not change model tags.'
                       )}
                     </FormDescription>
                     <FormMessage />

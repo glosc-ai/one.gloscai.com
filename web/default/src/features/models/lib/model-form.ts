@@ -18,7 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { z } from 'zod'
 import type { Model } from '../types'
-import { parseModelTags as parseTagsFromUtils } from './model-utils'
+import {
+  parseModelCategories,
+  parseModelTags as parseTagsFromUtils,
+} from './model-utils'
 
 // ============================================================================
 // Model Form Schema
@@ -33,6 +36,7 @@ export const modelFormSchema = z.object({
   description: z.string().default(''),
   icon: z.string().default(''),
   tags: z.array(z.string()).default([]),
+  categories: z.array(z.string()).default([]),
   vendor_id: z.number().optional(),
   endpoints: z.string().default(''),
   name_rule: z.number().min(0).max(3).default(0),
@@ -75,6 +79,7 @@ export function transformModelToFormDefaults(model: Model): ModelFormValues {
     description: model.description || '',
     icon: model.icon || '',
     tags: parseTagsFromUtils(model.tags),
+    categories: parseModelCategories(model.categories),
     vendor_id: model.vendor_id,
     endpoints: model.endpoints || '',
     name_rule: model.name_rule || 0,
@@ -97,6 +102,7 @@ export function transformFormDataToModelPayload(
     description: formData.description || '',
     icon: formData.icon || '',
     tags: formatTagsArray(formData.tags),
+    categories: formatTagsArray(formData.categories),
     vendor_id: formData.vendor_id,
     endpoints: formData.endpoints || '',
     name_rule: formData.name_rule,

@@ -23,6 +23,11 @@ type batchUpdateModelCategoryTagsRequest struct {
 	Tags []string `json:"tags"`
 }
 
+type batchUpdateModelCategoriesRequest struct {
+	Ids        []int    `json:"ids"`
+	Categories []string `json:"categories"`
+}
+
 func parseModelIntFilter(raw string, enabledValues map[string]struct{}, disabledValues map[string]struct{}) *int {
 	value := strings.ToLower(strings.TrimSpace(raw))
 	if value == "" || value == "all" {
@@ -60,9 +65,10 @@ func getModelsMetaFilter(c *gin.Context) model.ModelsMetaFilter {
 	}
 
 	return model.ModelsMetaFilter{
-		Keyword: c.Query("keyword"),
-		Vendor:  c.Query("vendor"),
-		Tag:     strings.TrimSpace(c.Query("tag")),
+		Keyword:  c.Query("keyword"),
+		Vendor:   c.Query("vendor"),
+		Tag:      strings.TrimSpace(c.Query("tag")),
+		Category: strings.TrimSpace(c.Query("category")),
 		Status: parseModelIntFilter(
 			c.Query("status"),
 			map[string]struct{}{"enabled": {}, "enable": {}, "true": {}, "1": {}},
@@ -94,16 +100,18 @@ func GetAllModelsMeta(c *gin.Context) {
 	// 统计供应商计数（全部数据，不受分页影响）
 	vendorCounts, _ := model.GetVendorModelCounts()
 	tagCounts, _ := model.GetModelTagCounts(getModelsMetaFilter(c))
+	categoryCounts, _ := model.GetModelCategoryCounts(getModelsMetaFilter(c))
 
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(modelsMeta)
 	common.ApiSuccess(c, gin.H{
-		"items":         modelsMeta,
-		"total":         total,
-		"page":          pageInfo.GetPage(),
-		"page_size":     pageInfo.GetPageSize(),
-		"vendor_counts": vendorCounts,
-		"tag_counts":    tagCounts,
+		"items":           modelsMeta,
+		"total":           total,
+		"page":            pageInfo.GetPage(),
+		"page_size":       pageInfo.GetPageSize(),
+		"vendor_counts":   vendorCounts,
+		"tag_counts":      tagCounts,
+		"category_counts": categoryCounts,
 	})
 }
 
@@ -120,14 +128,16 @@ func SearchModelsMeta(c *gin.Context) {
 	// 批量填充附加字段，提升列表接口性能
 	enrichModels(modelsMeta)
 	tagCounts, _ := model.GetModelTagCounts(getModelsMetaFilter(c))
+	categoryCounts, _ := model.GetModelCategoryCounts(getModelsMetaFilter(c))
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(modelsMeta)
 	common.ApiSuccess(c, gin.H{
-		"items":      modelsMeta,
-		"total":      total,
-		"page":       pageInfo.GetPage(),
-		"page_size":  pageInfo.GetPageSize(),
-		"tag_counts": tagCounts,
+		"items":           modelsMeta,
+		"total":           total,
+		"page":            pageInfo.GetPage(),
+		"page_size":       pageInfo.GetPageSize(),
+		"tag_counts":      tagCounts,
+		"category_counts": categoryCounts,
 	})
 }
 
@@ -270,6 +280,26 @@ func BatchUpdateModelCategoryTags(c *gin.Context) {
 	}
 
 	updatedCount, err := model.BatchUpdateModelCategoryTags(req.Ids, req.Tags)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	model.RefreshPricing()
+	common.ApiSuccess(c, gin.H{"updated_count": updatedCount})
+}
+
+func BatchUpdateModelCategories(c *gin.Context) {
+	var req batchUpdateModelCategoriesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if len(req.Ids) == 0 {
+		common.ApiErrorMsg(c, "请选择至少一个模型")
+		return
+	}
+
+	updatedCount, err := model.BatchUpdateModelCategories(req.Ids, req.Categories)
 	if err != nil {
 		common.ApiError(c, err)
 		return

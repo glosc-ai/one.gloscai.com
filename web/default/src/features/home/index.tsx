@@ -19,13 +19,14 @@ For commercial licensing, please contact support@quantumnous.com
 import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/auth-store'
+import { useTheme } from '@/context/theme-provider'
 import { Markdown } from '@/components/ui/markdown'
 import { PublicLayout } from '@/components/layout'
 import { Footer } from '@/components/layout/components/footer'
 import { CTA, Features, Hero, HowItWorks, Models, Stats } from './components'
 import { useHomePageContent } from './hooks'
 
-const landingThemeVars = {
+const landingDarkThemeVars = {
   '--background': 'oklch(0.057 0 0)',
   '--foreground': 'oklch(0.98 0 0)',
   '--card': 'oklch(0.113 0 0)',
@@ -41,11 +42,30 @@ const landingThemeVars = {
   '--ring': 'oklch(0.67 0.195 165)',
 } as CSSProperties
 
+const landingLightThemeVars = {
+  '--background': 'oklch(0.985 0.006 165)',
+  '--foreground': 'oklch(0.18 0.015 165)',
+  '--card': 'oklch(1 0 0)',
+  '--card-foreground': 'oklch(0.18 0.015 165)',
+  '--muted': 'oklch(0.94 0.01 165)',
+  '--muted-foreground': 'oklch(0.46 0.02 165)',
+  '--accent': 'oklch(0.93 0.025 165)',
+  '--accent-foreground': 'oklch(0.18 0.015 165)',
+  '--primary': 'oklch(0.49 0.15 165)',
+  '--primary-foreground': 'oklch(0.99 0.006 165)',
+  '--border': 'oklch(0.82 0.018 165)',
+  '--input': 'oklch(0.82 0.018 165)',
+  '--ring': 'oklch(0.49 0.15 165)',
+} as CSSProperties
+
 export function Home() {
   const { t } = useTranslation()
   const { auth } = useAuthStore()
+  const { resolvedTheme } = useTheme()
   const isAuthenticated = !!auth.user
   const { content, isLoaded, isUrl } = useHomePageContent()
+  const landingThemeVars =
+    resolvedTheme === 'dark' ? landingDarkThemeVars : landingLightThemeVars
 
   if (!isLoaded) {
     return (
@@ -80,10 +100,10 @@ export function Home() {
   return (
     <PublicLayout
       showMainContainer={false}
-      headerProps={{ className: 'dark text-foreground' }}
+      headerProps={{ className: 'text-foreground' }}
     >
       <div
-        className='dark bg-background text-foreground min-h-screen'
+        className='bg-background text-foreground min-h-screen'
         style={landingThemeVars}
       >
         <Hero isAuthenticated={isAuthenticated} />

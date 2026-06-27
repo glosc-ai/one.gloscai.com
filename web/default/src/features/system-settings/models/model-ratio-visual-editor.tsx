@@ -50,6 +50,11 @@ import {
 import { combineBillingExpr } from '@/features/pricing/lib/billing-expr'
 import { safeJsonParse } from '../utils/json-parser'
 import {
+  isExpressionBackedPricingMode,
+  isMediaPricingMode,
+} from './model-media-pricing'
+import { type PricingMode } from './model-pricing-core'
+import {
   ModelPricingEditorPanel,
   type ModelPricingEditorPanelHandle,
   ModelPricingSheet,
@@ -255,7 +260,8 @@ const ModelRatioVisualEditorComponent = forwardRef<
         (acc, model) => {
           const mode =
             model.billingMode === 'per-request' ||
-            model.billingMode === 'tiered_expr'
+            model.billingMode === 'tiered_expr' ||
+            isMediaPricingMode(model.billingMode)
               ? model.billingMode
               : 'per-token'
           acc[mode] += 1
@@ -265,7 +271,10 @@ const ModelRatioVisualEditorComponent = forwardRef<
           'per-token': 0,
           'per-request': 0,
           tiered_expr: 0,
-        } as Record<'per-token' | 'per-request' | 'tiered_expr', number>
+          'media-image': 0,
+          'media-video': 0,
+          'media-audio': 0,
+        } as Record<PricingMode, number>
       ),
     [models]
   )
@@ -284,8 +293,9 @@ const ModelRatioVisualEditorComponent = forwardRef<
         audioRatio: editableModel.audioRatio,
         audioCompletionRatio: editableModel.audioCompletionRatio,
         billingMode:
-          editableModel.billingMode === 'tiered_expr'
-            ? 'tiered_expr'
+          editableModel.billingMode === 'tiered_expr' ||
+          isMediaPricingMode(editableModel.billingMode)
+            ? editableModel.billingMode
             : editableModel.price && editableModel.price !== ''
               ? 'per-request'
               : 'per-token',
@@ -506,7 +516,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
         delete billingModeMap[name]
         delete billingExprMap[name]
 
-        if (data.billingMode === 'tiered_expr') {
+        if (isExpressionBackedPricingMode(data.billingMode)) {
           const combined = combineBillingExpr(
             data.billingExpr || '',
             data.requestRuleExpr || ''
@@ -630,19 +640,34 @@ const ModelRatioVisualEditorComponent = forwardRef<
                 title: t('Mode'),
                 options: [
                   {
-                    label: 'Per-token',
+                    label: t('Per-token'),
                     value: 'per-token',
                     count: modeCounts['per-token'],
                   },
                   {
-                    label: 'Per-request',
+                    label: t('Per-request'),
                     value: 'per-request',
                     count: modeCounts['per-request'],
                   },
                   {
-                    label: 'Expression',
+                    label: t('Expression'),
                     value: 'tiered_expr',
                     count: modeCounts.tiered_expr,
+                  },
+                  {
+                    label: t('Per-image'),
+                    value: 'media-image',
+                    count: modeCounts['media-image'],
+                  },
+                  {
+                    label: t('Per-video'),
+                    value: 'media-video',
+                    count: modeCounts['media-video'],
+                  },
+                  {
+                    label: t('Per-audio'),
+                    value: 'media-audio',
+                    count: modeCounts['media-audio'],
                   },
                 ],
               },

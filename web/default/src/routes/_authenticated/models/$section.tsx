@@ -32,6 +32,7 @@ const modelsSearchSchema = z.object({
   filter: z.string().optional().catch(''),
   vendor: z.array(z.string()).optional().catch([]),
   tag: z.array(z.string()).optional().catch([]),
+  category: z.array(z.string()).optional().catch([]),
   status: z.array(z.string()).optional().catch([]),
   sync: z.array(z.string()).optional().catch([]),
   price: z.array(z.string()).optional().catch([]),

@@ -62,11 +62,21 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { sideDrawerContentClassName } from '@/components/drawer-layout'
 import {
+  createDefaultMediaUnitConfig,
+  generateMediaUnitExpr,
+  getMediaKindFromPricingMode,
+  isMediaPricingMode,
+  tryParseMediaUnitConfig,
+  type MediaUnitConfig,
+} from './model-media-pricing'
+import { MediaPricingFields } from './model-media-pricing-fields'
+import {
   EMPTY_LANE_ENABLED,
   EMPTY_LANE_PRICES,
   buildPreviewRows,
   createInitialLaneState,
   createModelPricingSchema,
+  getEffectivePricingMode,
   hasValue,
   laneConfigs,
   numericDraftRegex,
@@ -153,6 +163,9 @@ export const ModelPricingEditorPanel = forwardRef<
   })
   const [billingExpr, setBillingExpr] = useState('')
   const [requestRuleExpr, setRequestRuleExpr] = useState('')
+  const [mediaConfig, setMediaConfig] = useState<MediaUnitConfig>(() =>
+    createDefaultMediaUnitConfig()
+  )
   const isEditMode = !!editData
 
   const form = useForm<ModelPricingFormValues>({
@@ -172,6 +185,7 @@ export const ModelPricingEditorPanel = forwardRef<
 
   useEffect(() => {
     const nextLaneState = createInitialLaneState(editData)
+    const nextPricingMode = getEffectivePricingMode(editData)
 
     if (editData) {
       form.reset({
@@ -185,15 +199,15 @@ export const ModelPricingEditorPanel = forwardRef<
         audioRatio: editData.audioRatio || '',
         audioCompletionRatio: editData.audioCompletionRatio || '',
       })
-      setPricingMode(
-        editData.billingMode === 'tiered_expr'
-          ? 'tiered_expr'
-          : editData.price
-            ? 'per-request'
-            : 'per-token'
-      )
+      setPricingMode(nextPricingMode)
       setBillingExpr(editData.billingExpr || '')
       setRequestRuleExpr(editData.requestRuleExpr || '')
+      setMediaConfig(
+        tryParseMediaUnitConfig(editData.billingExpr) ||
+          createDefaultMediaUnitConfig(
+            isMediaPricingMode(nextPricingMode) ? nextPricingMode : 'video'
+          )
+      )
     } else {
       form.reset({
         name: '',
@@ -209,6 +223,7 @@ export const ModelPricingEditorPanel = forwardRef<
       setPricingMode('per-token')
       setBillingExpr('')
       setRequestRuleExpr('')
+      setMediaConfig(createDefaultMediaUnitConfig())
     }
 
     setPromptPrice(nextLaneState.promptPrice)
@@ -330,9 +345,21 @@ export const ModelPricingEditorPanel = forwardRef<
 
   const handleModeChange = (value: string) => {
     const nextMode = value as PricingMode
+    let nextBillingExpr = billingExpr
+    if (nextMode === 'tiered_expr' && isMediaPricingMode(pricingMode)) {
+      nextBillingExpr = generateMediaUnitExpr(mediaConfig)
+      setBillingExpr(nextBillingExpr)
+    }
     setPricingMode(nextMode)
-    if (nextMode === 'tiered_expr' && !billingExpr) {
+    if (nextMode === 'tiered_expr' && !nextBillingExpr) {
       setBillingExpr('tier("base", p * 0 + c * 0)')
+    }
+    if (isMediaPricingMode(nextMode)) {
+      const parsedConfig = tryParseMediaUnitConfig(billingExpr)
+      setMediaConfig((previous) => ({
+        ...(parsedConfig || previous),
+        kind: getMediaKindFromPricingMode(nextMode),
+      }))
     }
   }
 
@@ -347,12 +374,14 @@ export const ModelPricingEditorPanel = forwardRef<
         promptPrice,
         lanePrices,
         laneEnabled,
-        t
+        t,
+        mediaConfig
       ),
     [
       billingExpr,
       laneEnabled,
       lanePrices,
+      mediaConfig,
       pricingMode,
       promptPrice,
       requestRuleExpr,
@@ -436,6 +465,7 @@ export const ModelPricingEditorPanel = forwardRef<
 
   const buildSubmitData = useCallback(
     (values: ModelPricingFormValues) => {
+      const mediaMode = isMediaPricingMode(pricingMode)
       const data: ModelRatioData = {
         name: values.name.trim(),
         billingMode: pricingMode,
@@ -449,14 +479,16 @@ export const ModelPricingEditorPanel = forwardRef<
         audioCompletionRatio: values.audioCompletionRatio || '',
       }
 
-      if (pricingMode === 'tiered_expr') {
-        data.billingExpr = billingExpr
+      if (pricingMode === 'tiered_expr' || mediaMode) {
+        data.billingExpr = mediaMode
+          ? generateMediaUnitExpr(mediaConfig)
+          : billingExpr
         data.requestRuleExpr = requestRuleExpr
       }
 
       return data
     },
-    [billingExpr, pricingMode, requestRuleExpr]
+    [billingExpr, mediaConfig, pricingMode, requestRuleExpr]
   )
 
   useImperativeHandle(
@@ -540,7 +572,7 @@ export const ModelPricingEditorPanel = forwardRef<
                   onValueChange={handleModeChange}
                   className='gap-4'
                 >
-                  <TabsList className='grid w-full grid-cols-3'>
+                  <TabsList className='grid h-auto w-full grid-cols-3 sm:grid-cols-6'>
                     <TabsTrigger value='per-token'>
                       {t('Per-token')}
                     </TabsTrigger>
@@ -549,6 +581,15 @@ export const ModelPricingEditorPanel = forwardRef<
                     </TabsTrigger>
                     <TabsTrigger value='tiered_expr'>
                       {t('Expression')}
+                    </TabsTrigger>
+                    <TabsTrigger value='media-image'>
+                      {t('Per-image')}
+                    </TabsTrigger>
+                    <TabsTrigger value='media-video'>
+                      {t('Per-video')}
+                    </TabsTrigger>
+                    <TabsTrigger value='media-audio'>
+                      {t('Per-audio')}
                     </TabsTrigger>
                   </TabsList>
 
@@ -645,6 +686,30 @@ export const ModelPricingEditorPanel = forwardRef<
                         onRequestRuleExprChange={setRequestRuleExpr}
                       />
                     </FieldGroup>
+                  </TabsContent>
+
+                  <TabsContent value='media-image' className='pt-0'>
+                    <MediaPricingFields
+                      mode='media-image'
+                      config={mediaConfig}
+                      onChange={setMediaConfig}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value='media-video' className='pt-0'>
+                    <MediaPricingFields
+                      mode='media-video'
+                      config={mediaConfig}
+                      onChange={setMediaConfig}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value='media-audio' className='pt-0'>
+                    <MediaPricingFields
+                      mode='media-audio'
+                      config={mediaConfig}
+                      onChange={setMediaConfig}
+                    />
                   </TabsContent>
                 </Tabs>
               </FieldGroup>

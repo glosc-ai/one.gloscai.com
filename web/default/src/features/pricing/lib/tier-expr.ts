@@ -293,6 +293,18 @@ export function evalExprLocally(
       c: completionTokens,
       len,
       tier: tierFn,
+      param: () => null,
+      header: () => '',
+      has: (source: unknown, substr: string) =>
+        source != null && String(source).includes(substr),
+      num: (value: unknown, fallback: number) => {
+        if (value == null || value === '') return fallback
+        const next = Number(value)
+        return Number.isFinite(next) ? next : fallback
+      },
+      str: (value: unknown) => (value == null ? '' : String(value).trim()),
+      usd: (amount: number) => amount * 1_000_000,
+      seconds: (tokens: number) => (Number(tokens) || 0) * 60 / 1000,
       max: Math.max,
       min: Math.min,
       abs: Math.abs,

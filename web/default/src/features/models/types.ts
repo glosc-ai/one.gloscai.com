@@ -39,6 +39,7 @@ export interface Model {
   description?: string
   icon?: string
   tags?: string
+  categories?: string
   vendor_id?: number
   endpoints?: string
   status: number
@@ -98,6 +99,7 @@ export interface GetModelsParams {
   page_size?: number
   vendor?: string // vendor ID to filter by
   tag?: string // tag to filter by, __empty__ for models without tags
+  category?: string // category to filter by, __empty__ for models without categories
   status?: string // filter by status
   sync_official?: string // filter by sync_official status
   has_price?: string // filter by pricing configuration status
@@ -112,6 +114,7 @@ export interface SearchModelsParams {
   keyword?: string
   vendor?: string // vendor ID to filter by
   tag?: string // tag to filter by, __empty__ for models without tags
+  category?: string // category to filter by, __empty__ for models without categories
   status?: string // filter by status
   sync_official?: string // filter by sync_official status
   has_price?: string // filter by pricing configuration status
@@ -134,6 +137,7 @@ export interface GetModelsResponse {
     page_size: number
     vendor_counts?: Record<string, number>
     tag_counts?: Record<string, number>
+    category_counts?: Record<string, number>
   }
 }
 
@@ -155,6 +159,14 @@ export interface BatchUpdateModelVendorResponse {
 }
 
 export interface BatchUpdateModelTagsResponse {
+  success: boolean
+  message?: string
+  data?: {
+    updated_count?: number
+  }
+}
+
+export interface BatchUpdateModelCategoriesResponse {
   success: boolean
   message?: string
   data?: {
@@ -276,6 +288,7 @@ export const modelFormSchema = z.object({
   description: z.string().default(''),
   icon: z.string().default(''),
   tags: z.array(z.string()).default([]),
+  categories: z.array(z.string()).default([]),
   vendor_id: z.number().optional(),
   endpoints: z.string().default(''),
   name_rule: z.number().min(0).max(3).default(0),

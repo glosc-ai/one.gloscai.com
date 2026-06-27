@@ -61,6 +61,7 @@ export function Pricing() {
     endpointTypeFilter,
     discountFilter,
     tagFilter,
+    categoryFilter,
     tokenUnit,
     viewMode,
     showRechargePrice,
@@ -72,6 +73,7 @@ export function Pricing() {
     setEndpointTypeFilter,
     setDiscountFilter,
     setTagFilter,
+    setCategoryFilter,
     setTokenUnit,
     setViewMode,
     setShowRechargePrice,
@@ -79,6 +81,7 @@ export function Pricing() {
     hasActiveFilters,
     activeFilterCount,
     availableTags,
+    availableCategories,
     clearFilters,
     clearSearch,
   } = useFilters(models || [])
@@ -194,7 +197,7 @@ export function Pricing() {
               onChange={setSearchInput}
               onClear={clearSearch}
               placeholder={t(
-                'Search model name, provider, endpoint, or tag...'
+                'Search model name, provider, endpoint, tag, or category...'
               )}
               className='mx-auto mt-4 max-w-2xl sm:mt-6'
             />
@@ -208,16 +211,19 @@ export function Pricing() {
               groupFilter={groupFilter}
               discountFilter={discountFilter}
               tagFilter={tagFilter}
+              categoryFilter={categoryFilter}
               onQuotaTypeChange={setQuotaTypeFilter}
               onEndpointTypeChange={setEndpointTypeFilter}
               onVendorChange={setVendorFilter}
               onGroupChange={setGroupFilter}
               onDiscountChange={setDiscountFilter}
               onTagChange={setTagFilter}
+              onCategoryChange={setCategoryFilter}
               vendors={vendors || []}
               groups={availableGroups}
               groupRatios={groupRatio}
               tags={availableTags}
+              categories={availableCategories}
               models={models || []}
               hasActiveFilters={hasActiveFilters}
               onClearFilters={clearFilters}
@@ -242,16 +248,19 @@ export function Pricing() {
                 groupFilter={groupFilter}
                 discountFilter={discountFilter}
                 tagFilter={tagFilter}
+                categoryFilter={categoryFilter}
                 onQuotaTypeChange={setQuotaTypeFilter}
                 onEndpointTypeChange={setEndpointTypeFilter}
                 onVendorChange={setVendorFilter}
                 onGroupChange={setGroupFilter}
                 onDiscountChange={setDiscountFilter}
                 onTagChange={setTagFilter}
+                onCategoryChange={setCategoryFilter}
                 vendors={vendors || []}
                 groups={availableGroups}
                 groupRatios={groupRatio}
                 tags={availableTags}
+                categories={availableCategories}
                 models={models || []}
                 hasActiveFilters={hasActiveFilters}
                 activeFilterCount={activeFilterCount}

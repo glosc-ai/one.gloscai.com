@@ -3,6 +3,7 @@ package helper
 import (
 	"bytes"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	relayconstant "github.com/QuantumNous/new-api/relay/constant"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -35,6 +37,64 @@ func TestResolveIncomingBillingExprRequestInput(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, body, input.Body)
 	require.Equal(t, "application/json", input.Headers["Content-Type"])
+}
+
+func TestResolveIncomingBillingExprRequestInputMultipart(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	var requestBody bytes.Buffer
+	writer := multipart.NewWriter(&requestBody)
+	require.NoError(t, writer.WriteField("model", "whisper-1"))
+	require.NoError(t, writer.WriteField("group", "vip"))
+	require.NoError(t, writer.WriteField("response_format", "verbose_json"))
+	part, err := writer.CreateFormFile("file", "sample.wav")
+	require.NoError(t, err)
+	_, err = part.Write([]byte("audio-data"))
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+
+	body := append([]byte(nil), requestBody.Bytes()...)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(
+		http.MethodPost,
+		"/v1/audio/transcriptions",
+		bytes.NewReader(body),
+	)
+	ctx.Request.Header.Set("Content-Type", writer.FormDataContentType())
+
+	input, err := ResolveIncomingBillingExprRequestInput(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, "whisper-1", gjson.GetBytes(input.Body, "model").String())
+	require.Equal(t, "vip", gjson.GetBytes(input.Body, "group").String())
+	require.Equal(t, "verbose_json", gjson.GetBytes(input.Body, "response_format").String())
+	require.Equal(t, "sample.wav", gjson.GetBytes(input.Body, "file_name").String())
+	require.Equal(t, float64(len("audio-data")), gjson.GetBytes(input.Body, "file_size").Float())
+	require.Equal(t, "sample.wav", gjson.GetBytes(input.Body, "files.file.filename").String())
+
+	form, err := common.ParseMultipartFormReusable(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "whisper-1", form.Value["model"][0])
+	require.Len(t, form.File["file"], 1)
+}
+
+func TestResolveIncomingBillingExprRequestInputAudioSpeechEstimate(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	body := []byte(`{"model":"tts-1","input":"hello world from the v1 api","voice":"alloy","speed":2}`)
+	ctx.Request = httptest.NewRequest(
+		http.MethodPost,
+		"/v1/audio/speech",
+		bytes.NewReader(body),
+	)
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	input, err := ResolveIncomingBillingExprRequestInput(ctx, &relaycommon.RelayInfo{
+		RelayMode: relayconstant.RelayModeAudioSpeech,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "hello world from the v1 api", gjson.GetBytes(input.Body, "input").String())
+	require.Greater(t, gjson.GetBytes(input.Body, "estimated_duration").Float(), 0.0)
 }
 
 func TestBuildBillingExprRequestInputFromRequest(t *testing.T) {

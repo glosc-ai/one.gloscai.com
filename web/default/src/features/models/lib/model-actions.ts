@@ -24,6 +24,7 @@ import {
   deleteModel as deleteModelAPI,
   batchUpdateModelVendor,
   batchUpdateModelTags,
+  batchUpdateModelCategories,
 } from '../api'
 import { modelsQueryKeys } from './query-keys'
 
@@ -212,6 +213,7 @@ export async function handleBatchEnableModels(
         })
       )
       queryClient?.invalidateQueries({ queryKey: modelsQueryKeys.lists() })
+      queryClient?.invalidateQueries({ queryKey: ['pricing'] })
       onSuccess?.()
     }
 
@@ -260,6 +262,7 @@ export async function handleBatchDisableModels(
         })
       )
       queryClient?.invalidateQueries({ queryKey: modelsQueryKeys.lists() })
+      queryClient?.invalidateQueries({ queryKey: ['pricing'] })
       onSuccess?.()
     }
 
@@ -319,7 +322,7 @@ export async function handleBatchUpdateModelVendor(
 }
 
 /**
- * Batch update model category tags
+ * Batch update supported model tags
  */
 export async function handleBatchUpdateModelTags(
   ids: number[],
@@ -353,6 +356,49 @@ export async function handleBatchUpdateModelTags(
   } catch (error: unknown) {
     toast.error(
       (error as Error)?.message || i18next.t('Failed to update model tags')
+    )
+  }
+}
+
+/**
+ * Batch replace model categories
+ */
+export async function handleBatchUpdateModelCategories(
+  ids: number[],
+  categories: string[],
+  queryClient?: QueryClient,
+  onSuccess?: () => void
+): Promise<void> {
+  if (ids.length === 0) {
+    toast.error(i18next.t('Please select at least one model'))
+    return
+  }
+
+  try {
+    const response = await batchUpdateModelCategories({
+      ids,
+      categories,
+    })
+
+    if (response.success) {
+      const updatedCount = response.data?.updated_count ?? ids.length
+      toast.success(
+        i18next.t('Successfully updated categories for {{count}} model(s)', {
+          count: updatedCount,
+        })
+      )
+      queryClient?.invalidateQueries({ queryKey: modelsQueryKeys.lists() })
+      queryClient?.invalidateQueries({ queryKey: ['pricing'] })
+      onSuccess?.()
+    } else {
+      toast.error(
+        response.message || i18next.t('Failed to update model categories')
+      )
+    }
+  } catch (error: unknown) {
+    toast.error(
+      (error as Error)?.message ||
+        i18next.t('Failed to update model categories')
     )
   }
 }

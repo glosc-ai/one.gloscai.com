@@ -58,8 +58,52 @@ const SPEED_PRESETS = ['0.5', '0.75', '1.0', '1.25', '1.5', '2.0'] as const
 function formatBytes(size: number): string {
   if (!size) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB']
-  const i = Math.min(units.length - 1, Math.floor(Math.log(size) / Math.log(1024)))
+  const i = Math.min(
+    units.length - 1,
+    Math.floor(Math.log(size) / Math.log(1024))
+  )
   return `${(size / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 2)} ${units[i]}`
+}
+
+function isCjkCodePoint(codePoint: number): boolean {
+  return (
+    (codePoint >= 0x3400 && codePoint <= 0x9fff) ||
+    (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
+    (codePoint >= 0x20000 && codePoint <= 0x2ebef)
+  )
+}
+
+function estimateSpeechDurationSeconds(
+  text: string,
+  speed?: number
+): number | undefined {
+  const normalized = text.replace(/\s+/g, ' ').trim()
+  if (!normalized) return undefined
+
+  let cjkChars = 0
+  let otherChars = 0
+  const nonCjkParts: string[] = []
+
+  for (const char of normalized) {
+    if (/\s/.test(char)) {
+      nonCjkParts.push(' ')
+      continue
+    }
+    const codePoint = char.codePointAt(0) ?? 0
+    if (isCjkCodePoint(codePoint)) {
+      cjkChars += 1
+      nonCjkParts.push(' ')
+    } else {
+      otherChars += 1
+      nonCjkParts.push(char)
+    }
+  }
+
+  const wordCount = nonCjkParts.join('').split(/\s+/).filter(Boolean).length
+  const estimatedSeconds =
+    cjkChars / 4.5 + Math.max(wordCount / 2.6, otherChars / 14)
+  const speedFactor = typeof speed === 'number' && speed > 0 ? speed : 1
+  return Math.max(1, Math.ceil(estimatedSeconds / speedFactor))
 }
 
 export function TextToSpeech() {
@@ -101,7 +145,9 @@ export function TextToSpeech() {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : t('Failed to synthesize speech')
+        error instanceof Error
+          ? error.message
+          : t('Failed to synthesize speech')
       )
     },
   })
@@ -122,6 +168,7 @@ export function TextToSpeech() {
       return
     }
     const speedValue = Number.parseFloat(speed)
+    const normalizedSpeed = Number.isFinite(speedValue) ? speedValue : undefined
     mutation.mutate({
       model: selectedModel,
       group: selectedGroup,
@@ -134,7 +181,8 @@ export function TextToSpeech() {
         | 'flac'
         | 'wav'
         | 'pcm',
-      speed: Number.isFinite(speedValue) ? speedValue : undefined,
+      speed: normalizedSpeed,
+      estimated_duration: estimateSpeechDurationSeconds(text, normalizedSpeed),
     })
   }
 
@@ -200,10 +248,7 @@ export function TextToSpeech() {
             <div className='grid grid-cols-2 gap-3'>
               <div className='space-y-2'>
                 <Label>{t('Format')}</Label>
-                <Select
-                  value={format}
-                  onValueChange={(v) => v && setFormat(v)}
-                >
+                <Select value={format} onValueChange={(v) => v && setFormat(v)}>
                   <SelectTrigger className='w-full'>
                     <SelectValue>{format}</SelectValue>
                   </SelectTrigger>

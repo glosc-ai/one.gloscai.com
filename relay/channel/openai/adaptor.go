@@ -384,7 +384,7 @@ func (a *Adaptor) ConvertAudioRequest(c *gin.Context, info *relaycommon.RelayInf
 
 		// 遍历表单字段并打印输出
 		for key, values := range formData.Value {
-			if key == "model" {
+			if key == "model" || isInternalAudioFormField(key) {
 				continue
 			}
 			for _, value := range values {
@@ -423,6 +423,15 @@ func (a *Adaptor) ConvertAudioRequest(c *gin.Context, info *relaycommon.RelayInf
 		c.Request.Header.Set("Content-Type", writer.FormDataContentType())
 		logger.LogDebug(c.Request.Context(), "--header 'Content-Type: %s'", writer.FormDataContentType())
 		return &requestBody, nil
+	}
+}
+
+func isInternalAudioFormField(key string) bool {
+	switch strings.ToLower(strings.TrimSpace(key)) {
+	case "group", "estimated_duration":
+		return true
+	default:
+		return false
 	}
 }
 

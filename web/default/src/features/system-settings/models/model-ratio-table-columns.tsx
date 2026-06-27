@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { StatusBadge } from '@/components/status-badge'
+import { isMediaPricingMode } from './model-media-pricing'
 import {
   getModeLabel,
   getModeVariant,
@@ -82,9 +83,14 @@ export function buildModelRatioColumns({
       cell: ({ row }) => (
         <div className='flex min-w-0 items-center gap-2 font-medium'>
           <span className='min-w-0 truncate'>{row.getValue('name')}</span>
-          {row.original.billingMode === 'tiered_expr' && (
+          {(row.original.billingMode === 'tiered_expr' ||
+            isMediaPricingMode(row.original.billingMode)) && (
             <StatusBadge
-              label={t('Tiered')}
+              label={
+                row.original.billingMode === 'tiered_expr'
+                  ? t('Tiered')
+                  : t(getModeLabel(row.original.billingMode))
+              }
               variant='info'
               copyable={false}
               className='shrink-0'

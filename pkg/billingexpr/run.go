@@ -3,6 +3,7 @@ package billingexpr
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -82,6 +83,18 @@ func runProgram(prog *vm.Program, params TokenParams, request RequestInput) (flo
 			}
 			return result.Value()
 		},
+		"num": func(value interface{}, fallback float64) float64 {
+			return numberValue(value, fallback)
+		},
+		"str": func(value interface{}) string {
+			return stringValue(value)
+		},
+		"usd": func(amount float64) float64 {
+			return amount * 1_000_000
+		},
+		"seconds": func(tokens float64) float64 {
+			return tokens * 60.0 / 1000.0
+		},
 		"has": func(source interface{}, substr string) bool {
 			if source == nil || substr == "" {
 				return false
@@ -109,6 +122,63 @@ func runProgram(prog *vm.Program, params TokenParams, request RequestInput) (flo
 		return 0, trace, fmt.Errorf("expr result is %T, want float64", out)
 	}
 	return f, trace, nil
+}
+
+func numberValue(value interface{}, fallback float64) float64 {
+	switch v := value.(type) {
+	case nil:
+		return fallback
+	case float64:
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return fallback
+		}
+		return v
+	case float32:
+		f := float64(v)
+		if math.IsNaN(f) || math.IsInf(f, 0) {
+			return fallback
+		}
+		return f
+	case int:
+		return float64(v)
+	case int8:
+		return float64(v)
+	case int16:
+		return float64(v)
+	case int32:
+		return float64(v)
+	case int64:
+		return float64(v)
+	case uint:
+		return float64(v)
+	case uint8:
+		return float64(v)
+	case uint16:
+		return float64(v)
+	case uint32:
+		return float64(v)
+	case uint64:
+		return float64(v)
+	case string:
+		f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
+		if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
+			return fallback
+		}
+		return f
+	default:
+		f, err := strconv.ParseFloat(strings.TrimSpace(fmt.Sprint(v)), 64)
+		if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
+			return fallback
+		}
+		return f
+	}
+}
+
+func stringValue(value interface{}) string {
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(fmt.Sprint(value))
 }
 
 func timeInZone(tz string) time.Time {

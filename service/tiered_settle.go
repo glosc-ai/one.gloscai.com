@@ -36,6 +36,13 @@ func BuildTieredTokenParams(usage *dto.Usage, isClaudeUsageSemantic bool, usedVa
 	imgO := float64(usage.CompletionTokenDetails.ImageTokens)
 	ao := float64(usage.CompletionTokenDetails.AudioTokens)
 
+	if usedVars["ai"] && ai == 0 && usage.PromptTokens > 0 && usage.PromptTokensDetails.TextTokens == 0 && usage.PromptTokensDetails.ImageTokens == 0 {
+		ai = float64(usage.PromptTokens)
+	}
+	if usedVars["ao"] && ao == 0 && usage.CompletionTokens > 0 && usage.CompletionTokenDetails.TextTokens == 0 && usage.CompletionTokenDetails.ImageTokens == 0 {
+		ao = float64(usage.CompletionTokens)
+	}
+
 	// len = total input context length for tier condition evaluation.
 	// Non-Claude: prompt_tokens already includes everything.
 	// Claude: input_tokens is text-only, so add cache read + cache creation.

@@ -70,6 +70,17 @@ export function parseModelTags(tags: string | undefined): string[] {
 }
 
 /**
+ * Parse categories string to array
+ */
+export function parseModelCategories(categories: string | undefined): string[] {
+  if (!categories) return []
+  return categories
+    .split(',')
+    .map((category) => category.trim())
+    .filter(Boolean)
+}
+
+/**
  * Format tags array to string
  */
 export function formatTagsString(tags: string[]): string {

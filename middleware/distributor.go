@@ -106,6 +106,13 @@ func Distribute() func(c *gin.Context) {
 						return
 					}
 				}
+				if strings.HasPrefix(c.Request.URL.Path, "/pg/audio") && modelRequest.Group != "" {
+					var allowed bool
+					usingGroup, allowed = applyPlaygroundGroup(c, usingGroup, modelRequest.Group)
+					if !allowed {
+						return
+					}
+				}
 
 				if preferredChannelID, found := service.GetPreferredChannelByAffinity(c, modelRequest.Model, usingGroup); found {
 					affinityUsable := false
@@ -360,6 +367,7 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			return nil, false, err
 		}
 		modelRequest.Model = req.Model
+		modelRequest.Group = req.Group
 	}
 	if strings.HasPrefix(c.Request.URL.Path, "/v1/realtime") {
 		//wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01
@@ -400,6 +408,7 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			// 先尝试从请求读取
 			if req, err := getModelFromRequest(c); err == nil && req.Model != "" {
 				modelRequest.Model = req.Model
+				modelRequest.Group = req.Group
 			}
 			modelRequest.Model = common.GetStringIfEmpty(modelRequest.Model, "whisper-1")
 			relayMode = relayconstant.RelayModeAudioTranslation
@@ -408,6 +417,7 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			// 先尝试从请求读取
 			if req, err := getModelFromRequest(c); err == nil && req.Model != "" {
 				modelRequest.Model = req.Model
+				modelRequest.Group = req.Group
 			}
 			modelRequest.Model = common.GetStringIfEmpty(modelRequest.Model, "whisper-1")
 			relayMode = relayconstant.RelayModeAudioTranscription

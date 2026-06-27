@@ -198,6 +198,26 @@ const PRESET_GROUPS: PresetGroup[] = [
     ],
   },
   {
+    group: 'Request units',
+    presets: [
+      {
+        key: 'video-second-size',
+        label: 'Video seconds + size',
+        expr: 'tier("video", usd(max(num(param("seconds"), num(param("duration"), 1)), 0) * 0.05 * (str(param("size")) == "1024x1792" || str(param("size")) == "1792x1024" ? 1.666667 : 1)))',
+      },
+      {
+        key: 'image-size-count',
+        label: 'Image size + count',
+        expr: 'tier("image", usd(max(num(param("n"), 1), 1) * 0.04 * (str(param("size")) == "256x256" ? 0.4 : str(param("size")) == "512x512" ? 0.45 : (str(param("size")) == "1024x1792" || str(param("size")) == "1792x1024" ? 2 : 1))))',
+      },
+      {
+        key: 'speech-seconds',
+        label: 'Speech seconds',
+        expr: 'tier("speech", usd((seconds(ai + ao) > 0 ? seconds(ai + ao) : max(num(param("seconds"), num(param("duration"), num(param("estimated_duration"), 0))), 0)) * 0.006))',
+      },
+    ],
+  },
+  {
     group: 'Request rule',
     presets: [
       {
@@ -366,12 +386,7 @@ function DraftNumberInput({
 }: DraftNumberInputProps) {
   const [draft, setDraft] = useState(() => formatNumberDraft(value))
   const [focused, setFocused] = useState(false)
-
-  useEffect(() => {
-    if (!focused) {
-      setDraft(formatNumberDraft(value))
-    }
-  }, [focused, value])
+  const displayValue = focused ? draft : formatNumberDraft(value)
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextDraft = event.target.value
@@ -381,6 +396,7 @@ function DraftNumberInput({
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
     setFocused(true)
+    setDraft(event.currentTarget.value)
     onFocus?.(event)
     if (selectZeroOnFocus && isZeroDraft(event.currentTarget.value)) {
       event.currentTarget.select()
@@ -407,7 +423,7 @@ function DraftNumberInput({
     <Input
       {...props}
       type='number'
-      value={draft}
+      value={displayValue}
       onChange={handleChange}
       onFocus={handleFocus}
       onMouseUp={handleMouseUp}
@@ -593,10 +609,6 @@ function VisualTierCard({
     return unitCostToPrice((tier[fieldKey] as number | undefined) ?? 0) > 0
   })
   const [mediaOpen, setMediaOpen] = useState(hasMediaPricing)
-
-  useEffect(() => {
-    if (hasMediaPricing) setMediaOpen(true)
-  }, [hasMediaPricing])
 
   const renderPriceVariable = (
     variable: (typeof BILLING_EXTRA_VARS)[number]
@@ -895,7 +907,9 @@ function RawExprEditor({ exprString, onChange }: RawExprEditorProps) {
             {t('Functions')}: <code>tier(name, value)</code>, <code>max</code>,{' '}
             <code>min</code>, <code>ceil</code>, <code>floor</code>,{' '}
             <code>abs</code>, <code>header(name)</code>,{' '}
-            <code>param(path)</code>, <code>has(source, text)</code>
+            <code>param(path)</code>, <code>num(value, fallback)</code>,{' '}
+            <code>str(value)</code>, <code>usd(amount)</code>,{' '}
+            <code>seconds(tokens)</code>, <code>has(source, text)</code>
           </div>
         </AlertDescription>
       </Alert>
@@ -1507,6 +1521,10 @@ Important: len is NOT affected by auto-exclusion. Tier conditions should use len
 - ceil(x), floor(x), abs(x) — ceiling, floor, absolute value
 - header(name) — reads a request header
 - param(path) — reads a request body JSON path (gjson syntax)
+- num(value, fallback) — converts request values to numbers
+- str(value) — converts request values to strings
+- usd(amount) — charges a direct USD amount instead of $/1M tokens
+- seconds(tokens) — converts audio tokens to seconds
 - has(source, substr) — substring check
 - hour(tz), minute(tz), weekday(tz), month(tz), day(tz) — time functions, tz is a timezone like "Asia/Shanghai"
 
@@ -1532,6 +1550,15 @@ tier("base", p * 2 + c * 8 + img * 2.5)
 
 Multimodal with audio:
 tier("base", p * 0.43 + c * 3.06 + img * 0.78 + ai * 3.81 + ao * 15.11)
+
+Video by seconds and size:
+tier("video", usd(max(num(param("seconds"), num(param("duration"), 1)), 0) * 0.05 * (str(param("size")) == "1024x1792" || str(param("size")) == "1792x1024" ? 1.666667 : 1)))
+
+Image by size and count:
+tier("image", usd(max(num(param("n"), 1), 1) * 0.04 * (str(param("size")) == "256x256" ? 0.4 : str(param("size")) == "512x512" ? 0.45 : (str(param("size")) == "1024x1792" || str(param("size")) == "1792x1024" ? 2 : 1))))
+
+Speech by audio seconds:
+tier("speech", usd((seconds(ai + ao) > 0 ? seconds(ai + ao) : max(num(param("seconds"), num(param("duration"), num(param("estimated_duration"), 0))), 0)) * 0.006))
 
 Three-tier example:
 len <= 128000
