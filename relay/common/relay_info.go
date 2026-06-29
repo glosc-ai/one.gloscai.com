@@ -703,18 +703,31 @@ func (t *TaskSubmitReq) HasImage() bool {
 }
 
 func (t *TaskSubmitReq) UnmarshalJSON(data []byte) error {
-	type Alias TaskSubmitReq
 	aux := &struct {
-		Metadata json.RawMessage `json:"metadata,omitempty"`
-		Duration json.RawMessage `json:"duration,omitempty"`
-		*Alias
-	}{
-		Alias: (*Alias)(t),
-	}
+		Prompt         string          `json:"prompt"`
+		Model          string          `json:"model,omitempty"`
+		Mode           string          `json:"mode,omitempty"`
+		Image          string          `json:"image,omitempty"`
+		Images         []string        `json:"images,omitempty"`
+		Size           string          `json:"size,omitempty"`
+		Duration       json.RawMessage `json:"duration,omitempty"`
+		Seconds        string          `json:"seconds,omitempty"`
+		InputReference string          `json:"input_reference,omitempty"`
+		Metadata       json.RawMessage `json:"metadata,omitempty"`
+	}{}
 
 	if err := common.Unmarshal(data, &aux); err != nil {
 		return err
 	}
+
+	t.Prompt = aux.Prompt
+	t.Model = aux.Model
+	t.Mode = aux.Mode
+	t.Image = aux.Image
+	t.Images = aux.Images
+	t.Size = aux.Size
+	t.Seconds = aux.Seconds
+	t.InputReference = aux.InputReference
 
 	if len(aux.Duration) > 0 {
 		var durationInt int

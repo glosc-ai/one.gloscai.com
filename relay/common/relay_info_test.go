@@ -38,3 +38,31 @@ func TestRelayInfoGetFinalRequestRelayFormatNilReceiver(t *testing.T) {
 	var info *RelayInfo
 	require.Equal(t, types.RelayFormat(""), info.GetFinalRequestRelayFormat())
 }
+
+func TestTaskSubmitReqUnmarshalDurationNumber(t *testing.T) {
+	var req TaskSubmitReq
+
+	require.NoError(t, req.UnmarshalJSON([]byte(`{"prompt":"p","model":"m","duration":5}`)))
+
+	require.Equal(t, "p", req.Prompt)
+	require.Equal(t, "m", req.Model)
+	require.Equal(t, 5, req.Duration)
+}
+
+func TestTaskSubmitReqUnmarshalDurationString(t *testing.T) {
+	var req TaskSubmitReq
+
+	require.NoError(t, req.UnmarshalJSON([]byte(`{"prompt":"p","model":"m","duration":"5"}`)))
+
+	require.Equal(t, "p", req.Prompt)
+	require.Equal(t, "m", req.Model)
+	require.Equal(t, 5, req.Duration)
+}
+
+func TestTaskSubmitReqUnmarshalMetadataString(t *testing.T) {
+	var req TaskSubmitReq
+
+	require.NoError(t, req.UnmarshalJSON([]byte(`{"prompt":"p","model":"m","metadata":"{\"quality_level\":\"standard\"}"}`)))
+
+	require.Equal(t, map[string]interface{}{"quality_level": "standard"}, req.Metadata)
+}
