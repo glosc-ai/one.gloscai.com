@@ -184,6 +184,13 @@ func (a *TaskAdaptor) BuildRequestBody(c *gin.Context, info *relaycommon.RelayIn
 		if err != nil {
 			return bytes.NewReader(cachedBody), nil
 		}
+		if len(formData.File) == 0 {
+			bodyMap := buildJSONVideoRequestFromForm(formData.Value, info.UpstreamModelName)
+			if newBody, err := common.Marshal(bodyMap); err == nil {
+				c.Request.Header.Set("Content-Type", "application/json")
+				return bytes.NewReader(newBody), nil
+			}
+		}
 		var buf bytes.Buffer
 		writer := multipart.NewWriter(&buf)
 		writer.WriteField("model", info.UpstreamModelName)
@@ -231,6 +238,42 @@ func (a *TaskAdaptor) BuildRequestBody(c *gin.Context, info *relaycommon.RelayIn
 	}
 
 	return common.ReaderOnly(storage), nil
+}
+
+func buildJSONVideoRequestFromForm(values map[string][]string, modelName string) map[string]interface{} {
+	bodyMap := map[string]interface{}{
+		"model": modelName,
+	}
+	for key, fieldValues := range values {
+		if key == "model" || len(fieldValues) == 0 {
+			continue
+		}
+		if len(fieldValues) == 1 {
+			bodyMap[key] = convertVideoFormValue(key, fieldValues[0])
+			continue
+		}
+		items := make([]interface{}, 0, len(fieldValues))
+		for _, value := range fieldValues {
+			items = append(items, convertVideoFormValue(key, value))
+		}
+		bodyMap[key] = items
+	}
+	return bodyMap
+}
+
+func convertVideoFormValue(key string, value string) interface{} {
+	switch key {
+	case "duration", "width", "height", "fps", "n":
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	case "metadata":
+		var metadata interface{}
+		if err := common.Unmarshal([]byte(value), &metadata); err == nil {
+			return metadata
+		}
+	}
+	return value
 }
 
 // DoRequest delegates to common helper.
