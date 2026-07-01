@@ -284,6 +284,13 @@ func SetApiRouter(router *gin.Engine) {
 			channelRoute.POST("/upstream_updates/detect", controller.DetectChannelUpstreamModelUpdates)
 			channelRoute.POST("/upstream_updates/detect_all", controller.DetectAllChannelUpstreamModelUpdates)
 		}
+		disabledModelRoute := apiRouter.Group("/disabled_model")
+		disabledModelRoute.Use(middleware.AdminAuth())
+		{
+			disabledModelRoute.GET("/", controller.ListDisabledModels)
+			disabledModelRoute.POST("/", controller.AddDisabledModel)
+			disabledModelRoute.DELETE("/:id", controller.DeleteDisabledModel)
+		}
 		tokenRoute := apiRouter.Group("/token")
 		tokenRoute.Use(middleware.UserAuth())
 		{

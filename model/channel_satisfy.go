@@ -9,6 +9,9 @@ func IsChannelEnabledForGroupModel(group string, modelName string, channelID int
 	if group == "" || modelName == "" || channelID <= 0 {
 		return false
 	}
+	if IsDisabledModel(channelID, modelName) {
+		return false
+	}
 	if !common.MemoryCacheEnabled {
 		return isChannelEnabledForGroupModelDB(group, modelName, channelID)
 	}
@@ -42,10 +45,35 @@ func IsChannelEnabledForAnyGroupModel(groups []string, modelName string, channel
 	return false
 }
 
+func IsModelAvailableForGroups(groups []string, modelName string) bool {
+	if len(groups) == 0 || modelName == "" {
+		return false
+	}
+	var count int64
+	err := DB.Model(&Ability{}).
+		Where(commonGroupCol+" IN ? and model = ? and enabled = ?", groups, modelName, true).
+		Scopes(excludeActiveDisabledModels).
+		Count(&count).Error
+	if err == nil && count > 0 {
+		return true
+	}
+	normalized := ratio_setting.FormatMatchingModelName(modelName)
+	if normalized == "" || normalized == modelName {
+		return false
+	}
+	count = 0
+	err = DB.Model(&Ability{}).
+		Where(commonGroupCol+" IN ? and model = ? and enabled = ?", groups, normalized, true).
+		Scopes(excludeActiveDisabledModels).
+		Count(&count).Error
+	return err == nil && count > 0
+}
+
 func isChannelEnabledForGroupModelDB(group string, modelName string, channelID int) bool {
 	var count int64
 	err := DB.Model(&Ability{}).
 		Where(commonGroupCol+" = ? and model = ? and channel_id = ? and enabled = ?", group, modelName, channelID, true).
+		Scopes(excludeActiveDisabledModels).
 		Count(&count).Error
 	if err == nil && count > 0 {
 		return true
@@ -57,6 +85,7 @@ func isChannelEnabledForGroupModelDB(group string, modelName string, channelID i
 	count = 0
 	err = DB.Model(&Ability{}).
 		Where(commonGroupCol+" = ? and model = ? and channel_id = ? and enabled = ?", group, normalized, channelID, true).
+		Scopes(excludeActiveDisabledModels).
 		Count(&count).Error
 	return err == nil && count > 0
 }

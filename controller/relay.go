@@ -222,6 +222,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 		if newAPIError == nil {
 			relayInfo.LastError = nil
+			service.RecordModelCallSuccess(channel.Id, relayInfo.OriginModelName)
 			return
 		}
 
@@ -229,6 +230,9 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		relayInfo.LastError = newAPIError
 
 		processChannelError(c, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError)
+		if service.RecordModelCallFailure(channel.Id, channel.Name, relayInfo.OriginModelName, newAPIError.ErrorWithStatusCode()) {
+			retryParam.ResetRetryNextTry()
+		}
 
 		if !shouldRetry(c, newAPIError, common.RetryTimes-retryParam.GetRetry()) {
 			break
@@ -427,6 +431,15 @@ func RelayMidjourney(c *gin.Context) {
 	}
 	//err = relayMidjourneySubmit(c, relayMode)
 	log.Println(mjErr)
+	if relayInfo.OriginModelName != "" {
+		channelId := c.GetInt("channel_id")
+		channelName := c.GetString("channel_name")
+		if channelId > 0 && mjErr == nil {
+			service.RecordModelCallSuccess(channelId, relayInfo.OriginModelName)
+		} else if channelId > 0 && mjErr != nil {
+			service.RecordModelCallFailure(channelId, channelName, relayInfo.OriginModelName, fmt.Sprintf("%s %s", mjErr.Description, mjErr.Result))
+		}
+	}
 	if mjErr != nil {
 		statusCode := http.StatusBadRequest
 		if mjErr.Code == 30 {
@@ -548,6 +561,7 @@ func RelayTask(c *gin.Context) {
 
 		result, taskErr = relay.RelayTaskSubmit(c, relayInfo)
 		if taskErr == nil {
+			service.RecordModelCallSuccess(channel.Id, relayInfo.OriginModelName)
 			break
 		}
 
@@ -556,6 +570,9 @@ func RelayTask(c *gin.Context) {
 				*types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey,
 					common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()),
 				types.NewOpenAIError(taskErr.Error, types.ErrorCodeBadResponseStatusCode, taskErr.StatusCode))
+			if service.RecordModelCallFailure(channel.Id, channel.Name, relayInfo.OriginModelName, taskErr.Message) {
+				retryParam.ResetRetryNextTry()
+			}
 		}
 
 		if !shouldRetryTaskRelay(c, channel.Id, taskErr, common.RetryTimes-retryParam.GetRetry()) {

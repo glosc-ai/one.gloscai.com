@@ -31,6 +31,7 @@ import {
   ListTodo,
   MessageSquare,
   Mic,
+  OctagonX,
   Radio,
   ReceiptText,
   Settings,
@@ -146,6 +147,11 @@ export function useSidebarData(): SidebarData {
             title: t('Channels'),
             url: '/channels',
             icon: Radio,
+          },
+          {
+            title: t('Disabled Models'),
+            url: '/disabled-models',
+            icon: OctagonX,
           },
           {
             title: t('Models'),

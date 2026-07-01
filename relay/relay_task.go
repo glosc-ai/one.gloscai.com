@@ -87,6 +87,9 @@ func ResolveOriginTask(c *gin.Context, info *relaycommon.RelayInfo) *dto.TaskErr
 	if ch.Status != common.ChannelStatusEnabled {
 		return service.TaskErrorWrapperLocal(errors.New("the channel of the origin task is disabled"), "task_channel_disable", http.StatusBadRequest)
 	}
+	if model.IsDisabledModel(ch.Id, info.OriginModelName) {
+		return service.TaskErrorWrapperLocal(errors.New("the channel model of the origin task is temporarily disabled"), "task_channel_model_disabled", http.StatusServiceUnavailable)
+	}
 	info.LockedChannel = ch
 
 	if originTask.ChannelId != info.ChannelId {

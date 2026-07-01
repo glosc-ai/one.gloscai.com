@@ -117,6 +117,9 @@ func GetRandomSatisfiedChannel(group string, model string, retry int) (*Channel,
 	}
 
 	if len(channels) == 1 {
+		if IsDisabledModel(channels[0], model) {
+			return nil, nil
+		}
 		if channel, ok := channelsIDM[channels[0]]; ok {
 			return channel, nil
 		}
@@ -125,6 +128,9 @@ func GetRandomSatisfiedChannel(group string, model string, retry int) (*Channel,
 
 	uniquePriorities := make(map[int]bool)
 	for _, channelId := range channels {
+		if IsDisabledModel(channelId, model) {
+			continue
+		}
 		if channel, ok := channelsIDM[channelId]; ok {
 			uniquePriorities[int(channel.GetPriority())] = true
 		} else {
@@ -134,6 +140,9 @@ func GetRandomSatisfiedChannel(group string, model string, retry int) (*Channel,
 	var sortedUniquePriorities []int
 	for priority := range uniquePriorities {
 		sortedUniquePriorities = append(sortedUniquePriorities, priority)
+	}
+	if len(sortedUniquePriorities) == 0 {
+		return nil, nil
 	}
 	sort.Sort(sort.Reverse(sort.IntSlice(sortedUniquePriorities)))
 
@@ -146,6 +155,9 @@ func GetRandomSatisfiedChannel(group string, model string, retry int) (*Channel,
 	var sumWeight = 0
 	var targetChannels []*Channel
 	for _, channelId := range channels {
+		if IsDisabledModel(channelId, model) {
+			continue
+		}
 		if channel, ok := channelsIDM[channelId]; ok {
 			if channel.GetPriority() == targetPriority {
 				sumWeight += channel.GetWeight()
