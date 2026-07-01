@@ -1317,6 +1317,7 @@
     "Disabling...": "無効化中...",
     "Discord": "Discord",
     "Discount": "特典",
+    "Discount: High to Low": "割引率：高い順",
     "Discount map by recharge amount (JSON object)": "リチャージ額による割引マップ（JSONオブジェクト）",
     "Discount Rate": "割引率",
     "Discount rate must be ≤ 1": "割引率は 1 以下でなければなりません",

@@ -25,7 +25,7 @@ import {
   DISCOUNT_FILTERS,
 } from '../constants'
 import type { PricingModel } from '../types'
-import { isModelDiscounting } from './price'
+import { getModelDiscountMultiplier, isModelDiscounting } from './price'
 
 // ----------------------------------------------------------------------------
 // Filter Utilities
@@ -119,6 +119,15 @@ function getModelPrice(model: PricingModel): number {
   return model.quota_type === 0 ? model.model_ratio : model.model_price || 0
 }
 
+function getModelDiscountScore(model: PricingModel): number {
+  const multiplier = getModelDiscountMultiplier(model)
+  return multiplier < 1 ? 1 - multiplier : 0
+}
+
+function compareByName(a: PricingModel, b: PricingModel): number {
+  return (a.model_name || '').localeCompare(b.model_name || '')
+}
+
 /**
  * Sort models by specified option
  */
@@ -129,10 +138,15 @@ export function sortModels(
   const sorted = [...models]
 
   switch (sortBy) {
-    case SORT_OPTIONS.NAME:
-      sorted.sort((a, b) =>
-        (a.model_name || '').localeCompare(b.model_name || '')
+    case SORT_OPTIONS.DISCOUNT_HIGH:
+      sorted.sort(
+        (a, b) =>
+          getModelDiscountScore(b) - getModelDiscountScore(a) ||
+          compareByName(a, b)
       )
+      break
+    case SORT_OPTIONS.NAME:
+      sorted.sort(compareByName)
       break
     case SORT_OPTIONS.PRICE_LOW:
       sorted.sort((a, b) => getModelPrice(a) - getModelPrice(b))

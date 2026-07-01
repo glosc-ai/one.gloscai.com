@@ -1317,6 +1317,7 @@
     "Disabling...": "Désactivation en cours...",
     "Discord": "Discord",
     "Discount": "Remise",
+    "Discount: High to Low": "Remise : de la plus élevée à la plus faible",
     "Discount map by recharge amount (JSON object)": "Mappage des réductions par montant de recharge (objet JSON)",
     "Discount Rate": "Taux de réduction",
     "Discount rate must be ≤ 1": "Le taux de remise doit être ≤ 1",

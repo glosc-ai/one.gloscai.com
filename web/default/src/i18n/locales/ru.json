@@ -1317,6 +1317,7 @@
     "Disabling...": "Отключение...",
     "Discord": "Discord",
     "Discount": "Скидка",
+    "Discount: High to Low": "Скидка: от высокой к низкой",
     "Discount map by recharge amount (JSON object)": "Карта скидок по сумме пополнения (объект JSON)",
     "Discount Rate": "Ставка скидки",
     "Discount rate must be ≤ 1": "Ставка скидки должна быть ≤ 1",
