@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func excludeActiveDisabledModels(query *gorm.DB) *gorm.DB {
@@ -98,7 +99,13 @@ func ListDisabledModels(startIdx int, num int, filter DisabledModelFilter) ([]Di
 	}
 
 	records := make([]DisabledModel, 0)
-	err := query.Order("expires_at DESC").Offset(startIdx).Limit(num).Find(&records).Error
+	err := query.
+		Order(clause.OrderByColumn{Column: clause.Column{Name: "model_name"}}).
+		Order(clause.OrderByColumn{Column: clause.Column{Name: "channel_name"}}).
+		Order(clause.OrderByColumn{Column: clause.Column{Name: "channel_id"}}).
+		Offset(startIdx).
+		Limit(num).
+		Find(&records).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, 0, err
 	}

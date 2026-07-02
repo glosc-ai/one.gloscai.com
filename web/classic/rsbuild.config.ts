@@ -10,6 +10,15 @@ const semiUiDir = path.resolve(
   path.dirname(require.resolve('@douyinfe/semi-ui')),
   '../..',
 )
+const firebaseEnvKeys = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_STORAGE_BUCKET',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  'VITE_FIREBASE_APP_ID',
+  'VITE_FIREBASE_MEASUREMENT_ID',
+] as const
 
 export default defineConfig(({ envMode }) => {
   const env = loadEnv({ mode: envMode, prefixes: ['VITE_'] })
@@ -20,6 +29,12 @@ export default defineConfig(({ envMode }) => {
   const proxyServerUrl =
     clientServerUrl ||
     'http://localhost:3000'
+  const firebaseEnvDefine = Object.fromEntries(
+    firebaseEnvKeys.map((key) => [
+      `import.meta.env.${key}`,
+      JSON.stringify(process.env[key] || env.rawPublicVars[key] || ''),
+    ]),
+  )
   const isProd = envMode === 'production'
   const devProxy = Object.fromEntries(
     (['/api', '/mj', '/pg'] as const).map((key) => [
@@ -35,6 +50,7 @@ export default defineConfig(({ envMode }) => {
         index: './src/index.jsx',
       },
       define: {
+        ...firebaseEnvDefine,
         'import.meta.env.VITE_REACT_APP_SERVER_URL': JSON.stringify(
           clientServerUrl,
         ),

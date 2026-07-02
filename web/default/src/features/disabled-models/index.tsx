@@ -3,10 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { SectionPageLayout } from '@/components/layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Combobox } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { SectionPageLayout } from '@/components/layout'
 import {
   addDisabledModel,
   deleteDisabledModel,
@@ -44,6 +45,11 @@ const EXPIRE_OPTIONS = [
   { label: '6 hours', value: '21600' },
   { label: '24 hours', value: '86400' },
 ]
+
+const MODEL_NAME_COLLATOR = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: 'base',
+})
 
 export function DisabledModels() {
   const { t } = useTranslation()
@@ -111,74 +117,63 @@ export function DisabledModels() {
   const items = query.data?.data?.items ?? []
   const total = query.data?.data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / 20))
-  const modelOptions = (enabledModelsQuery.data?.data ?? []).map((model) => ({
-    label: model,
-    value: model,
-  }))
-  const channelOptions = (enabledChannelsQuery.data ?? []).map((channel) => ({
-    label: `${channel.name} (#${channel.id})`,
-    value: String(channel.id),
-  }))
+  const modelOptions = [...(enabledModelsQuery.data?.data ?? [])]
+    .sort((a, b) => MODEL_NAME_COLLATOR.compare(a, b))
+    .map((model) => ({
+      label: model,
+      value: model,
+    }))
+  const channelOptions = [...(enabledChannelsQuery.data ?? [])]
+    .sort((a, b) => MODEL_NAME_COLLATOR.compare(a.name, b.name))
+    .map((channel) => ({
+      label: `${channel.name} (#${channel.id})`,
+      value: String(channel.id),
+    }))
 
   return (
     <SectionPageLayout>
       <SectionPageLayout.Title>{t('Disabled Models')}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
         <div className='flex flex-col gap-4'>
-          <Card>
+          <Card className='relative z-10 overflow-visible'>
             <CardHeader>
               <CardTitle>{t('Add')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className='grid gap-3 md:grid-cols-[1fr_1fr_160px_1fr_auto]'>
-                <Select
-                  items={modelOptions}
+                <Combobox
+                  options={modelOptions}
                   value={newModelName}
                   onValueChange={(value) => {
+                    if (value === null) return
                     setNewModelName(value)
                     setNewChannelId('')
                   }}
-                >
-                  <SelectTrigger className='h-9 w-full'>
-                    <SelectValue placeholder={t('Model Name')} />
-                  </SelectTrigger>
-                  <SelectContent alignItemWithTrigger={false}>
-                    <SelectGroup>
-                      {modelOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <Select
-                  items={channelOptions}
+                  placeholder={t('Model Name')}
+                  searchPlaceholder={t('Search model name...')}
+                  emptyText={t('No model found.')}
+                  className='h-9 w-full'
+                />
+                <Combobox
+                  options={channelOptions}
                   value={newChannelId}
-                  onValueChange={setNewChannelId}
+                  onValueChange={(value) => {
+                    if (value !== null) setNewChannelId(value)
+                  }}
                   disabled={!newModelName}
-                >
-                  <SelectTrigger className='h-9 w-full'>
-                    <SelectValue
-                      placeholder={
-                        newModelName ? t('Channel') : t('Please select a model')
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent alignItemWithTrigger={false}>
-                    <SelectGroup>
-                      {channelOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                  placeholder={
+                    newModelName ? t('Channel') : t('Please select a model')
+                  }
+                  searchPlaceholder={t('Search channels...')}
+                  emptyText={t('No channels found')}
+                  className='h-9 w-full'
+                />
                 <Select
                   items={EXPIRE_OPTIONS}
                   value={expiresIn}
-                  onValueChange={setExpiresIn}
+                  onValueChange={(value) => {
+                    if (value !== null) setExpiresIn(value)
+                  }}
                 >
                   <SelectTrigger className='h-9 w-full'>
                     <SelectValue placeholder={t('Expires')} />
@@ -216,7 +211,7 @@ export function DisabledModels() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className='relative z-0'>
             <CardHeader>
               <CardTitle>{t('Disabled Models')}</CardTitle>
             </CardHeader>
@@ -263,7 +258,9 @@ export function DisabledModels() {
                         <TableCell>
                           <div className='flex flex-col gap-1'>
                             <span>{item.channel_name || '-'}</span>
-                            <Badge variant='secondary'>#{item.channel_id}</Badge>
+                            <Badge variant='secondary'>
+                              #{item.channel_id}
+                            </Badge>
                           </div>
                         </TableCell>
                         <TableCell>{formatTime(item.created_at)}</TableCell>
@@ -301,7 +298,7 @@ export function DisabledModels() {
                 >
                   {t('Previous')}
                 </Button>
-                <span className='text-sm text-muted-foreground'>
+                <span className='text-muted-foreground text-sm'>
                   {page} / {totalPages}
                 </span>
                 <Button

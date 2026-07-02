@@ -40,6 +40,7 @@ func ResolveIncomingBillingExprRequestInput(c *gin.Context, info *relaycommon.Re
 		}
 	}
 	input.Body = bodyBytes
+	input = mergeContextTaskBillingExprRequestInput(c, input)
 	return enrichBillingExprRequestInput(info, input), nil
 }
 
@@ -154,6 +155,175 @@ func readContextBillingExprBody(c *gin.Context) ([]byte, error) {
 		return common.Marshal(value)
 	}
 	return nil, nil
+}
+
+func mergeContextTaskBillingExprRequestInput(c *gin.Context, input billingexpr.RequestInput) billingexpr.RequestInput {
+	if c == nil {
+		return input
+	}
+	value, ok := c.Get("task_request")
+	if !ok || value == nil {
+		return input
+	}
+	taskReq, ok := value.(relaycommon.TaskSubmitReq)
+	if !ok {
+		return input
+	}
+
+	body := map[string]any{}
+	if len(input.Body) > 0 {
+		_ = common.Unmarshal(input.Body, &body)
+	}
+	if strings.TrimSpace(taskReq.Model) != "" {
+		body["model"] = taskReq.Model
+	}
+	if strings.TrimSpace(taskReq.Size) != "" {
+		body["size"] = taskReq.Size
+	}
+	if taskReq.Duration > 0 {
+		body["duration"] = taskReq.Duration
+	}
+	if strings.TrimSpace(taskReq.Seconds) != "" {
+		body["seconds"] = taskReq.Seconds
+	}
+	if len(taskReq.Metadata) > 0 {
+		body["metadata"] = taskReq.Metadata
+	}
+	if resolution := resolveTaskBillingResolution(taskReq, body); resolution != "" {
+		body["resolution"] = resolution
+	}
+
+	bodyBytes, err := common.Marshal(body)
+	if err != nil {
+		return input
+	}
+	input.Body = bodyBytes
+	return input
+}
+
+func resolveTaskBillingResolution(taskReq relaycommon.TaskSubmitReq, body map[string]any) string {
+	for _, candidate := range []any{
+		body["resolution"],
+		taskReq.Metadata["resolution"],
+		billingExprMapValue(body["metadata"], "resolution"),
+		taskReq.Size,
+		taskReq.Metadata["size"],
+		billingExprMapValue(body["metadata"], "size"),
+	} {
+		if resolution := normalizeTaskBillingResolution(candidate); resolution != "" {
+			return resolution
+		}
+	}
+	return ""
+}
+
+func billingExprMapValue(value any, key string) any {
+	switch m := value.(type) {
+	case map[string]any:
+		return m[key]
+	case string:
+		var parsed map[string]any
+		if err := common.UnmarshalJsonStr(m, &parsed); err == nil {
+			return parsed[key]
+		}
+		return nil
+	default:
+		return nil
+	}
+}
+
+func normalizeTaskBillingResolution(value any) string {
+	text := strings.ToLower(strings.TrimSpace(common.Interface2String(value)))
+	if text == "" {
+		return ""
+	}
+	text = strings.ReplaceAll(text, "_", "")
+	text = strings.ReplaceAll(text, " ", "")
+	if resolution := exactTaskBillingResolution(text); resolution != "" {
+		return resolution
+	}
+	if strings.Contains(text, "4k") || strings.Contains(text, "2160p") {
+		return "4k"
+	}
+	if strings.Contains(text, "1080p") {
+		return "1080p"
+	}
+	if strings.Contains(text, "768p") {
+		return "720p"
+	}
+	if strings.Contains(text, "720p") {
+		return "720p"
+	}
+	if strings.Contains(text, "512p") {
+		return "480p"
+	}
+	if strings.Contains(text, "480p") {
+		return "480p"
+	}
+	if maxDimension := maxVideoDimension(text); maxDimension > 0 {
+		switch {
+		case maxDimension >= 3840:
+			return "4k"
+		case maxDimension >= 1600:
+			return "1080p"
+		case maxDimension >= 1000:
+			return "720p"
+		default:
+			return "480p"
+		}
+	}
+	switch {
+	case strings.Contains(text, "2160"):
+		return "4k"
+	case strings.Contains(text, "1080"):
+		return "1080p"
+	case strings.Contains(text, "768"):
+		return "720p"
+	case strings.Contains(text, "720"):
+		return "720p"
+	case strings.Contains(text, "512"):
+		return "480p"
+	case strings.Contains(text, "480"):
+		return "480p"
+	default:
+		return ""
+	}
+}
+
+func exactTaskBillingResolution(value string) string {
+	normalized := strings.ReplaceAll(value, "*", "x")
+	switch normalized {
+	case "4k", "2160p", "2160", "3840x2160", "2160x3840", "4096x2160":
+		return "4k"
+	case "1080p", "1080", "1920x1080", "1080x1920", "1792x1024", "1024x1792",
+		"1440x1440", "1632x1248", "1248x1632":
+		return "1080p"
+	case "720p", "720", "768p", "768", "1280x720", "720x1280", "960x960",
+		"1088x832", "832x1088":
+		return "720p"
+	case "480p", "480", "512p", "512", "854x480", "480x854", "832x480",
+		"480x832", "624x624":
+		return "480p"
+	default:
+		return ""
+	}
+}
+
+func maxVideoDimension(value string) int {
+	parts := strings.FieldsFunc(value, func(r rune) bool {
+		return r == 'x' || r == '*' || r == ',' || r == '/'
+	})
+	maxDimension := 0
+	for _, part := range parts {
+		n, err := strconv.Atoi(strings.TrimSpace(part))
+		if err != nil {
+			continue
+		}
+		if n > maxDimension {
+			maxDimension = n
+		}
+	}
+	return maxDimension
 }
 
 func enrichBillingExprRequestInput(info *relaycommon.RelayInfo, input billingexpr.RequestInput) billingexpr.RequestInput {

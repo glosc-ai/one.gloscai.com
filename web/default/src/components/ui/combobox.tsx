@@ -47,6 +47,7 @@ type LegacyComboboxProps = {
   allowCustomValue?: boolean
   className?: string
   id?: string
+  disabled?: boolean
 }
 
 function Combobox(props: LegacyComboboxProps): React.ReactElement
@@ -65,10 +66,12 @@ function Combobox(
         options={props.options}
         value={props.value ?? ''}
         onValueChange={(value) => props.onValueChange?.(value)}
-        placeholder={props.searchPlaceholder ?? props.placeholder}
+        placeholder={props.placeholder}
+        searchPlaceholder={props.searchPlaceholder}
         emptyText={props.emptyText}
         className={props.className}
         allowCustomValue={props.allowCustomValue}
+        disabled={props.disabled}
       />
     )
   }

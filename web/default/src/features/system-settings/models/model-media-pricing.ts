@@ -20,6 +20,8 @@ For commercial licensing, please contact support@quantumnous.com
 export type MediaPricingMode = 'media-image' | 'media-video' | 'media-audio'
 export type MediaUnitKind = 'video' | 'image' | 'speech'
 export type SpeechBillingSide = 'input' | 'output' | 'both'
+export type VideoResolutionKey = '480p' | '720p' | '1080p' | '4k'
+export type VideoResolutionPriceMap = Record<VideoResolutionKey, number>
 export type ExpressionBackedPricingMode = 'tiered_expr' | MediaPricingMode
 
 export type MediaUnitConfig = {
@@ -27,6 +29,8 @@ export type MediaUnitConfig = {
   videoSecondPrice: number
   videoDefaultSeconds: number
   videoLargeSizeMultiplier: number
+  videoResolutionPrices: VideoResolutionPriceMap
+  videoDefaultResolution: VideoResolutionKey
   imageBasePrice: number
   imageDefaultCount: number
   imageSmallSizeMultiplier: number
@@ -42,11 +46,34 @@ export const MEDIA_PRICING_MODES: MediaPricingMode[] = [
   'media-audio',
 ]
 
+export const VIDEO_RESOLUTION_KEYS = [
+  '480p',
+  '720p',
+  '1080p',
+  '4k',
+] as const satisfies readonly VideoResolutionKey[]
+
+export const VIDEO_RESOLUTION_LABELS: Record<VideoResolutionKey, string> = {
+  '480p': '480P',
+  '720p': '720P',
+  '1080p': '1080P',
+  '4k': '4K',
+}
+
+export const DEFAULT_VIDEO_RESOLUTION_PRICES: VideoResolutionPriceMap = {
+  '480p': 0.03,
+  '720p': 0.05,
+  '1080p': 0.083333,
+  '4k': 0.2,
+}
+
 export const DEFAULT_MEDIA_UNIT_CONFIG: MediaUnitConfig = {
   kind: 'video',
   videoSecondPrice: 0.05,
   videoDefaultSeconds: 1,
   videoLargeSizeMultiplier: 1.666667,
+  videoResolutionPrices: DEFAULT_VIDEO_RESOLUTION_PRICES,
+  videoDefaultResolution: '720p',
   imageBasePrice: 0.04,
   imageDefaultCount: 1,
   imageSmallSizeMultiplier: 0.4,
@@ -57,6 +84,50 @@ export const DEFAULT_MEDIA_UNIT_CONFIG: MediaUnitConfig = {
 }
 
 const NUMBER_PATTERN = '([-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:e[-+]?\\d+)?)'
+
+const VIDEO_RESOLUTION_ALIASES: Record<VideoResolutionKey, string[]> = {
+  '480p': [
+    '480p',
+    '480',
+    '512p',
+    '512',
+    '854x480',
+    '480x854',
+    '832x480',
+    '480x832',
+    '624x624',
+  ],
+  '720p': [
+    '720p',
+    '720',
+    '768p',
+    '768',
+    '1280x720',
+    '720x1280',
+    '960x960',
+    '1088x832',
+    '832x1088',
+  ],
+  '1080p': [
+    '1080p',
+    '1080',
+    '1920x1080',
+    '1080x1920',
+    '1792x1024',
+    '1024x1792',
+    '1440x1440',
+    '1632x1248',
+    '1248x1632',
+  ],
+  '4k': ['4k', '2160p', '2160', '3840x2160', '2160x3840', '4096x2160'],
+}
+
+const VIDEO_RESOLUTION_PARAM_EXPRS = [
+  'lower(str(param("resolution")))',
+  'lower(str(param("metadata.resolution")))',
+  'lower(str(param("size")))',
+  'lower(str(param("metadata.size")))',
+]
 
 export function isMediaPricingMode(mode?: string): mode is MediaPricingMode {
   return MEDIA_PRICING_MODES.includes(mode as MediaPricingMode)
@@ -107,12 +178,100 @@ function exprNumber(value: number): string {
   return Number.parseFloat(value.toFixed(12)).toString()
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function withStarSizeAliases(values: string[]): string[] {
+  const aliases = new Set<string>()
+  values.forEach((value) => {
+    aliases.add(value)
+    if (value.includes('x')) aliases.add(value.replaceAll('x', '*'))
+  })
+  return Array.from(aliases)
+}
+
+function normalizeVideoResolutionPrices(
+  prices?: Partial<VideoResolutionPriceMap> | null
+): VideoResolutionPriceMap {
+  return {
+    ...DEFAULT_VIDEO_RESOLUTION_PRICES,
+    ...(prices || {}),
+  }
+}
+
+function getVideoResolutionFallback(resolution?: string): VideoResolutionKey {
+  return VIDEO_RESOLUTION_KEYS.includes(resolution as VideoResolutionKey)
+    ? (resolution as VideoResolutionKey)
+    : '720p'
+}
+
+function buildVideoResolutionMatchExpr(resolution: VideoResolutionKey): string {
+  const aliases = withStarSizeAliases(VIDEO_RESOLUTION_ALIASES[resolution])
+  return VIDEO_RESOLUTION_PARAM_EXPRS.flatMap((paramExpr) =>
+    aliases.map((alias) => `${paramExpr} == "${alias}"`)
+  ).join(' || ')
+}
+
+function buildVideoResolutionPriceExpr(config: MediaUnitConfig): string {
+  const prices = normalizeVideoResolutionPrices(config.videoResolutionPrices)
+  const fallbackResolution = getVideoResolutionFallback(
+    config.videoDefaultResolution
+  )
+  const fallbackPrice = exprNumber(prices[fallbackResolution])
+  const orderedResolutions: VideoResolutionKey[] = [
+    '4k',
+    '1080p',
+    '720p',
+    '480p',
+  ]
+
+  return orderedResolutions.reduceRight((expr, resolution) => {
+    const price = exprNumber(prices[resolution])
+    return `${buildVideoResolutionMatchExpr(resolution)} ? ${price} : ${expr}`
+  }, fallbackPrice)
+}
+
+function buildNumberFallbackExpr(paths: string[], fallback: string): string {
+  return paths.reduceRight(
+    (expr, path) => `num(param("${path}"), ${expr})`,
+    fallback
+  )
+}
+
+export function getVideoResolutionUnitPrice(
+  config: MediaUnitConfig,
+  resolution: VideoResolutionKey = getVideoResolutionFallback(
+    config.videoDefaultResolution
+  )
+): number {
+  return normalizeVideoResolutionPrices(config.videoResolutionPrices)[
+    resolution
+  ]
+}
+
 export function generateMediaUnitExpr(config: MediaUnitConfig): string {
   if (config.kind === 'video') {
-    const secondPrice = exprNumber(config.videoSecondPrice)
     const defaultSeconds = exprNumber(config.videoDefaultSeconds)
-    const largeMultiplier = exprNumber(config.videoLargeSizeMultiplier)
-    return `tier("video", usd(max(num(param("seconds"), num(param("duration"), ${defaultSeconds})), 0) * ${secondPrice} * (str(param("size")) == "1024x1792" || str(param("size")) == "1792x1024" ? ${largeMultiplier} : 1)))`
+    const outputSecondsExpr = `max(${buildNumberFallbackExpr(
+      [
+        'seconds',
+        'duration',
+        'durationSeconds',
+        'duration_seconds',
+        'metadata.durationSeconds',
+        'metadata.duration_seconds',
+        'metadata.duration',
+        'metadata.seconds',
+      ],
+      defaultSeconds
+    )}, 0)`
+    const countExpr = `max(${buildNumberFallbackExpr(
+      ['n', 'metadata.sampleCount'],
+      '1'
+    )}, 1)`
+    const billableSecondsExpr = `(${outputSecondsExpr} * ${countExpr})`
+    return `tier("video", usd(${billableSecondsExpr} * (${buildVideoResolutionPriceExpr(config)})))`
   }
 
   if (config.kind === 'image') {
@@ -159,6 +318,34 @@ function readNumber(
   return Number.isFinite(value) ? value : null
 }
 
+function readLastNumber(
+  expr: string,
+  pattern: string,
+  groupIndex = 1
+): number | null {
+  const re = new RegExp(pattern, 'gi')
+  let match: RegExpExecArray | null
+  let value: number | null = null
+  while ((match = re.exec(expr)) !== null) {
+    const nextValue = Number(match[groupIndex])
+    if (Number.isFinite(nextValue)) value = nextValue
+  }
+  return value
+}
+
+function readVideoResolutionPrice(
+  expr: string,
+  resolution: VideoResolutionKey
+): number | null {
+  const aliasPattern = withStarSizeAliases(VIDEO_RESOLUTION_ALIASES[resolution])
+    .map(escapeRegExp)
+    .join('|')
+  return readNumber(
+    expr,
+    `==\\s*"(?:${aliasPattern})"(?:(?!\\?).)*\\?\\s*${NUMBER_PATTERN}`
+  )
+}
+
 function readSpeechSide(expr: string): SpeechBillingSide {
   const match = expr.match(/seconds\(([^)]+)\)/i)
   const tokens = match?.[1]?.trim().replace(/\s+/g, ' ')
@@ -177,24 +364,95 @@ export function tryParseMediaUnitConfig(
   const billingExpr = expr.split('|||')[0] ?? expr
 
   if (mode === 'media-video') {
+    const defaultSeconds =
+      readNumber(
+        billingExpr,
+        `num\\(param\\("metadata\\.durationSeconds"\\),\\s*${NUMBER_PATTERN}\\)`
+      ) ??
+      readNumber(
+        billingExpr,
+        `num\\(param\\("metadata\\.duration_seconds"\\),\\s*${NUMBER_PATTERN}\\)`
+      ) ??
+      readNumber(
+        billingExpr,
+        `num\\(param\\("metadata\\.duration"\\),\\s*${NUMBER_PATTERN}\\)`
+      ) ??
+      readNumber(
+        billingExpr,
+        `num\\(param\\("metadata\\.seconds"\\),\\s*${NUMBER_PATTERN}\\)`
+      ) ??
+      readNumber(
+        billingExpr,
+        `num\\(param\\("durationSeconds"\\),\\s*${NUMBER_PATTERN}\\)`
+      ) ??
+      readNumber(
+        billingExpr,
+        `num\\(param\\("duration_seconds"\\),\\s*${NUMBER_PATTERN}\\)`
+      ) ??
+      readNumber(
+        billingExpr,
+        `num\\(param\\("duration"\\),\\s*${NUMBER_PATTERN}\\)`
+      ) ??
+      defaults.videoDefaultSeconds
+    const parsedResolutionPrices = Object.fromEntries(
+      VIDEO_RESOLUTION_KEYS.map((resolution) => [
+        resolution,
+        readVideoResolutionPrice(billingExpr, resolution),
+      ])
+    ) as Record<VideoResolutionKey, number | null>
+    const hasResolutionPrices = VIDEO_RESOLUTION_KEYS.some(
+      (resolution) => parsedResolutionPrices[resolution] !== null
+    )
+    const legacySecondPrice =
+      readNumber(
+        billingExpr,
+        `max\\(num\\(param\\("seconds"\\),\\s*num\\(param\\("duration"\\),\\s*${NUMBER_PATTERN}\\)\\),\\s*0\\)\\s*\\*\\s*${NUMBER_PATTERN}`,
+        2
+      ) ?? defaults.videoSecondPrice
+    const legacyLargeMultiplier =
+      readNumber(
+        billingExpr,
+        `"1792x1024"\\s*\\?\\s*${NUMBER_PATTERN}\\s*:\\s*1`
+      ) ?? defaults.videoLargeSizeMultiplier
+    const videoResolutionPrices = hasResolutionPrices
+      ? normalizeVideoResolutionPrices(
+          Object.fromEntries(
+            VIDEO_RESOLUTION_KEYS.map((resolution) => [
+              resolution,
+              parsedResolutionPrices[resolution] ?? undefined,
+            ])
+          ) as Partial<VideoResolutionPriceMap>
+        )
+      : {
+          ...defaults.videoResolutionPrices,
+          '480p': legacySecondPrice,
+          '720p': legacySecondPrice,
+          '1080p': legacySecondPrice * legacyLargeMultiplier,
+          '4k': legacySecondPrice * legacyLargeMultiplier,
+        }
+    const fallbackResolutionPrice = readLastNumber(
+      billingExpr,
+      `:\\s*${NUMBER_PATTERN}\\s*\\)\\)\\)?\\s*$`
+    )
+    const parsedDefaultResolution =
+      VIDEO_RESOLUTION_KEYS.find(
+        (resolution) =>
+          fallbackResolutionPrice !== null &&
+          Math.abs(
+            videoResolutionPrices[resolution] - fallbackResolutionPrice
+          ) < 1e-9
+      ) ?? defaults.videoDefaultResolution
+
     return {
       ...defaults,
-      videoDefaultSeconds:
-        readNumber(
-          billingExpr,
-          `num\\(param\\("duration"\\),\\s*${NUMBER_PATTERN}\\)`
-        ) ?? defaults.videoDefaultSeconds,
-      videoSecondPrice:
-        readNumber(
-          billingExpr,
-          `max\\(num\\(param\\("seconds"\\),\\s*num\\(param\\("duration"\\),\\s*${NUMBER_PATTERN}\\)\\),\\s*0\\)\\s*\\*\\s*${NUMBER_PATTERN}`,
-          2
-        ) ?? defaults.videoSecondPrice,
+      videoDefaultSeconds: defaultSeconds,
+      videoSecondPrice: videoResolutionPrices['720p'],
       videoLargeSizeMultiplier:
-        readNumber(
-          billingExpr,
-          `"1792x1024"\\s*\\?\\s*${NUMBER_PATTERN}\\s*:\\s*1`
-        ) ?? defaults.videoLargeSizeMultiplier,
+        videoResolutionPrices['720p'] > 0
+          ? videoResolutionPrices['1080p'] / videoResolutionPrices['720p']
+          : defaults.videoLargeSizeMultiplier,
+      videoResolutionPrices,
+      videoDefaultResolution: parsedDefaultResolution,
     }
   }
 

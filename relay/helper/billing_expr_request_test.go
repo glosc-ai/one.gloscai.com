@@ -97,6 +97,63 @@ func TestResolveIncomingBillingExprRequestInputAudioSpeechEstimate(t *testing.T)
 	require.Greater(t, gjson.GetBytes(input.Body, "estimated_duration").Float(), 0.0)
 }
 
+func TestResolveIncomingBillingExprRequestInputNormalizesTaskRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	body := []byte(`{"model":"veo-3.1","metadata":"{\"resolution\":\"4K\",\"durationSeconds\":8}"}`)
+	ctx.Request = httptest.NewRequest(
+		http.MethodPost,
+		"/v1/videos",
+		bytes.NewReader(body),
+	)
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	ctx.Set("task_request", relaycommon.TaskSubmitReq{
+		Model: "veo-3.1",
+		Metadata: map[string]interface{}{
+			"resolution":      "4K",
+			"durationSeconds": float64(8),
+		},
+	})
+
+	input, err := ResolveIncomingBillingExprRequestInput(ctx, &relaycommon.RelayInfo{
+		RelayMode: relayconstant.RelayModeVideoSubmit,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "4k", gjson.GetBytes(input.Body, "resolution").String())
+	require.Equal(t, "4K", gjson.GetBytes(input.Body, "metadata.resolution").String())
+	require.Equal(t, float64(8), gjson.GetBytes(input.Body, "metadata.durationSeconds").Float())
+}
+
+func TestResolveIncomingBillingExprRequestInputNormalizesTaskSize(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	body := []byte(`{"model":"sora-2-pro","seconds":"5","size":"1792x1024"}`)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/v1/videos", bytes.NewReader(body))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	ctx.Set("task_request", relaycommon.TaskSubmitReq{
+		Model:   "sora-2-pro",
+		Seconds: "5",
+		Size:    "1792x1024",
+	})
+
+	input, err := ResolveIncomingBillingExprRequestInput(ctx, &relaycommon.RelayInfo{
+		RelayMode: relayconstant.RelayModeVideoSubmit,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "1080p", gjson.GetBytes(input.Body, "resolution").String())
+	require.Equal(t, "1792x1024", gjson.GetBytes(input.Body, "size").String())
+	require.Equal(t, "5", gjson.GetBytes(input.Body, "seconds").String())
+}
+
+func TestNormalizeTaskBillingResolutionAliases(t *testing.T) {
+	require.Equal(t, "480p", normalizeTaskBillingResolution("512P"))
+	require.Equal(t, "720p", normalizeTaskBillingResolution("960*960"))
+	require.Equal(t, "1080p", normalizeTaskBillingResolution("1632*1248"))
+	require.Equal(t, "4k", normalizeTaskBillingResolution("3840x2160"))
+}
+
 func TestBuildBillingExprRequestInputFromRequest(t *testing.T) {
 	request := &dto.GeneralOpenAIRequest{
 		Model:  "gemini-3.1-pro-preview",

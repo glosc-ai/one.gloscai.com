@@ -62,6 +62,9 @@ import {
 } from './model-pricing-sheet'
 import {
   buildModelSnapshots,
+  getModeLabel,
+  getPriceDetail,
+  getPriceSummary,
   getSnapshotSignature,
   type ModelRow,
 } from './model-pricing-snapshots'
@@ -98,6 +101,10 @@ export type ModelRatioVisualEditorHandle = {
 }
 
 const STORAGE_KEY = 'model-ratio-column-visibility'
+const MODEL_NAME_COLLATOR = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: 'base',
+})
 
 const ModelRatioVisualEditorComponent = forwardRef<
   ModelRatioVisualEditorHandle,
@@ -135,7 +142,9 @@ const ModelRatioVisualEditorComponent = forwardRef<
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editorOpen, setEditorOpen] = useState(false)
   const [editData, setEditData] = useState<ModelRatioData | null>(null)
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'name', desc: false },
+  ])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
@@ -230,7 +239,7 @@ const ModelRatioVisualEditorComponent = forwardRef<
           isDraftNew: Boolean(!saved && draft),
         }
       })
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .sort((a, b) => MODEL_NAME_COLLATOR.compare(a.name, b.name))
   }, [
     savedModelPrice,
     savedModelRatio,
@@ -446,8 +455,18 @@ const ModelRatioVisualEditorComponent = forwardRef<
     onRowSelectionChange: setRowSelection,
     autoResetPageIndex: false,
     globalFilterFn: (row, _columnId, filterValue) => {
-      const searchValue = String(filterValue).toLowerCase()
-      return row.original.name.toLowerCase().includes(searchValue)
+      const searchValue = String(filterValue).trim().toLowerCase()
+      if (!searchValue) return true
+
+      const searchableText = [
+        row.original.name,
+        t(getModeLabel(row.original.billingMode)),
+        getPriceSummary(row.original, t),
+        getPriceDetail(row.original, t),
+      ]
+        .join(' ')
+        .toLowerCase()
+      return searchableText.includes(searchValue)
     },
   })
 

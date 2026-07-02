@@ -40,10 +40,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
+  getVideoResolutionUnitPrice,
   getMediaKindFromPricingMode,
+  VIDEO_RESOLUTION_KEYS,
+  VIDEO_RESOLUTION_LABELS,
   type MediaPricingMode,
   type MediaUnitConfig,
   type SpeechBillingSide,
+  type VideoResolutionKey,
 } from './model-media-pricing'
 
 function formatNumberDraft(value: number | string): string {
@@ -207,28 +211,71 @@ export function MediaPricingFields(props: {
   }
 
   if (props.mode === 'media-video') {
+    const updateResolutionPrice = (
+      resolution: VideoResolutionKey,
+      value: number
+    ) => {
+      updateConfig({
+        videoResolutionPrices: {
+          ...props.config.videoResolutionPrices,
+          [resolution]: value,
+        },
+        videoSecondPrice:
+          resolution === '720p' ? value : props.config.videoSecondPrice,
+      })
+    }
+
     return (
       <FieldGroup className='gap-5'>
-        <div className='grid gap-3 sm:grid-cols-3'>
-          <MediaNumberField
-            labelKey='USD per video second'
-            value={props.config.videoSecondPrice}
-            onChange={(value) => updateConfig({ videoSecondPrice: value })}
-          />
+        <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+          {VIDEO_RESOLUTION_KEYS.map((resolution) => (
+            <MediaNumberField
+              key={resolution}
+              labelKey={`${VIDEO_RESOLUTION_LABELS[resolution]} USD per second`}
+              value={getVideoResolutionUnitPrice(props.config, resolution)}
+              onChange={(value) => updateResolutionPrice(resolution, value)}
+            />
+          ))}
+        </div>
+
+        <div className='grid gap-3 sm:grid-cols-2'>
           <MediaNumberField
             labelKey='Default seconds'
             value={props.config.videoDefaultSeconds}
             onChange={(value) => updateConfig({ videoDefaultSeconds: value })}
             descriptionKey='Used when the request omits seconds and duration.'
           />
-          <MediaNumberField
-            labelKey='Large size multiplier'
-            value={props.config.videoLargeSizeMultiplier}
-            onChange={(value) =>
-              updateConfig({ videoLargeSizeMultiplier: value })
-            }
-            descriptionKey='Applied to 1024x1792 and 1792x1024.'
-          />
+          <Field>
+            <FieldLabel>{t('Default resolution')}</FieldLabel>
+            <Select
+              items={VIDEO_RESOLUTION_KEYS.map((resolution) => ({
+                value: resolution,
+                label: VIDEO_RESOLUTION_LABELS[resolution],
+              }))}
+              value={props.config.videoDefaultResolution}
+              onValueChange={(value) =>
+                updateConfig({
+                  videoDefaultResolution: value as VideoResolutionKey,
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent alignItemWithTrigger={false}>
+                <SelectGroup>
+                  {VIDEO_RESOLUTION_KEYS.map((resolution) => (
+                    <SelectItem key={resolution} value={resolution}>
+                      {VIDEO_RESOLUTION_LABELS[resolution]}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              {t('Used when the request omits size or resolution.')}
+            </FieldDescription>
+          </Field>
         </div>
       </FieldGroup>
     )

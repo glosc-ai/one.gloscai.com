@@ -21,9 +21,11 @@ import { safeJsonParse } from '../utils/json-parser'
 import {
   detectMediaPricingMode,
   getMediaModeLabel,
+  getVideoResolutionUnitPrice,
   isExpressionBackedPricingMode,
   isMediaPricingMode,
   tryParseMediaUnitConfig,
+  VIDEO_RESOLUTION_LABELS,
 } from './model-media-pricing'
 import { type PricingMode } from './model-pricing-core'
 import { formatPricingNumber } from './pricing-format'
@@ -120,7 +122,7 @@ export const getPriceSummary = (
     }
     if (row.billingMode === 'media-video') {
       return config
-        ? `$${formatPricingNumber(config.videoSecondPrice)} / ${t('seconds')}`
+        ? `${VIDEO_RESOLUTION_LABELS[config.videoDefaultResolution]} $${formatPricingNumber(getVideoResolutionUnitPrice(config))} / ${t('seconds')}`
         : t('Video seconds and size')
     }
     return config
@@ -165,7 +167,7 @@ export const getPriceDetail = (
     }
     if (row.billingMode === 'media-video') {
       return config
-        ? `${t('Default seconds')} ${formatPricingNumber(config.videoDefaultSeconds)}`
+        ? `${t('Default seconds')} ${formatPricingNumber(config.videoDefaultSeconds)} · ${t('Default resolution')} ${VIDEO_RESOLUTION_LABELS[config.videoDefaultResolution]}`
         : t('Video seconds and size')
     }
     if (!config) return t('Speech seconds')

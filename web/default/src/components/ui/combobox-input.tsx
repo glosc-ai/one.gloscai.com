@@ -33,10 +33,12 @@ interface ComboboxInputProps {
   value?: string
   onValueChange: (value: string) => void
   placeholder?: string
+  searchPlaceholder?: string
   emptyText?: string
   className?: string
   id?: string
   allowCustomValue?: boolean
+  disabled?: boolean
 }
 
 export function ComboboxInput({
@@ -44,10 +46,12 @@ export function ComboboxInput({
   value = '',
   onValueChange,
   placeholder = 'Select or type...',
+  searchPlaceholder,
   emptyText = 'No option found.',
   className,
   id,
   allowCustomValue = false,
+  disabled = false,
 }: ComboboxInputProps) {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
@@ -151,6 +155,7 @@ export function ComboboxInput({
   }, [highlightedIndex])
 
   const showDropdown =
+    !disabled &&
     open &&
     (filteredOptions.length > 0 || (allowCustomValue && searchValue.trim()))
 
@@ -165,9 +170,11 @@ export function ComboboxInput({
         aria-haspopup='listbox'
         aria-autocomplete='list'
         autoComplete='off'
-        placeholder={placeholder}
+        disabled={disabled}
+        placeholder={open ? (searchPlaceholder ?? placeholder) : placeholder}
         value={displayValue}
         onChange={(e) => {
+          if (disabled) return
           const nextValue = e.target.value
           setSearchValue(nextValue)
           if (allowCustomValue) {
@@ -176,6 +183,7 @@ export function ComboboxInput({
           if (!open) setOpen(true)
         }}
         onFocus={() => {
+          if (disabled) return
           setSearchValue(allowCustomValue && !selectedOption ? value : '')
           setOpen(true)
         }}

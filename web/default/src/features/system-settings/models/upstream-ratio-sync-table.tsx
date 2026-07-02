@@ -16,7 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type ChangeEvent } from 'react'
+import { type PaginationState } from '@tanstack/react-table'
 import { Loader2, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Input } from '@/components/ui/input'
@@ -59,6 +60,11 @@ type UpstreamRatioSyncTableProps = {
   onUnselectValue: (model: string, ratioType: RatioType) => void
 }
 
+const MODEL_NAME_COLLATOR = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: 'base',
+})
+
 export function UpstreamRatioSyncTable({
   differences,
   resolutions,
@@ -70,25 +76,31 @@ export function UpstreamRatioSyncTable({
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [ratioTypeFilter, setRatioTypeFilter] = useState<string>('')
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
   const dataSource = useMemo<ModelRow[]>(() => {
-    return Object.entries(differences).map(([model, ratioTypes]) => {
-      const hasPrice = 'model_price' in ratioTypes
-      const hasOtherRatio = RATIO_SYNC_FIELDS.some((rt) => rt in ratioTypes)
-      return {
-        key: model,
-        model,
-        ratioTypes,
-        billingConflict: hasPrice && hasOtherRatio,
-      }
-    })
+    return Object.entries(differences)
+      .map(([model, ratioTypes]) => {
+        const hasPrice = 'model_price' in ratioTypes
+        const hasOtherRatio = RATIO_SYNC_FIELDS.some((rt) => rt in ratioTypes)
+        return {
+          key: model,
+          model,
+          ratioTypes,
+          billingConflict: hasPrice && hasOtherRatio,
+        }
+      })
+      .sort((a, b) => MODEL_NAME_COLLATOR.compare(a.model, b.model))
   }, [differences])
 
   const filteredData = useMemo(() => {
     let data = dataSource
 
     if (search.trim()) {
-      const lower = search.toLowerCase()
+      const lower = search.trim().toLowerCase()
       data = data.filter((row) => row.model.toLowerCase().includes(lower))
     }
 
@@ -110,8 +122,22 @@ export function UpstreamRatioSyncTable({
         }
       )
     })
-    return Array.from(set)
+    return Array.from(set).sort((a, b) => MODEL_NAME_COLLATOR.compare(a, b))
   }, [filteredData, ratioTypeFilter])
+
+  const handleSearchChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setSearch(event.target.value)
+      setPagination((previous) => ({ ...previous, pageIndex: 0 }))
+    },
+    []
+  )
+
+  const handleRatioTypeFilterChange = useCallback((value: string | null) => {
+    if (value === null) return
+    setRatioTypeFilter(value)
+    setPagination((previous) => ({ ...previous, pageIndex: 0 }))
+  }, [])
 
   const handleBulkSelect = useCallback(
     (upstream: string, rows: ModelRow[]) => {
@@ -174,7 +200,8 @@ export function UpstreamRatioSyncTable({
     data: filteredData,
     columns,
     getRowId: (row) => row.key,
-    initialPagination: { pageIndex: 0, pageSize: 10 },
+    pagination,
+    onPaginationChange: setPagination,
     withFilteredRowModel: false,
     withSortedRowModel: false,
     withFacetedRowModel: false,
@@ -214,7 +241,7 @@ export function UpstreamRatioSyncTable({
           <Input
             placeholder={t('Search model name...')}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearchChange}
             disabled={isDisabled}
             className='ps-8'
           />
@@ -228,7 +255,7 @@ export function UpstreamRatioSyncTable({
             })),
           ]}
           value={ratioTypeFilter}
-          onValueChange={(v) => v !== null && setRatioTypeFilter(v)}
+          onValueChange={handleRatioTypeFilterChange}
           disabled={isDisabled}
         >
           <SelectTrigger className='w-full sm:w-56'>

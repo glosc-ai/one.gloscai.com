@@ -39,6 +39,11 @@ const filterBySelectedValues = (
   return filterValue.includes(String(rowValue))
 }
 
+const MODEL_NAME_COLLATOR = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: 'base',
+})
+
 type BuildModelRatioColumnsOptions = {
   onDelete: (name: string) => void
   onEdit: (model: ModelRow) => void
@@ -107,6 +112,8 @@ export function buildModelRatioColumns({
         </div>
       ),
       enableHiding: false,
+      sortingFn: (rowA, rowB) =>
+        MODEL_NAME_COLLATOR.compare(rowA.original.name, rowB.original.name),
     },
     {
       accessorKey: 'billingMode',

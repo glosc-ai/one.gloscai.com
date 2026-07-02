@@ -180,6 +180,26 @@ func TestRequestValueHelpersForDirectUSD(t *testing.T) {
 	}
 }
 
+func TestLowerHelperForResolutionPricing(t *testing.T) {
+	cost, trace, err := billingexpr.RunExprWithRequest(
+		`tier("video", usd(num(param("seconds"), 1) * (lower(str(param("resolution"))) == "4k" ? 0.20 : 0.05)))`,
+		billingexpr.TokenParams{},
+		billingexpr.RequestInput{
+			Body: []byte(`{"seconds":6,"resolution":"4K"}`),
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := 6 * 0.20 * 1_000_000
+	if math.Abs(cost-want) > 1e-6 {
+		t.Errorf("cost = %f, want %f", cost, want)
+	}
+	if trace.MatchedTier != "video" {
+		t.Errorf("tier = %q, want video", trace.MatchedTier)
+	}
+}
+
 func TestSecondsHelper(t *testing.T) {
 	cost, _, err := billingexpr.RunExpr(
 		`tier("speech", usd(seconds(ai + ao) * 0.006))`,

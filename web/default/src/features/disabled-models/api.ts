@@ -46,8 +46,9 @@ export async function getEnabledChannelsByModel(
     params: {
       model: modelName,
       status: 'enabled',
-      sort_by: 'priority',
-      sort_order: 'desc',
+      sort_by: 'name',
+      sort_order: 'asc',
+      page_size: 10000,
     },
   })
   return res.data.data?.items ?? []

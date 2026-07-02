@@ -22,7 +22,10 @@ import {
   detectMediaPricingMode,
   generateMediaUnitExpr,
   getMediaModeLabel,
+  getVideoResolutionUnitPrice,
   isMediaPricingMode,
+  VIDEO_RESOLUTION_KEYS,
+  VIDEO_RESOLUTION_LABELS,
   type MediaPricingMode,
   type MediaUnitConfig,
 } from './model-media-pricing'
@@ -267,15 +270,22 @@ export function buildPreviewRows(
       )
     } else if (mediaConfig?.kind === 'video') {
       rows.push(
-        {
-          key: 'videoSecond',
-          label: t('USD per video second'),
-          value: `$${formatPricingNumber(mediaConfig.videoSecondPrice)}`,
-        },
+        ...VIDEO_RESOLUTION_KEYS.map((resolution) => ({
+          key: `video-${resolution}`,
+          label: `${VIDEO_RESOLUTION_LABELS[resolution]} ${t('USD per second')}`,
+          value: `$${formatPricingNumber(
+            getVideoResolutionUnitPrice(mediaConfig, resolution)
+          )}`,
+        })),
         {
           key: 'videoSeconds',
           label: t('Default seconds'),
           value: formatPricingNumber(mediaConfig.videoDefaultSeconds),
+        },
+        {
+          key: 'videoDefaultResolution',
+          label: t('Default resolution'),
+          value: VIDEO_RESOLUTION_LABELS[mediaConfig.videoDefaultResolution],
         }
       )
     } else if (mediaConfig?.kind === 'speech') {
