@@ -49,6 +49,7 @@ export type OfficialPaymentResponse = ApiResponse<{
 export type OfficialPaymentStatusResponse = ApiResponse<OfficialPaymentStatus>
 export type AffiliateCodeResponse = ApiResponse<string>
 export type AffiliateTransferResponse = ApiResponse
+export type AffiliateRebatesResponse = ApiResponse<AffiliateRebateListResponse>
 export type CreemPaymentResponse = ApiResponse<{ checkout_url: string }>
 export type WaffoPaymentResponse = ApiResponse<
   { payment_url?: string } | string
@@ -260,6 +261,33 @@ export interface UserWalletData {
   aff_count: number
   /** User group */
   group: string
+}
+
+/**
+ * Affiliate rebate record
+ */
+export interface AffiliateRebateRecord {
+  id: number
+  inviter_id: number
+  invitee_id: number
+  invitee_username: string
+  top_up_id: number
+  trade_no: string
+  recharge_quota: number
+  recharge_amount: number
+  rebate_quota: number
+  rebate_ratio: number
+  payment_method: string
+  payment_provider: string
+  created_at: number
+}
+
+/**
+ * Affiliate rebate list response
+ */
+export interface AffiliateRebateListResponse {
+  items: AffiliateRebateRecord[]
+  total: number
 }
 
 /**

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -100,6 +101,55 @@ func TestRechargeWaffoPancake_RejectsMismatchedPaymentMethod(t *testing.T) {
 	require.NotNil(t, topUp)
 	assert.Equal(t, common.TopUpStatusPending, topUp.Status)
 	assert.Equal(t, 0, getUserQuotaForPaymentGuardTest(t, 101))
+}
+
+func TestRechargeDirectTopUp_AppliesAffiliateRebate(t *testing.T) {
+	truncateTables(t)
+
+	originalRatio := common.AffiliateRebateRatio
+	originalQuotaPerUnit := common.QuotaPerUnit
+	paymentSetting := operation_setting.GetPaymentSetting()
+	originalComplianceConfirmed := paymentSetting.ComplianceConfirmed
+	originalComplianceTermsVersion := paymentSetting.ComplianceTermsVersion
+	t.Cleanup(func() {
+		common.AffiliateRebateRatio = originalRatio
+		common.QuotaPerUnit = originalQuotaPerUnit
+		paymentSetting.ComplianceConfirmed = originalComplianceConfirmed
+		paymentSetting.ComplianceTermsVersion = originalComplianceTermsVersion
+	})
+
+	common.AffiliateRebateRatio = 10
+	common.QuotaPerUnit = 500000
+	paymentSetting.ComplianceConfirmed = true
+	paymentSetting.ComplianceTermsVersion = operation_setting.CurrentComplianceTermsVersion
+
+	inviter := &User{Id: 201, Username: "affiliate_inviter", Status: common.UserStatusEnabled}
+	invitee := &User{Id: 202, Username: "affiliate_invitee", Status: common.UserStatusEnabled, InviterId: inviter.Id}
+	require.NoError(t, DB.Create(inviter).Error)
+	require.NoError(t, DB.Create(invitee).Error)
+	insertTopUpForPaymentGuardTest(t, "affiliate-rebate-order", invitee.Id, PaymentProviderEpay)
+
+	err := RechargeDirectTopUp("affiliate-rebate-order", PaymentProviderEpay, PaymentMethodAlipay, "127.0.0.1")
+	require.NoError(t, err)
+
+	var updatedInviter User
+	require.NoError(t, DB.Select("aff_quota", "aff_history").Where("id = ?", inviter.Id).First(&updatedInviter).Error)
+	assert.Equal(t, 100000, updatedInviter.AffQuota)
+	assert.Equal(t, 100000, updatedInviter.AffHistoryQuota)
+
+	var rebate AffiliateRebate
+	require.NoError(t, DB.Where("trade_no = ?", "affiliate-rebate-order").First(&rebate).Error)
+	assert.Equal(t, inviter.Id, rebate.InviterId)
+	assert.Equal(t, invitee.Id, rebate.InviteeId)
+	assert.Equal(t, 1000000, rebate.RechargeQuota)
+	assert.Equal(t, 100000, rebate.RebateQuota)
+	assert.Equal(t, 10.0, rebate.RebateRatio)
+
+	err = RechargeDirectTopUp("affiliate-rebate-order", PaymentProviderEpay, PaymentMethodAlipay, "127.0.0.1")
+	require.NoError(t, err)
+	var count int64
+	require.NoError(t, DB.Model(&AffiliateRebate{}).Where("trade_no = ?", "affiliate-rebate-order").Count(&count).Error)
+	assert.Equal(t, int64(1), count)
 }
 
 func TestUpdatePendingTopUpStatus_RejectsMismatchedPaymentProvider(t *testing.T) {

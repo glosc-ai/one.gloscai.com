@@ -33,6 +33,7 @@ import type {
   OfficialPaymentStatusResponse,
   AffiliateCodeResponse,
   AffiliateTransferResponse,
+  AffiliateRebatesResponse,
   BillingHistoryResponse,
   CompleteOrderRequest,
   CreemPaymentRequest,
@@ -259,6 +260,25 @@ export async function transferAffiliateQuota(
   request: AffiliateTransferRequest
 ): Promise<AffiliateTransferResponse> {
   const res = await api.post('/api/user/aff_transfer', request)
+  return res.data
+}
+
+/**
+ * Get affiliate rebate records for current user
+ */
+export async function getAffiliateRebates(
+  page: number,
+  pageSize: number,
+  keyword?: string
+): Promise<AffiliateRebatesResponse> {
+  const params = new URLSearchParams({
+    p: page.toString(),
+    page_size: pageSize.toString(),
+  })
+  if (keyword) {
+    params.append('keyword', keyword)
+  }
+  const res = await api.get(`/api/user/aff_rebates?${params.toString()}`)
   return res.data
 }
 

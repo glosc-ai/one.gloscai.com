@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Share2 } from 'lucide-react'
+import { ReceiptText, Share2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatQuota } from '@/lib/format'
 import { Button } from '@/components/ui/button'
@@ -30,6 +30,7 @@ interface AffiliateRewardsCardProps {
   user: UserWalletData | null
   affiliateLink: string
   onTransfer: () => void
+  onDetails: () => void
   complianceConfirmed?: boolean
   loading?: boolean
 }
@@ -38,6 +39,7 @@ export function AffiliateRewardsCard({
   user,
   affiliateLink,
   onTransfer,
+  onDetails,
   complianceConfirmed = true,
   loading,
 }: AffiliateRewardsCardProps) {
@@ -95,11 +97,11 @@ export function AffiliateRewardsCard({
           ))}
         </div>
 
-        <div className='flex items-center gap-2'>
+        <div className='flex flex-wrap items-center gap-2'>
           <Input
             value={affiliateLink}
             readOnly
-            className='border-muted bg-background/70 h-9 min-w-0 flex-1 font-mono text-xs'
+            className='border-muted bg-background/70 h-9 min-w-[180px] flex-1 font-mono text-xs'
           />
           <CopyButton
             value={affiliateLink}
@@ -109,6 +111,15 @@ export function AffiliateRewardsCard({
             tooltip={t('Copy referral link')}
             aria-label={t('Copy referral link')}
           />
+          <Button
+            onClick={onDetails}
+            variant='outline'
+            className='bg-background h-9 shrink-0 gap-1.5 px-3'
+            size='sm'
+          >
+            <ReceiptText className='size-4' />
+            <span className='hidden sm:inline'>{t('Details')}</span>
+          </Button>
           {hasRewards && (
             <Button
               onClick={onTransfer}

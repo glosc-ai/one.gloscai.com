@@ -52,6 +52,7 @@ const quotaSchema = z.object({
   PreConsumedQuota: z.coerce.number().min(0),
   QuotaForInviter: z.coerce.number().min(0),
   QuotaForInvitee: z.coerce.number().min(0),
+  AffiliateRebateRatio: z.coerce.number().min(0).max(100),
   TopUpLink: z.string(),
   general_setting: z.object({
     docs_link: z.string(),
@@ -108,7 +109,7 @@ export function QuotaSettingsSection({
         <Alert variant='destructive'>
           <AlertDescription>
             {t(
-              'Non-zero invitation rewards require compliance confirmation in Payment Gateway settings.'
+              'Non-zero invitation rewards or recharge commission require compliance confirmation in Payment Gateway settings.'
             )}
           </AlertDescription>
         </Alert>
@@ -212,6 +213,35 @@ export function QuotaSettingsSection({
                   </FormControl>
                   <FormDescription>
                     {t('Quota given to invited users')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='AffiliateRebateRatio'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Recharge Commission Rate (%)')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={0}
+                      max={100}
+                      step={0.01}
+                      value={field.value ?? ''}
+                      onChange={handleNumberChange(field.onChange)}
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      "Percentage of invited users' successful top-up quota added to the inviter's rewards."
+                    )}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

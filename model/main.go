@@ -283,6 +283,7 @@ func migrateDB() error {
 		&PerfMetric{},
 		&AdminAPIKey{},
 		&DisabledModel{},
+		&AffiliateRebate{},
 	)
 	if err != nil {
 		return err
@@ -334,6 +335,7 @@ func migrateDBFast() error {
 		{&PerfMetric{}, "PerfMetric"},
 		{&AdminAPIKey{}, "AdminAPIKey"},
 		{&DisabledModel{}, "DisabledModel"},
+		{&AffiliateRebate{}, "AffiliateRebate"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))
