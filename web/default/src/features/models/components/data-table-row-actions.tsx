@@ -16,7 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { type Row } from '@tanstack/react-table'
 import {
@@ -28,16 +27,20 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { DataTableRowActionMenu } from '@/components/data-table/core/row-action-menu'
 import { Button } from '@/components/ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuShortcut,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ConfirmDialog } from '@/components/confirm-dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+
 import {
   handleDeleteModel,
   handleToggleModelStatus,
@@ -73,26 +76,22 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant='ghost'
-            className='data-popup-open:bg-muted flex h-8 w-8 p-0'
-          />
-        }
-      >
-        <MoreHorizontal className='h-4 w-4' />
-        <span className='sr-only'>{t('Open menu')}</span>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align='end' className='w-48'>
-        {/* Edit */}
-        <DropdownMenuItem onClick={handleEdit}>
-          {t('Edit')}
-          <DropdownMenuShortcut>
-            <Pencil size={16} />
-          </DropdownMenuShortcut>
-        </DropdownMenuItem>
+    <div className='-ml-1.5 flex items-center gap-1'>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant='ghost'
+              size='icon-sm'
+              onClick={handleEdit}
+              aria-label={t('Edit')}
+            />
+          }
+        >
+          <Pencil />
+        </TooltipTrigger>
+        <TooltipContent>{t('Edit')}</TooltipContent>
+      </Tooltip>
 
         {!model.has_price && (
           <DropdownMenuItem onClick={handleConfigurePricing}>
@@ -105,28 +104,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
 
         <DropdownMenuSeparator />
 
-        {/* Enable/Disable */}
-        <DropdownMenuItem onClick={handleToggleStatus}>
-          {isEnabled ? (
-            <>
-              {t('Disable')}
-              <DropdownMenuShortcut>
-                <PowerOff size={16} />
-              </DropdownMenuShortcut>
-            </>
-          ) : (
-            <>
-              {t('Enable')}
-              <DropdownMenuShortcut>
-                <Power size={16} />
-              </DropdownMenuShortcut>
-            </>
-          )}
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
-        {/* Delete */}
+      <DataTableRowActionMenu ariaLabel={t('Open menu')}>
         <DropdownMenuItem
           onSelect={(e) => {
             e.preventDefault()
@@ -139,20 +117,23 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             <Trash2 size={16} />
           </DropdownMenuShortcut>
         </DropdownMenuItem>
-      </DropdownMenuContent>
+      </DataTableRowActionMenu>
 
       <ConfirmDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         title={t('Delete Model')}
-        desc={`Are you sure you want to delete "${model.model_name}"? This action cannot be undone.`}
-        confirmText='Delete'
+        desc={t(
+          'Are you sure you want to delete model "{{name}}"? This action cannot be undone.',
+          { name: model.model_name }
+        )}
+        confirmText={t('Delete')}
         destructive
         handleConfirm={() => {
           handleDeleteModel(model.id, queryClient)
           setDeleteConfirmOpen(false)
         }}
       />
-    </DropdownMenu>
+    </div>
   )
 }

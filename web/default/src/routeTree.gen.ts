@@ -43,6 +43,7 @@ import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedUsageLogsIndexRouteImport } from './routes/_authenticated/usage-logs/index'
 import { Route as AuthenticatedTextToSpeechIndexRouteImport } from './routes/_authenticated/text-to-speech/index'
 import { Route as AuthenticatedSystemSettingsIndexRouteImport } from './routes/_authenticated/system-settings/index'
+import { Route as AuthenticatedSystemInfoIndexRouteImport } from './routes/_authenticated/system-info/index'
 import { Route as AuthenticatedSubscriptionsIndexRouteImport } from './routes/_authenticated/subscriptions/index'
 import { Route as AuthenticatedSpeechToTextIndexRouteImport } from './routes/_authenticated/speech-to-text/index'
 import { Route as AuthenticatedRedemptionCodesIndexRouteImport } from './routes/_authenticated/redemption-codes/index'
@@ -249,6 +250,12 @@ const AuthenticatedSystemSettingsIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedSystemSettingsRouteRoute,
+  } as any)
+const AuthenticatedSystemInfoIndexRoute =
+  AuthenticatedSystemInfoIndexRouteImport.update({
+    id: '/system-info/',
+    path: '/system-info/',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSubscriptionsIndexRoute =
   AuthenticatedSubscriptionsIndexRouteImport.update({
@@ -490,6 +497,7 @@ export interface FileRoutesByFullPath {
   '/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/speech-to-text/': typeof AuthenticatedSpeechToTextIndexRoute
   '/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
+  '/system-info/': typeof AuthenticatedSystemInfoIndexRoute
   '/system-settings/': typeof AuthenticatedSystemSettingsIndexRoute
   '/text-to-speech/': typeof AuthenticatedTextToSpeechIndexRoute
   '/usage-logs/': typeof AuthenticatedUsageLogsIndexRoute
@@ -556,6 +564,7 @@ export interface FileRoutesByTo {
   '/redemption-codes': typeof AuthenticatedRedemptionCodesIndexRoute
   '/speech-to-text': typeof AuthenticatedSpeechToTextIndexRoute
   '/subscriptions': typeof AuthenticatedSubscriptionsIndexRoute
+  '/system-info': typeof AuthenticatedSystemInfoIndexRoute
   '/system-settings': typeof AuthenticatedSystemSettingsIndexRoute
   '/text-to-speech': typeof AuthenticatedTextToSpeechIndexRoute
   '/usage-logs': typeof AuthenticatedUsageLogsIndexRoute
@@ -626,6 +635,7 @@ export interface FileRoutesById {
   '/_authenticated/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/_authenticated/speech-to-text/': typeof AuthenticatedSpeechToTextIndexRoute
   '/_authenticated/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
+  '/_authenticated/system-info/': typeof AuthenticatedSystemInfoIndexRoute
   '/_authenticated/system-settings/': typeof AuthenticatedSystemSettingsIndexRoute
   '/_authenticated/text-to-speech/': typeof AuthenticatedTextToSpeechIndexRoute
   '/_authenticated/usage-logs/': typeof AuthenticatedUsageLogsIndexRoute
@@ -695,6 +705,7 @@ export interface FileRouteTypes {
     | '/redemption-codes/'
     | '/speech-to-text/'
     | '/subscriptions/'
+    | '/system-info/'
     | '/system-settings/'
     | '/text-to-speech/'
     | '/usage-logs/'
@@ -761,6 +772,7 @@ export interface FileRouteTypes {
     | '/redemption-codes'
     | '/speech-to-text'
     | '/subscriptions'
+    | '/system-info'
     | '/system-settings'
     | '/text-to-speech'
     | '/usage-logs'
@@ -830,6 +842,7 @@ export interface FileRouteTypes {
     | '/_authenticated/redemption-codes/'
     | '/_authenticated/speech-to-text/'
     | '/_authenticated/subscriptions/'
+    | '/_authenticated/system-info/'
     | '/_authenticated/system-settings/'
     | '/_authenticated/text-to-speech/'
     | '/_authenticated/usage-logs/'
@@ -1114,6 +1127,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/system-settings/'
       preLoaderRoute: typeof AuthenticatedSystemSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedSystemSettingsRouteRoute
+    }
+    '/_authenticated/system-info/': {
+      id: '/_authenticated/system-info/'
+      path: '/system-info'
+      fullPath: '/system-info/'
+      preLoaderRoute: typeof AuthenticatedSystemInfoIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/subscriptions/': {
       id: '/_authenticated/subscriptions/'
@@ -1453,6 +1473,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRedemptionCodesIndexRoute: typeof AuthenticatedRedemptionCodesIndexRoute
   AuthenticatedSpeechToTextIndexRoute: typeof AuthenticatedSpeechToTextIndexRoute
   AuthenticatedSubscriptionsIndexRoute: typeof AuthenticatedSubscriptionsIndexRoute
+  AuthenticatedSystemInfoIndexRoute: typeof AuthenticatedSystemInfoIndexRoute
   AuthenticatedTextToSpeechIndexRoute: typeof AuthenticatedTextToSpeechIndexRoute
   AuthenticatedUsageLogsIndexRoute: typeof AuthenticatedUsageLogsIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
@@ -1483,6 +1504,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedRedemptionCodesIndexRoute,
   AuthenticatedSpeechToTextIndexRoute: AuthenticatedSpeechToTextIndexRoute,
   AuthenticatedSubscriptionsIndexRoute: AuthenticatedSubscriptionsIndexRoute,
+  AuthenticatedSystemInfoIndexRoute: AuthenticatedSystemInfoIndexRoute,
   AuthenticatedTextToSpeechIndexRoute: AuthenticatedTextToSpeechIndexRoute,
   AuthenticatedUsageLogsIndexRoute: AuthenticatedUsageLogsIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,

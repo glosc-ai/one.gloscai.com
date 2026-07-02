@@ -16,7 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { VChart } from '@visactor/react-vchart'
 import { CreditCard, Loader2, UserPlus, Users } from 'lucide-react'
@@ -45,11 +44,15 @@ import {
 } from '@/features/dashboard/constants'
 import {
   getDefaultDays,
-  getSavedGranularity,
   saveGranularity,
   processUserChartData,
 } from '@/features/dashboard/lib'
-import type { ProcessedUserChartData } from '@/features/dashboard/types'
+import type {
+  ProcessedUserChartData,
+  UserChartsFilters,
+} from '@/features/dashboard/types'
+import { getRollingDateRange, type TimeGranularity } from '@/lib/time'
+import { VCHART_OPTION } from '@/lib/vchart'
 
 let themeManagerPromise: Promise<
   (typeof import('@visactor/vchart'))['ThemeManager']
@@ -107,10 +110,14 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: 'balance', labelKey: 'Balance' },
 ] as const
 
-export function UserCharts() {
+interface UserChartsProps {
+  filters: UserChartsFilters
+  onFiltersChange: (filters: UserChartsFilters) => void
+}
+
+export function UserCharts(props: UserChartsProps) {
   const { t } = useTranslation()
   const { resolvedTheme } = useTheme()
-  const { customization } = useThemeCustomization()
   const [themeReady, setThemeReady] = useState(false)
   const themeManagerRef = useRef<
     (typeof import('@visactor/vchart'))['ThemeManager'] | null
@@ -132,27 +139,32 @@ export function UserCharts() {
       start_timestamp: Math.floor(start.getTime() / 1000),
       end_timestamp: Math.floor(end.getTime() / 1000),
     }
-  })
+  }, [selectedRange])
 
-  const handleRangeChange = useCallback((days: number) => {
-    setSelectedRange(days)
-    const { start, end } = getRollingDateRange(days)
-    setTimeRange({
-      start_timestamp: Math.floor(start.getTime() / 1000),
-      end_timestamp: Math.floor(end.getTime() / 1000),
-    })
-  }, [])
+  const handleRangeChange = useCallback(
+    (days: number) => {
+      onFiltersChange({ ...props.filters, selectedRange: days })
+    },
+    [onFiltersChange, props.filters]
+  )
 
   const handleGranularityChange = useCallback(
     (g: TimeGranularity) => {
-      setTimeGranularity(g)
       saveGranularity(g)
-      const days = getDefaultDays(g)
-      if (days !== selectedRange) {
-        handleRangeChange(days)
-      }
+      onFiltersChange({
+        ...props.filters,
+        timeGranularity: g,
+        selectedRange: getDefaultDays(g),
+      })
     },
-    [selectedRange, handleRangeChange]
+    [onFiltersChange, props.filters]
+  )
+
+  const handleTopUserLimitChange = useCallback(
+    (limit: number) => {
+      onFiltersChange({ ...props.filters, topUserLimit: limit })
+    },
+    [onFiltersChange, props.filters]
   )
 
   useEffect(() => {
@@ -276,7 +288,7 @@ export function UserCharts() {
 
         <Tabs
           value={String(topUserLimit)}
-          onValueChange={(value) => setTopUserLimit(Number(value))}
+          onValueChange={(value) => handleTopUserLimitChange(Number(value))}
           className='shrink-0'
         >
           <TabsList>
@@ -360,7 +372,7 @@ export function UserCharts() {
                   themeReady &&
                   spec && (
                     <VChart
-                      key={`user-${chart.value}-${topUserLimit}-${resolvedTheme}-${customization.preset}`}
+                      key={`user-${chart.value}-${topUserLimit}-${resolvedTheme}`}
                       spec={{
                         ...spec,
                         theme: resolvedTheme === 'dark' ? 'dark' : 'light',

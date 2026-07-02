@@ -39,7 +39,7 @@ import {
   Minimax,
   Wenxin,
   Spark,
-  Midjourney,
+  Midjourney as MjProxyIcon,
   Hunyuan,
   Cohere,
   Cloudflare,
@@ -254,8 +254,8 @@ export const getModelCategories = (() => {
         filter: (model) => model.model_name.toLowerCase().includes('spark'),
       },
       midjourney: {
-        label: 'Midjourney',
-        icon: <Midjourney />,
+        label: 'MjProxy',
+        icon: <MjProxyIcon />,
         filter: (model) => model.model_name.toLowerCase().includes('mj_'),
       },
       tencent: {

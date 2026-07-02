@@ -21,10 +21,15 @@ import type { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
-import { useStatus } from '@/hooks/use-status'
+import type { z } from 'zod'
+
+import { Dialog } from '@/components/dialog'
+import { PasswordInput } from '@/components/password-input'
+import { Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -48,6 +53,8 @@ import {
   getAffiliateCode,
   saveAffiliateCode,
 } from '@/features/auth/lib/storage'
+import { useStatus } from '@/hooks/use-status'
+import { cn } from '@/lib/utils'
 
 export function SignUpForm({
   className,

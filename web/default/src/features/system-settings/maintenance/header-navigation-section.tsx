@@ -21,6 +21,8 @@ import * as z from 'zod'
 import { Plus, Trash2 } from 'lucide-react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect, useMemo } from 'react'
+import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
@@ -34,6 +36,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+
 import {
   SettingsControlChildren,
   SettingsForm,
@@ -352,7 +355,7 @@ export function HeaderNavigationSection({
                   name={module.requireAuthKey}
                   render={({ field }) => (
                     <SettingsControlChildren>
-                      <SettingsSwitchItem className='border-b-0 py-2'>
+                      <SettingsSwitchItem className='py-2'>
                         <SettingsSwitchContent>
                           <FormLabel>{module.requireAuthTitle}</FormLabel>
                           <FormDescription>

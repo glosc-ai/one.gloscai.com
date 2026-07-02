@@ -24,6 +24,7 @@ import githubMarkdownLightCss from 'github-markdown-css/github-markdown-light.cs
 import { cn } from '@/lib/utils'
 
 interface MarkdownProps {
+  breaks?: boolean
   children: string
   className?: string
   variant?: 'default' | 'github'

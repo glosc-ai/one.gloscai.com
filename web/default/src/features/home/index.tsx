@@ -78,21 +78,43 @@ export function Home() {
   }
 
   if (content) {
+    if (isUrl) {
+      return (
+        <PublicLayout showMainContainer={false}>
+          <iframe
+            src={content}
+            className='h-screen w-full border-none'
+            title={t('Custom Home Page')}
+            sandbox='allow-forms allow-popups allow-popups-to-escape-sandbox allow-scripts'
+          />
+        </PublicLayout>
+      )
+    }
+
+    const contentIsHtml = isLikelyHtml(content)
+
+    if (contentIsHtml) {
+      return (
+        <PublicLayout showMainContainer={false}>
+          <RichContent
+            mode='html'
+            htmlVariant='isolated'
+            content={content}
+            className='custom-home-content'
+          />
+        </PublicLayout>
+      )
+    }
+
     return (
-      <PublicLayout showMainContainer={false}>
-        <main className='overflow-x-hidden'>
-          {isUrl ? (
-            <iframe
-              src={content}
-              className='h-screen w-full border-none'
-              title={t('Custom Home Page')}
-            />
-          ) : (
-            <div className='container mx-auto py-8'>
-              <Markdown className='custom-home-content'>{content}</Markdown>
-            </div>
-          )}
-        </main>
+      <PublicLayout>
+        <div className='mx-auto max-w-6xl px-4 py-8'>
+          <RichContent
+            mode='markdown'
+            content={content}
+            className='custom-home-content'
+          />
+        </div>
       </PublicLayout>
     )
   }

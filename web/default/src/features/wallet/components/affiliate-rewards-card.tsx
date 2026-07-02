@@ -24,7 +24,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { CopyButton } from '@/components/copy-button'
+import { formatQuota } from '@/lib/format'
+
 import type { UserWalletData } from '../types'
 
 interface AffiliateRewardsCardProps {
@@ -49,7 +50,7 @@ export function AffiliateRewardsCard({
   const { t } = useTranslation()
   if (loading) {
     return (
-      <Card className='bg-muted/20 py-0'>
+      <Card data-card-hover='false' className='bg-muted/20 py-0'>
         <CardContent className='grid gap-4 p-3 sm:p-4 lg:grid-cols-[minmax(220px,1fr)_minmax(220px,0.72fr)_minmax(320px,1.15fr)] lg:items-center'>
           <div>
             <Skeleton className='h-5 w-32' />

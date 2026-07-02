@@ -18,16 +18,16 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { type ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
-import { getLobeIcon } from '@/lib/lobe-icon'
+
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { DataTableColumnHeader } from '@/components/data-table'
+  BadgeCell,
+  BadgeListCell,
+  DataTableColumnHeader,
+} from '@/components/data-table'
 import { GroupBadge } from '@/components/group-badge'
-import { StatusBadge, StatusBadgeList } from '@/components/status-badge'
+import { StatusBadge } from '@/components/status-badge'
+import { getLobeIcon } from '@/lib/lobe-icon'
+
 import { DEFAULT_TOKEN_UNIT, QUOTA_TYPE_VALUES } from '../constants'
 import {
   getDynamicDisplayGroupRatio,
@@ -57,36 +57,6 @@ export interface PricingColumnsOptions {
   showRechargePrice?: boolean
 }
 
-function renderLimitedTags(
-  items: string[],
-  maxDisplay: number = 3
-): React.ReactNode {
-  return (
-    <StatusBadgeList
-      items={items}
-      max={maxDisplay}
-      getKey={(item) => item}
-      renderItem={(item) => (
-        <StatusBadge label={item} autoColor={item} size='sm' copyable={false} />
-      )}
-    />
-  )
-}
-
-function renderLimitedGroupBadges(
-  groups: string[],
-  maxDisplay: number = 2
-): React.ReactNode {
-  return (
-    <StatusBadgeList
-      items={groups}
-      max={maxDisplay}
-      getKey={(group) => group}
-      renderItem={(group) => <GroupBadge group={group} size='sm' />}
-    />
-  )
-}
-
 export function usePricingColumns(
   options: PricingColumnsOptions = {}
 ): ColumnDef<PricingModel>[] {
@@ -114,7 +84,7 @@ export function usePricingColumns(
         const modelIcon = modelIconKey ? getLobeIcon(modelIconKey, 14) : null
 
         return (
-          <div className='flex min-w-[200px] items-center gap-2'>
+          <div className='flex max-w-full min-w-0 items-center gap-2'>
             {modelIcon}
             <div className='flex min-w-0 items-center gap-1.5'>
               <span className='truncate font-mono text-sm font-medium'>
@@ -131,7 +101,6 @@ export function usePricingColumns(
     // Type column
     {
       accessorKey: 'quota_type',
-      meta: { label: t('Type') },
       header: t('Type'),
       cell: ({ row }) => {
         const isTokenBased = row.original.quota_type === QUOTA_TYPE_VALUES.TOKEN
@@ -140,6 +109,7 @@ export function usePricingColumns(
             label={isTokenBased ? t('Token') : t('Request')}
             variant={isTokenBased ? 'info' : 'neutral'}
             copyable={false}
+            className='-ml-1.5'
           />
         )
       },
@@ -179,7 +149,7 @@ export function usePricingColumns(
         if (dynamicSummary) {
           if (dynamicSummary.isSpecialExpression) {
             return (
-              <div className='max-w-[320px] min-w-[200px]'>
+              <div className='max-w-full min-w-0'>
                 <div className='text-xs font-medium text-amber-700 dark:text-amber-300'>
                   {t('Special billing expression')}
                 </div>
@@ -203,7 +173,7 @@ export function usePricingColumns(
           }
 
           return (
-            <div className='min-w-[180px]'>
+            <div className='max-w-full min-w-0'>
               <span className='font-mono text-sm tabular-nums'>
                 {primaryEntries.map((entry, index) => (
                   <span key={entry.key}>
@@ -281,7 +251,7 @@ export function usePricingColumns(
           )
 
           return (
-            <div className='min-w-[160px]'>
+            <div className='max-w-full min-w-0'>
               <span className='font-mono text-sm tabular-nums'>
                 <DiscountedPrice
                   original={originalInputPrice}
@@ -345,7 +315,6 @@ export function usePricingColumns(
     // Cached price column (Vercel AI Gateway style)
     {
       id: 'cached_price',
-      meta: { label: t('Cached') },
       header: t('Cached'),
       cell: ({ row }) => {
         const model = row.original
@@ -386,7 +355,7 @@ export function usePricingColumns(
           }
 
           return (
-            <div className='min-w-[80px]'>
+            <div className='max-w-full min-w-0'>
               <span className='font-mono text-sm tabular-nums'>
                 <DiscountedPrice
                   original={stripTrailingZeros(
@@ -435,7 +404,7 @@ export function usePricingColumns(
         )
 
         return (
-          <div className='min-w-[80px]'>
+          <div className='max-w-full min-w-0'>
             <span className='font-mono text-sm tabular-nums'>
               <DiscountedPrice
                 original={originalCachedPrice}
@@ -457,7 +426,6 @@ export function usePricingColumns(
     // Vendor column
     {
       accessorKey: 'vendor_name',
-      meta: { label: t('Vendor') },
       header: t('Vendor'),
       cell: ({ row }) => {
         const model = row.original
@@ -468,7 +436,7 @@ export function usePricingColumns(
           ? getLobeIcon(model.vendor_icon, 12)
           : null
         return (
-          <span className='flex items-center gap-1.5'>
+          <BadgeCell className='gap-1.5'>
             {vendorIcon}
             <StatusBadge
               label={model.vendor_name}
@@ -476,7 +444,7 @@ export function usePricingColumns(
               size='sm'
               copyable={false}
             />
-          </span>
+          </BadgeCell>
         )
       },
       size: 130,
@@ -486,27 +454,21 @@ export function usePricingColumns(
     // Tags column
     {
       accessorKey: 'tags',
-      meta: { label: t('Tags') },
       header: t('Tags'),
       cell: ({ row }) => {
         const tags = parseTags(row.original.tags)
-        if (tags.length === 0) {
-          return <span className='text-muted-foreground/50 text-xs'>—</span>
-        }
-
         return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger render={<div />}>
-                {renderLimitedTags(tags, 2)}
-              </TooltipTrigger>
-              {tags.length > 2 && (
-                <TooltipContent side='top' className='max-w-[280px] p-2'>
-                  <span className='text-xs'>{tags.join(', ')}</span>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          <BadgeListCell
+            items={tags.map((tag) => (
+              <StatusBadge
+                key={tag}
+                label={tag}
+                autoColor={tag}
+                size='sm'
+                copyable={false}
+              />
+            ))}
+          />
         )
       },
       size: 140,
@@ -516,27 +478,21 @@ export function usePricingColumns(
     // Endpoints column
     {
       accessorKey: 'supported_endpoint_types',
-      meta: { label: t('Endpoints') },
       header: t('Endpoints'),
       cell: ({ row }) => {
         const endpoints = row.original.supported_endpoint_types || []
-        if (endpoints.length === 0) {
-          return <span className='text-muted-foreground/50 text-xs'>—</span>
-        }
-
         return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger render={<div />}>
-                {renderLimitedTags(endpoints, 2)}
-              </TooltipTrigger>
-              {endpoints.length > 2 && (
-                <TooltipContent side='top' className='max-w-[280px] p-2'>
-                  <span className='text-xs'>{endpoints.join(', ')}</span>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          <BadgeListCell
+            items={endpoints.map((ep) => (
+              <StatusBadge
+                key={ep}
+                label={ep}
+                autoColor={ep}
+                size='sm'
+                copyable={false}
+              />
+            ))}
+          />
         )
       },
       size: 130,
@@ -546,31 +502,16 @@ export function usePricingColumns(
     // Enable Groups column
     {
       accessorKey: 'enable_groups',
-      meta: { label: t('Groups') },
       header: t('Groups'),
       cell: ({ row }) => {
         const groups = row.original.enable_groups || []
-        if (groups.length === 0) {
-          return <span className='text-muted-foreground/50 text-xs'>—</span>
-        }
-
         return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger render={<div />}>
-                {renderLimitedGroupBadges(groups, 2)}
-              </TooltipTrigger>
-              {groups.length > 2 && (
-                <TooltipContent side='top' className='max-w-[280px] p-2'>
-                  <div className='flex flex-wrap gap-1'>
-                    {groups.map((group) => (
-                      <GroupBadge key={group} group={group} size='sm' />
-                    ))}
-                  </div>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          <BadgeListCell
+            items={groups.map((group) => (
+              <GroupBadge key={group} group={group} size='sm' />
+            ))}
+            tooltipClassName='max-w-[280px] p-2'
+          />
         )
       },
       size: 130,
