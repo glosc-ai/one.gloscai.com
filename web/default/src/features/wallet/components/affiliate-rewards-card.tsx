@@ -18,7 +18,8 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { ReceiptText, Share2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatQuota } from '@/lib/format'
+import { formatPercent, formatQuota } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -31,6 +32,7 @@ interface AffiliateRewardsCardProps {
   affiliateLink: string
   onTransfer: () => void
   onDetails: () => void
+  affiliateRebateRatio?: number
   complianceConfirmed?: boolean
   loading?: boolean
 }
@@ -40,6 +42,7 @@ export function AffiliateRewardsCard({
   affiliateLink,
   onTransfer,
   onDetails,
+  affiliateRebateRatio = 0,
   complianceConfirmed = true,
   loading,
 }: AffiliateRewardsCardProps) {
@@ -60,10 +63,19 @@ export function AffiliateRewardsCard({
   }
 
   const hasRewards = (user?.aff_quota ?? 0) > 0
+  const hasRechargeCommission = affiliateRebateRatio > 0
+  const rewardStats = [
+    [t('Pending'), formatQuota(user?.aff_quota ?? 0)],
+    [t('Total Earned'), formatQuota(user?.aff_history_quota ?? 0)],
+    [t('Invites'), String(user?.aff_count ?? 0)],
+    ...(hasRechargeCommission
+      ? [[t('Cashback Rate'), formatPercent(affiliateRebateRatio)]]
+      : []),
+  ]
 
   return (
     <Card className='bg-muted/20 py-0'>
-      <CardContent className='grid gap-3 p-3 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(200px,1fr)_minmax(180px,0.65fr)_minmax(280px,1fr)] lg:items-center'>
+      <CardContent className='grid gap-3 p-3 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(200px,1fr)_minmax(220px,0.75fr)_minmax(280px,1fr)] lg:items-center'>
         <div className='flex min-w-0 items-center gap-2.5'>
           <div className='bg-background flex size-8 shrink-0 items-center justify-center rounded-lg border'>
             <Share2 className='text-muted-foreground size-4' />
@@ -80,12 +92,13 @@ export function AffiliateRewardsCard({
           </div>
         </div>
 
-        <div className='grid grid-cols-3 gap-1.5 text-center'>
-          {[
-            [t('Pending'), formatQuota(user?.aff_quota ?? 0)],
-            [t('Total Earned'), formatQuota(user?.aff_history_quota ?? 0)],
-            [t('Invites'), String(user?.aff_count ?? 0)],
-          ].map(([label, value]) => (
+        <div
+          className={cn(
+            'grid gap-1.5 text-center',
+            hasRechargeCommission ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'
+          )}
+        >
+          {rewardStats.map(([label, value]) => (
             <div key={label}>
               <div className='text-muted-foreground truncate text-[10px] font-medium tracking-wider uppercase'>
                 {label}

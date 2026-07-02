@@ -662,6 +662,7 @@
     "Cache write price": "キャッシュ書き込み価格",
     "Cached": "キャッシュ",
     "Cached input": "キャッシュ入力",
+    "Cashback Rate": "キャッシュバック率",
     "Calculated price: ${{price}} per 1M tokens": "計算価格：${{price}} / 1M トークン",
     "Calculated ratio: {{ratio}}": "計算倍率：{{ratio}}",
     "Calculating...": "計算中...",

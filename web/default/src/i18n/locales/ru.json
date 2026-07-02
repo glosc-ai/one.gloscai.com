@@ -662,6 +662,7 @@
     "Cache write price": "Цена записи кэша",
     "Cached": "Кэш",
     "Cached input": "Кэшированный ввод",
+    "Cashback Rate": "Ставка кэшбэка",
     "Calculated price: ${{price}} per 1M tokens": "Расчётная цена: ${{price}} за 1М токенов",
     "Calculated ratio: {{ratio}}": "Расчётный коэффициент: {{ratio}}",
     "Calculating...": "Вычисление...",

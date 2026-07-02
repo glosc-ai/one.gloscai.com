@@ -376,6 +376,7 @@ export function Wallet(props: WalletProps) {
               affiliateLink={affiliateLink}
               onTransfer={() => setTransferDialogOpen(true)}
               onDetails={() => setAffiliateRebatesOpen(true)}
+              affiliateRebateRatio={topupInfo?.affiliate_rebate_ratio}
               complianceConfirmed={
                 topupInfo?.payment_compliance_confirmed !== false
               }

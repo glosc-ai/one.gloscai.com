@@ -662,6 +662,7 @@
     "Cache write price": "缓存写入价格",
     "Cached": "缓存",
     "Cached input": "缓存输入",
+    "Cashback Rate": "返现比例",
     "Calculated price: ${{price}} per 1M tokens": "计算价格：${{price}} / 1M tokens",
     "Calculated ratio: {{ratio}}": "计算倍率：{{ratio}}",
     "Calculating...": "计算中...",

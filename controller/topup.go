@@ -145,6 +145,7 @@ func GetTopUpInfo(c *gin.Context) {
 		"enable_alipay_topup":              enableAlipay,
 		"enable_wechat_pay_topup":          enableWeChatPay,
 		"enable_redemption":                complianceConfirmed,
+		"affiliate_rebate_ratio":           common.AffiliateRebateRatio,
 		"payment_compliance_confirmed":     complianceConfirmed,
 		"payment_compliance_terms_version": operation_setting.CurrentComplianceTermsVersion,
 		"waffo_pay_methods": func() interface{} {

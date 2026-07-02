@@ -155,6 +155,8 @@ export interface TopupInfo {
   discount: Record<number, number>
   /** Optional topup link for purchasing codes */
   topup_link?: string
+  /** Referral commission rate for invited user top-ups */
+  affiliate_rebate_ratio?: number
   /** Whether Creem topup is enabled */
   enable_creem_topup?: boolean
   /** Available Creem products */

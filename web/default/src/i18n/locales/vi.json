@@ -662,6 +662,7 @@
     "Cache write price": "Giá ghi cache",
     "Cached": "Đã cache",
     "Cached input": "Đầu vào đã cache",
+    "Cashback Rate": "Tỷ lệ hoàn tiền",
     "Calculated price: ${{price}} per 1M tokens": "Giá tính toán: ${{price}} mỗi 1M token",
     "Calculated ratio: {{ratio}}": "Tỷ lệ tính toán: {{ratio}}",
     "Calculating...": "Đang tính...",
