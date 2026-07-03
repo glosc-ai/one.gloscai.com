@@ -34,7 +34,6 @@ import {
   sideDrawerSwitchItemClassName,
 } from '@/components/drawer-layout'
 import { JsonEditor } from '@/components/json-editor'
-import { TagInput } from '@/components/tag-input'
 import { Button } from '@/components/ui/button'
 import {
   Collapsible,
@@ -72,15 +71,6 @@ import {
 } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  SideDrawerSection,
-  sideDrawerContentClassName,
-  sideDrawerFooterClassName,
-  sideDrawerFormClassName,
-  sideDrawerHeaderClassName,
-  sideDrawerSwitchItemClassName,
-} from '@/components/drawer-layout'
-import { JsonEditor } from '@/components/json-editor'
 import { MultiSelect } from '@/components/multi-select'
 import {
   useSystemOptions,
@@ -904,7 +894,7 @@ export function ModelMutateDrawer({
                     <Select
                       value={String(field.value ?? 0)}
                       onValueChange={(value) =>
-                        field.onChange(parseInt(value ?? '0'))
+                        field.onChange(Number.parseInt(value ?? '0'))
                       }
                     >
                       <FormControl>

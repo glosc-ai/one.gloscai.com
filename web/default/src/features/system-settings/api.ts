@@ -23,7 +23,6 @@ import type {
   AdminAPIKeysResponse,
   ConfirmPaymentComplianceResponse,
   CreateAdminAPIKeyResponse,
-  DeleteLogsResponse,
   FetchUpstreamRatiosRequest,
   LogCleanupTask,
   SystemOptionsResponse,

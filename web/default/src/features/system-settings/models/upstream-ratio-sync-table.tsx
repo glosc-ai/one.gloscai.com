@@ -17,9 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useCallback, useMemo, useState, type ChangeEvent } from 'react'
-import { type PaginationState } from '@tanstack/react-table'
+import type { PaginationState } from '@tanstack/react-table'
 import { Loader2, Search } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -125,7 +124,7 @@ export function UpstreamRatioSyncTable({
         }
       )
     })
-    return Array.from(set).sort((a, b) => MODEL_NAME_COLLATOR.compare(a, b))
+    return [...set].sort((a, b) => MODEL_NAME_COLLATOR.compare(a, b))
   }, [filteredData, ratioTypeFilter])
 
   const handleSearchChange = useCallback(

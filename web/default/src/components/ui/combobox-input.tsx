@@ -40,6 +40,7 @@ interface ComboboxInputProps {
   id?: string
   allowCustomValue?: boolean
   disabled?: boolean
+  openOnFocus?: boolean
 }
 
 export function ComboboxInput({
@@ -53,6 +54,7 @@ export function ComboboxInput({
   id,
   allowCustomValue = false,
   disabled = false,
+  openOnFocus = true,
 }: ComboboxInputProps) {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)

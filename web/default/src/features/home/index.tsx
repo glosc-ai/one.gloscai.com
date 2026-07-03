@@ -18,11 +18,14 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAuthStore } from '@/stores/auth-store'
+
+import { RichContent } from '@/components/rich-content'
 import { useTheme } from '@/context/theme-provider'
-import { Markdown } from '@/components/ui/markdown'
 import { PublicLayout } from '@/components/layout'
 import { Footer } from '@/components/layout/components/footer'
+import { isLikelyHtml } from '@/lib/content-format'
+import { useAuthStore } from '@/stores/auth-store'
+
 import { CTA, Features, Hero, HowItWorks, Models, Stats } from './components'
 import { useHomePageContent } from './hooks'
 

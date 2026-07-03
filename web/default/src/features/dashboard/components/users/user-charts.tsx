@@ -19,10 +19,9 @@ For commercial licensing, please contact support@quantumnous.com
 import { useQuery } from '@tanstack/react-query'
 import { VChart } from '@visactor/react-vchart'
 import { CreditCard, Loader2, UserPlus, Users } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getRollingDateRange, type TimeGranularity } from '@/lib/time'
-import { VCHART_OPTION } from '@/lib/vchart'
-import { useThemeCustomization } from '@/context/theme-customization-provider'
+
 import { useTheme } from '@/context/theme-provider'
 import {
   Select,
@@ -44,6 +43,7 @@ import {
 } from '@/features/dashboard/constants'
 import {
   getDefaultDays,
+  getSavedGranularity,
   saveGranularity,
   processUserChartData,
 } from '@/features/dashboard/lib'
@@ -118,23 +118,20 @@ interface UserChartsProps {
 export function UserCharts(props: UserChartsProps) {
   const { t } = useTranslation()
   const { resolvedTheme } = useTheme()
+  const timeGranularity =
+    props.filters.timeGranularity || getSavedGranularity()
+  const selectedRange =
+    props.filters.selectedRange || getDefaultDays(timeGranularity)
+  const topUserLimit = props.filters.topUserLimit || 10
   const [themeReady, setThemeReady] = useState(false)
   const themeManagerRef = useRef<
     (typeof import('@visactor/vchart'))['ThemeManager'] | null
   >(null)
 
-  const [timeGranularity, setTimeGranularity] = useState<TimeGranularity>(() =>
-    getSavedGranularity()
-  )
-  const [selectedRange, setSelectedRange] = useState<number>(() =>
-    getDefaultDays(timeGranularity)
-  )
-  const [topUserLimit, setTopUserLimit] = useState(10)
   const [paymentStatus, setPaymentStatus] = useState('success')
   const [paymentMethod, setPaymentMethod] = useState('all')
-  const [timeRange, setTimeRange] = useState(() => {
-    const days = getDefaultDays(timeGranularity)
-    const { start, end } = getRollingDateRange(days)
+  const timeRange = useMemo(() => {
+    const { start, end } = getRollingDateRange(selectedRange)
     return {
       start_timestamp: Math.floor(start.getTime() / 1000),
       end_timestamp: Math.floor(end.getTime() / 1000),
@@ -143,28 +140,28 @@ export function UserCharts(props: UserChartsProps) {
 
   const handleRangeChange = useCallback(
     (days: number) => {
-      onFiltersChange({ ...props.filters, selectedRange: days })
+      props.onFiltersChange({ ...props.filters, selectedRange: days })
     },
-    [onFiltersChange, props.filters]
+    [props]
   )
 
   const handleGranularityChange = useCallback(
     (g: TimeGranularity) => {
       saveGranularity(g)
-      onFiltersChange({
+      props.onFiltersChange({
         ...props.filters,
         timeGranularity: g,
         selectedRange: getDefaultDays(g),
       })
     },
-    [onFiltersChange, props.filters]
+    [props]
   )
 
   const handleTopUserLimitChange = useCallback(
     (limit: number) => {
-      onFiltersChange({ ...props.filters, topUserLimit: limit })
+      props.onFiltersChange({ ...props.filters, topUserLimit: limit })
     },
-    [onFiltersChange, props.filters]
+    [props]
   )
 
   useEffect(() => {
@@ -226,7 +223,6 @@ export function UserCharts(props: UserChartsProps) {
         timeGranularity,
         t,
         topUserLimit,
-        customization.preset,
         isRegistrationLoading ? [] : (registrationData ?? []),
         isPaymentLoading ? [] : (paymentData ?? [])
       ),
@@ -240,8 +236,6 @@ export function UserCharts(props: UserChartsProps) {
       timeGranularity,
       t,
       topUserLimit,
-      customization.preset,
-      customization.radius,
     ]
   )
 

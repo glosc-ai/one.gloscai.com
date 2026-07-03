@@ -49,6 +49,7 @@ type LegacyComboboxProps = {
   className?: string
   id?: string
   disabled?: boolean
+  openOnFocus?: boolean
 }
 
 function Combobox(props: LegacyComboboxProps): React.ReactElement
@@ -73,6 +74,7 @@ function Combobox(
         className={props.className}
         allowCustomValue={props.allowCustomValue}
         disabled={props.disabled}
+        openOnFocus={props.openOnFocus}
       />
     )
   }
