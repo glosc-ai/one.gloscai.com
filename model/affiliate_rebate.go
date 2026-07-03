@@ -53,7 +53,7 @@ func calculateAffiliateRebateQuota(rechargeQuota int, ratio float64) int {
 }
 
 func applyAffiliateRebateTx(tx *gorm.DB, topUp *TopUp, rechargeQuota int) (int, error) {
-	if topUp == nil || rechargeQuota <= 0 || common.AffiliateRebateRatio <= 0 {
+	if topUp == nil || rechargeQuota <= 0 {
 		return 0, nil
 	}
 	if !operation_setting.IsPaymentComplianceConfirmed() {
@@ -77,7 +77,11 @@ func applyAffiliateRebateTx(tx *gorm.DB, topUp *TopUp, rechargeQuota int) (int, 
 		return 0, err
 	}
 
-	rebateQuota := calculateAffiliateRebateQuota(rechargeQuota, common.AffiliateRebateRatio)
+	rebateRatio, err := GetEffectiveAffiliateRebateRatioWithTx(tx, invitee.InviterId)
+	if err != nil {
+		return 0, err
+	}
+	rebateQuota := calculateAffiliateRebateQuota(rechargeQuota, rebateRatio)
 	if rebateQuota <= 0 {
 		return 0, nil
 	}
@@ -105,7 +109,7 @@ func applyAffiliateRebateTx(tx *gorm.DB, topUp *TopUp, rechargeQuota int) (int, 
 		RechargeQuota:   rechargeQuota,
 		RechargeAmount:  topUp.Money,
 		RebateQuota:     rebateQuota,
-		RebateRatio:     common.AffiliateRebateRatio,
+		RebateRatio:     rebateRatio,
 		PaymentMethod:   topUp.PaymentMethod,
 		PaymentProvider: topUp.PaymentProvider,
 		CreatedAt:       createdAt,

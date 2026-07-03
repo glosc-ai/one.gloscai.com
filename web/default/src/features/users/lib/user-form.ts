@@ -19,15 +19,15 @@ For commercial licensing, please contact support@quantumnous.com
 import { z } from 'zod'
 
 import {
-  type PermissionCatalog,
-  type AdminPermissionMatrix,
   normalizeAdminPermissions,
+  type AdminPermissionMatrix,
+  type PermissionCatalog,
 } from '@/lib/admin-permissions'
 import { quotaUnitsToDollars } from '@/lib/format'
 import { ROLE } from '@/lib/roles'
 
 import { DEFAULT_GROUP } from '../constants'
-import { type UserFormData, type User } from '../types'
+import type { User, UserFormData } from '../types'
 
 // ============================================================================
 // Form Schema
@@ -41,6 +41,7 @@ export const userFormSchema = z.object({
   quota_dollars: z.number().min(0).optional(),
   group: z.string().optional(),
   remark: z.string().optional(),
+  affiliate_rebate_ratio: z.string().optional(),
   admin_permissions: z
     .record(z.string(), z.record(z.string(), z.boolean()))
     .optional(),
@@ -60,6 +61,7 @@ export const USER_FORM_DEFAULT_VALUES: UserFormValues = {
   quota_dollars: 0,
   group: DEFAULT_GROUP,
   remark: '',
+  affiliate_rebate_ratio: '',
   // Filled against the backend catalog at render time; see UsersMutateDrawer.
   admin_permissions: {},
 }
@@ -99,8 +101,11 @@ export function transformFormDataToPayload(
     payload.role = role
   } else {
     // For update: quota is adjusted atomically via /api/user/manage, not sent here
+    const affiliateRebateRatio = data.affiliate_rebate_ratio?.trim() ?? ''
     payload.group = data.group
     payload.remark = data.remark || undefined
+    payload.affiliate_rebate_ratio =
+      affiliateRebateRatio === '' ? null : Number(affiliateRebateRatio)
     payload.id = userId
   }
 
@@ -121,6 +126,10 @@ export function transformUserToFormDefaults(user: User): UserFormValues {
     quota_dollars: quotaUnitsToDollars(user.quota),
     group: user.group || DEFAULT_GROUP,
     remark: user.remark || '',
+    affiliate_rebate_ratio:
+      user.affiliate_rebate_ratio == null
+        ? ''
+        : String(user.affiliate_rebate_ratio),
     admin_permissions: user.admin_permissions ?? {},
   }
 }

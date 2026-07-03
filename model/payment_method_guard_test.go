@@ -152,6 +152,87 @@ func TestRechargeDirectTopUp_AppliesAffiliateRebate(t *testing.T) {
 	assert.Equal(t, int64(1), count)
 }
 
+func TestRechargeDirectTopUp_AppliesUserAffiliateRebateOverride(t *testing.T) {
+	truncateTables(t)
+
+	originalRatio := common.AffiliateRebateRatio
+	originalQuotaPerUnit := common.QuotaPerUnit
+	paymentSetting := operation_setting.GetPaymentSetting()
+	originalComplianceConfirmed := paymentSetting.ComplianceConfirmed
+	originalComplianceTermsVersion := paymentSetting.ComplianceTermsVersion
+	t.Cleanup(func() {
+		common.AffiliateRebateRatio = originalRatio
+		common.QuotaPerUnit = originalQuotaPerUnit
+		paymentSetting.ComplianceConfirmed = originalComplianceConfirmed
+		paymentSetting.ComplianceTermsVersion = originalComplianceTermsVersion
+	})
+
+	common.AffiliateRebateRatio = 10
+	common.QuotaPerUnit = 500000
+	paymentSetting.ComplianceConfirmed = true
+	paymentSetting.ComplianceTermsVersion = operation_setting.CurrentComplianceTermsVersion
+
+	overrideRatio := 25.0
+	inviter := &User{Id: 203, Username: "affiliate_override_inviter", Status: common.UserStatusEnabled, AffiliateRebateRatio: &overrideRatio}
+	invitee := &User{Id: 204, Username: "affiliate_override_invitee", Status: common.UserStatusEnabled, InviterId: inviter.Id}
+	require.NoError(t, DB.Create(inviter).Error)
+	require.NoError(t, DB.Create(invitee).Error)
+	insertTopUpForPaymentGuardTest(t, "affiliate-rebate-override-order", invitee.Id, PaymentProviderEpay)
+
+	err := RechargeDirectTopUp("affiliate-rebate-override-order", PaymentProviderEpay, PaymentMethodAlipay, "127.0.0.1")
+	require.NoError(t, err)
+
+	var updatedInviter User
+	require.NoError(t, DB.Select("aff_quota", "aff_history").Where("id = ?", inviter.Id).First(&updatedInviter).Error)
+	assert.Equal(t, 250000, updatedInviter.AffQuota)
+	assert.Equal(t, 250000, updatedInviter.AffHistoryQuota)
+
+	var rebate AffiliateRebate
+	require.NoError(t, DB.Where("trade_no = ?", "affiliate-rebate-override-order").First(&rebate).Error)
+	assert.Equal(t, 250000, rebate.RebateQuota)
+	assert.Equal(t, 25.0, rebate.RebateRatio)
+}
+
+func TestRechargeDirectTopUp_UserAffiliateRebateOverrideCanDisable(t *testing.T) {
+	truncateTables(t)
+
+	originalRatio := common.AffiliateRebateRatio
+	originalQuotaPerUnit := common.QuotaPerUnit
+	paymentSetting := operation_setting.GetPaymentSetting()
+	originalComplianceConfirmed := paymentSetting.ComplianceConfirmed
+	originalComplianceTermsVersion := paymentSetting.ComplianceTermsVersion
+	t.Cleanup(func() {
+		common.AffiliateRebateRatio = originalRatio
+		common.QuotaPerUnit = originalQuotaPerUnit
+		paymentSetting.ComplianceConfirmed = originalComplianceConfirmed
+		paymentSetting.ComplianceTermsVersion = originalComplianceTermsVersion
+	})
+
+	common.AffiliateRebateRatio = 10
+	common.QuotaPerUnit = 500000
+	paymentSetting.ComplianceConfirmed = true
+	paymentSetting.ComplianceTermsVersion = operation_setting.CurrentComplianceTermsVersion
+
+	overrideRatio := 0.0
+	inviter := &User{Id: 205, Username: "affiliate_disabled_inviter", Status: common.UserStatusEnabled, AffiliateRebateRatio: &overrideRatio}
+	invitee := &User{Id: 206, Username: "affiliate_disabled_invitee", Status: common.UserStatusEnabled, InviterId: inviter.Id}
+	require.NoError(t, DB.Create(inviter).Error)
+	require.NoError(t, DB.Create(invitee).Error)
+	insertTopUpForPaymentGuardTest(t, "affiliate-rebate-disabled-order", invitee.Id, PaymentProviderEpay)
+
+	err := RechargeDirectTopUp("affiliate-rebate-disabled-order", PaymentProviderEpay, PaymentMethodAlipay, "127.0.0.1")
+	require.NoError(t, err)
+
+	var updatedInviter User
+	require.NoError(t, DB.Select("aff_quota", "aff_history").Where("id = ?", inviter.Id).First(&updatedInviter).Error)
+	assert.Zero(t, updatedInviter.AffQuota)
+	assert.Zero(t, updatedInviter.AffHistoryQuota)
+
+	var count int64
+	require.NoError(t, DB.Model(&AffiliateRebate{}).Where("trade_no = ?", "affiliate-rebate-disabled-order").Count(&count).Error)
+	assert.Zero(t, count)
+}
+
 func TestUpdatePendingTopUpStatus_RejectsMismatchedPaymentProvider(t *testing.T) {
 	testCases := []struct {
 		name                    string

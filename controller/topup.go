@@ -23,6 +23,11 @@ import (
 
 func GetTopUpInfo(c *gin.Context) {
 	complianceConfirmed := operation_setting.IsPaymentComplianceConfirmed()
+	affiliateRebateRatio, err := model.GetEffectiveAffiliateRebateRatio(c.GetInt("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
 
 	// 获取支付方式
 	payMethods := operation_setting.PayMethods
@@ -145,7 +150,7 @@ func GetTopUpInfo(c *gin.Context) {
 		"enable_alipay_topup":              enableAlipay,
 		"enable_wechat_pay_topup":          enableWeChatPay,
 		"enable_redemption":                complianceConfirmed,
-		"affiliate_rebate_ratio":           common.AffiliateRebateRatio,
+		"affiliate_rebate_ratio":           affiliateRebateRatio,
 		"payment_compliance_confirmed":     complianceConfirmed,
 		"payment_compliance_terms_version": operation_setting.CurrentComplianceTermsVersion,
 		"waffo_pay_methods": func() interface{} {

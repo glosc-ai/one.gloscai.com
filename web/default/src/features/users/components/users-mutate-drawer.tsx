@@ -89,7 +89,7 @@ import {
   transformFormDataToPayload,
   transformUserToFormDefaults,
 } from '../lib'
-import { type User } from '../types'
+import type { User } from '../types'
 import { UserQuotaDialog } from './user-quota-dialog'
 import { useUsers } from './users-provider'
 
@@ -136,11 +136,13 @@ export function UsersMutateDrawer({
   useEffect(() => {
     if (open && isUpdate && currentRow) {
       // For update, fetch fresh data
-      getUser(currentRow.id).then((result) => {
-        if (result.success && result.data) {
-          form.reset(transformUserToFormDefaults(result.data))
-        }
-      })
+      void getUser(currentRow.id)
+        .then((result) => {
+          if (result.success && result.data) {
+            form.reset(transformUserToFormDefaults(result.data))
+          }
+        })
+        .catch(() => {})
     } else if (open && !isUpdate) {
       // For create, reset to defaults
       form.reset(USER_FORM_DEFAULT_VALUES)
@@ -163,6 +165,18 @@ export function UsersMutateDrawer({
         form.setError('password', {
           type: 'manual',
           message: t('Password must be between 8 and 20 characters'),
+        })
+        return
+      }
+    }
+
+    const affiliateRebateRatio = data.affiliate_rebate_ratio?.trim() ?? ''
+    if (affiliateRebateRatio !== '') {
+      const ratio = Number(affiliateRebateRatio)
+      if (!Number.isFinite(ratio) || ratio < 0 || ratio > 100) {
+        form.setError('affiliate_rebate_ratio', {
+          type: 'manual',
+          message: t('Commission rate must be between 0 and 100'),
         })
         return
       }
@@ -195,7 +209,7 @@ export function UsersMutateDrawer({
               : t(ERROR_MESSAGES.CREATE_FAILED))
         )
       }
-    } catch (_error) {
+    } catch {
       toast.error(t(ERROR_MESSAGES.UNEXPECTED))
     } finally {
       setIsSubmitting(false)
@@ -278,7 +292,8 @@ export function UsersMutateDrawer({
                             { value: '10', label: t('Admin') },
                           ]}
                           onValueChange={(value) =>
-                            value !== null && field.onChange(parseInt(value))
+                            value !== null &&
+                            field.onChange(Number.parseInt(value))
                           }
                           value={String(field.value)}
                         >
@@ -360,12 +375,10 @@ export function UsersMutateDrawer({
                       <FormItem>
                         <FormLabel>{t('Group')}</FormLabel>
                         <Select
-                          items={[
-                            ...groups.map((group) => ({
-                              value: group,
-                              label: group,
-                            })),
-                          ]}
+                          items={groups.map((group) => ({
+                            value: group,
+                            label: group,
+                          }))}
                           onValueChange={field.onChange}
                           value={field.value}
                         >
@@ -422,6 +435,38 @@ export function UsersMutateDrawer({
                         </div>
                         <FormDescription>
                           {formatQuota(parseQuotaFromDollars(field.value || 0))}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='affiliate_rebate_ratio'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t('User Recharge Commission Rate (%)')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type='number'
+                            min={0}
+                            max={100}
+                            step={0.01}
+                            value={field.value ?? ''}
+                            onChange={field.onChange}
+                            name={field.name}
+                            onBlur={field.onBlur}
+                            ref={field.ref}
+                            placeholder={t('Use system default')}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t(
+                            'Leave blank to use the system default rate. A user-specific value overrides the default recharge commission rate for this inviter.'
+                          )}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

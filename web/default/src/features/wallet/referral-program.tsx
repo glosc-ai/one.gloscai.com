@@ -35,7 +35,9 @@ import { CopyButton } from '@/components/copy-button'
 import { SectionPageLayout } from '@/components/layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { TitledCard } from '@/components/ui/titled-card'
 import { getSelf } from '@/lib/api'
 import { formatPercent, formatQuota } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -45,7 +47,7 @@ import { useAffiliate, useAffiliateRebates, useTopupInfo } from './hooks'
 import { formatTimestamp, getPaymentMethodName } from './lib/billing'
 import type { AffiliateRebateRecord, UserWalletData } from './types'
 
-type StatTone = 'orange' | 'green' | 'blue' | 'slate'
+type StatTone = 'orange' | 'green' | 'slate'
 
 interface ReferralStatCardProps {
   label: string
@@ -57,10 +59,9 @@ interface ReferralStatCardProps {
 }
 
 const statToneClassNames: Record<StatTone, string> = {
-  orange: 'text-orange-400',
-  green: 'text-emerald-400',
-  blue: 'text-sky-300',
-  slate: 'text-slate-100',
+  orange: 'text-warning',
+  green: 'text-success',
+  slate: 'text-foreground',
 }
 const recordSkeletonKeys = ['record-a', 'record-b', 'record-c', 'record-d']
 
@@ -68,17 +69,19 @@ function ReferralStatCard(props: ReferralStatCardProps) {
   const Icon = props.icon
 
   return (
-    <div className='min-h-32 rounded-xl border border-[#263552] bg-[#121827] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]'>
-      <div className='flex items-center gap-2 text-sm font-semibold text-slate-400 sm:text-base'>
-        <Icon className={cn('size-4', statToneClassNames[props.tone])} />
-        <span className='truncate'>{props.label}</span>
+    <div className='rounded-lg border px-3 py-3 sm:px-5 sm:py-4'>
+      <div className='flex items-center gap-2'>
+        <Icon className='text-muted-foreground/60 size-3.5 shrink-0' />
+        <div className='text-muted-foreground truncate text-xs font-medium tracking-wider uppercase'>
+          {props.label}
+        </div>
       </div>
       {props.loading ? (
-        <Skeleton className='mt-5 h-8 w-28 bg-white/10' />
+        <Skeleton className='mt-2 h-7 w-24' />
       ) : (
         <div
           className={cn(
-            'mt-5 truncate text-3xl font-bold tracking-normal tabular-nums',
+            'mt-1.5 truncate font-mono text-lg font-bold tracking-tight tabular-nums sm:mt-2 sm:text-2xl',
             statToneClassNames[props.tone]
           )}
         >
@@ -86,7 +89,7 @@ function ReferralStatCard(props: ReferralStatCardProps) {
         </div>
       )}
       {props.description ? (
-        <p className='mt-3 line-clamp-2 text-sm leading-5 text-slate-400'>
+        <p className='text-muted-foreground/60 mt-1 hidden text-xs md:block'>
           {props.description}
         </p>
       ) : null}
@@ -106,46 +109,35 @@ function ReferralCopyField(props: ReferralCopyFieldProps) {
   if (props.loading) {
     return (
       <div className='min-w-0 space-y-2'>
-        <label
-          htmlFor={props.id}
-          className='block text-sm font-semibold text-slate-200'
-        >
-          {props.label}
-        </label>
-        <div className='flex min-w-0 items-center gap-2 rounded-xl border border-[#2c4163] bg-[#0c1425] p-2'>
-          <Skeleton className='h-10 flex-1 bg-white/10' />
-          <Skeleton className='h-10 w-24 bg-white/10' />
-        </div>
+        <Skeleton className='h-3.5 w-28' />
+        <Skeleton className='h-9 w-full' />
       </div>
     )
   }
 
   return (
     <div className='min-w-0 space-y-2'>
-      <label
+      <Label
         htmlFor={props.id}
-        className='block text-sm font-semibold text-slate-200'
+        className='text-muted-foreground text-xs font-medium tracking-wider uppercase'
       >
         {props.label}
-      </label>
-      <div className='flex min-w-0 items-center gap-2 rounded-xl border border-[#2c4163] bg-[#0c1425] p-2'>
+      </Label>
+      <div className='flex min-w-0 items-center gap-2'>
         <Input
           id={props.id}
           value={props.value}
           readOnly
-          className='h-10 border-0 bg-transparent px-1 font-mono text-sm text-slate-100 shadow-none focus-visible:ring-0 sm:text-base'
+          className='h-9 min-w-0 flex-1 font-mono text-sm'
         />
         <CopyButton
           value={props.value}
           variant='outline'
-          size='default'
-          className='h-10 gap-2 border-[#53657f] bg-[#1d293a] px-3 text-slate-100 hover:bg-[#26354a] hover:text-white'
+          className='size-9 shrink-0'
           iconClassName='size-4'
           tooltip={props.tooltip}
           aria-label={props.tooltip}
-        >
-          <span className='hidden sm:inline'>{props.tooltip}</span>
-        </CopyButton>
+        />
       </div>
     </div>
   )
@@ -164,22 +156,19 @@ function ReferralRecordList(props: ReferralRecordListProps) {
     return (
       <div className='space-y-3'>
         {recordSkeletonKeys.map((key) => (
-          <div
-            key={key}
-            className='rounded-xl border border-[#263552] bg-[#0c1425] p-4'
-          >
+          <div key={key} className='rounded-lg border p-3 sm:p-4'>
             <div className='flex items-start justify-between gap-4'>
               <div className='space-y-2'>
-                <Skeleton className='h-4 w-40 bg-white/10' />
-                <Skeleton className='h-3 w-28 bg-white/10' />
+                <Skeleton className='h-4 w-40' />
+                <Skeleton className='h-3 w-28' />
               </div>
-              <Skeleton className='h-7 w-24 bg-white/10' />
+              <Skeleton className='h-7 w-24' />
             </div>
             <div className='mt-4 grid gap-3 sm:grid-cols-4'>
-              <Skeleton className='h-10 bg-white/10' />
-              <Skeleton className='h-10 bg-white/10' />
-              <Skeleton className='h-10 bg-white/10' />
-              <Skeleton className='h-10 bg-white/10' />
+              <Skeleton className='h-10' />
+              <Skeleton className='h-10' />
+              <Skeleton className='h-10' />
+              <Skeleton className='h-10' />
             </div>
           </div>
         ))}
@@ -189,17 +178,15 @@ function ReferralRecordList(props: ReferralRecordListProps) {
 
   if (props.records.length === 0) {
     return (
-      <div className='flex min-h-28 items-center justify-center rounded-xl border border-dashed border-[#344866] bg-[#0c1425]/80 px-4 py-8 text-center'>
-        <div>
-          <p className='text-sm font-semibold text-slate-300'>
-            {t('No referral records found')}
-          </p>
-          <p className='mt-1 text-xs text-slate-500'>
-            {props.keyword
-              ? t('Try adjusting your search')
-              : t('Invited user top-ups will appear here')}
-          </p>
-        </div>
+      <div className='text-muted-foreground flex min-h-28 flex-col items-center justify-center rounded-lg border border-dashed px-4 py-8 text-center'>
+        <p className='text-sm font-medium'>
+          {t('No referral records found')}
+        </p>
+        <p className='mt-1 text-xs'>
+          {props.keyword
+            ? t('Try adjusting your search')
+            : t('Invited user top-ups will appear here')}
+        </p>
       </div>
     )
   }
@@ -209,23 +196,23 @@ function ReferralRecordList(props: ReferralRecordListProps) {
       {props.records.map((record) => (
         <div
           key={record.id}
-          className='rounded-xl border border-[#263552] bg-[#0c1425] p-4 transition-colors hover:border-[#3a5277] hover:bg-[#101a2e]'
+          className='hover:bg-muted/30 rounded-lg border p-3 transition-colors sm:p-4'
         >
           <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
             <div className='min-w-0 space-y-1'>
               <div className='flex min-w-0 flex-wrap items-center gap-2'>
-                <span className='truncate text-sm font-semibold text-slate-100'>
+                <span className='truncate text-sm font-semibold'>
                   {record.invitee_username || t('Unknown User')}
                 </span>
-                <span className='rounded-md border border-[#344866] bg-[#121827] px-2 py-0.5 text-xs text-slate-400'>
+                <span className='text-muted-foreground bg-muted rounded-md px-2 py-0.5 text-xs'>
                   {t('User ID')}: {record.invitee_id}
                 </span>
               </div>
-              <div className='text-xs text-slate-500'>
+              <div className='text-muted-foreground text-xs'>
                 {formatTimestamp(record.created_at)}
               </div>
             </div>
-            <div className='w-fit rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-sm font-semibold text-emerald-300'>
+            <div className='text-success bg-success/10 w-fit rounded-lg px-3 py-1 text-sm font-semibold'>
               +{formatQuota(record.rebate_quota)}
             </div>
           </div>
@@ -238,7 +225,7 @@ function ReferralRecordList(props: ReferralRecordListProps) {
             <ReferralRecordMetric
               label={t('Commission')}
               value={`+${formatQuota(record.rebate_quota)}`}
-              valueClassName='text-emerald-300'
+              valueClassName='text-success'
             />
             <ReferralRecordMetric
               label={t('Rate')}
@@ -263,11 +250,13 @@ interface ReferralRecordMetricProps {
 
 function ReferralRecordMetric(props: ReferralRecordMetricProps) {
   return (
-    <div className='min-w-0 rounded-lg bg-[#121827] px-3 py-2'>
-      <div className='truncate text-xs text-slate-500'>{props.label}</div>
+    <div className='bg-muted/40 min-w-0 rounded-lg px-3 py-2'>
+      <div className='text-muted-foreground truncate text-xs'>
+        {props.label}
+      </div>
       <div
         className={cn(
-          'mt-1 truncate text-sm font-semibold text-slate-100',
+          'mt-1 truncate text-sm font-semibold',
           props.valueClassName
         )}
       >
@@ -339,8 +328,8 @@ export function ReferralProgram() {
       <SectionPageLayout>
         <SectionPageLayout.Title>{t('Referral Program')}</SectionPageLayout.Title>
         <SectionPageLayout.Content>
-          <div className='mx-auto w-full max-w-7xl rounded-2xl bg-[#070a12] p-4 text-slate-100 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:p-6'>
-            <div className='grid gap-4 lg:grid-cols-4'>
+          <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5'>
+            <div className='grid gap-3 sm:gap-4 lg:grid-cols-4'>
               <ReferralStatCard
                 label={t('My Rebate Rate')}
                 value={formatPercent(rebateRatio)}
@@ -374,23 +363,15 @@ export function ReferralProgram() {
               />
             </div>
 
-            <section className='mt-6 rounded-2xl border border-[#263552] bg-[#101624] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-6'>
-              <div className='mb-6 flex items-start gap-3'>
-                <div className='flex size-10 shrink-0 items-center justify-center rounded-xl border border-[#344866] bg-[#121e32]'>
-                  <Gift className='size-5 text-orange-300' />
-                </div>
-                <div className='min-w-0'>
-                  <h3 className='text-lg font-bold text-slate-50'>
-                    {t('Invite Rewards')}
-                  </h3>
-                  <p className='mt-1 text-sm text-slate-400'>
-                    {t(
-                      'Invite new users and transfer earned rewards to your account balance.'
-                    )}
-                  </p>
-                </div>
-              </div>
-
+            <TitledCard
+              title={t('Invite Rewards')}
+              description={t(
+                'Invite new users and transfer earned rewards to your account balance.'
+              )}
+              icon={<Gift className='h-4 w-4' />}
+              disableHoverEffect
+              contentClassName='space-y-4 sm:space-y-6'
+            >
               <div className='grid gap-4 lg:grid-cols-2'>
                 <ReferralCopyField
                   id='referral-code'
@@ -408,9 +389,9 @@ export function ReferralProgram() {
                 />
               </div>
 
-              <div className='mt-6 rounded-xl border border-orange-500/20 bg-orange-500/5 p-4 text-orange-100 sm:p-5'>
-                <h4 className='text-sm font-bold'>{t('How it works')}</h4>
-                <ol className='mt-3 space-y-2 text-sm leading-6 text-orange-200'>
+              <div className='bg-muted/40 rounded-lg border p-4 sm:p-5'>
+                <h4 className='text-sm font-semibold'>{t('How it works')}</h4>
+                <ol className='text-muted-foreground mt-3 space-y-2 text-sm leading-6'>
                   <li>
                     1.{' '}
                     {t(
@@ -431,63 +412,63 @@ export function ReferralProgram() {
                   </li>
                 </ol>
               </div>
-            </section>
+            </TitledCard>
 
-            <section className='mt-6 rounded-2xl border border-[#263552] bg-[#101624] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-6'>
-              <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
-                <div className='min-w-0'>
-                  <h3 className='text-lg font-bold text-slate-50'>
-                    {t('Transfer Rewards to Balance')}
-                  </h3>
-                  <p className='mt-1 text-sm text-slate-400'>
-                    {t('Move all available rewards into your account balance.')}
-                  </p>
-                  <p
-                    className={cn(
-                      'mt-4 text-sm font-semibold',
-                      hasRewards ? 'text-emerald-300' : 'text-amber-300'
-                    )}
-                  >
-                    {hasRewards
-                      ? formatQuota(availableQuota)
-                      : t('No transferable rewards')}
-                  </p>
-                  {!complianceConfirmed ? (
-                    <p className='mt-2 text-xs text-slate-500'>
-                      {t(
-                        'Referral reward transfer is disabled until the administrator confirms compliance terms.'
-                      )}
-                    </p>
-                  ) : null}
-                </div>
+            <TitledCard
+              title={t('Transfer Rewards to Balance')}
+              description={t(
+                'Move all available rewards into your account balance.'
+              )}
+              icon={<ArrowRightLeft className='h-4 w-4' />}
+              disableHoverEffect
+              action={
                 <Button
                   onClick={() => setTransferDialogOpen(true)}
                   disabled={!hasRewards || !complianceConfirmed}
-                  className='h-11 w-full gap-2 bg-orange-600 px-5 text-white hover:bg-orange-500 sm:w-auto'
+                  className='w-full gap-2 sm:w-auto'
                 >
                   <ArrowRightLeft className='size-4' />
                   {t('Transfer to Balance')}
                 </Button>
-              </div>
-            </section>
+              }
+            >
+              <p
+                className={cn(
+                  'text-sm font-semibold',
+                  hasRewards ? 'text-success' : 'text-warning'
+                )}
+              >
+                {hasRewards
+                  ? formatQuota(availableQuota)
+                  : t('No transferable rewards')}
+              </p>
+              {!complianceConfirmed ? (
+                <p className='text-muted-foreground mt-2 text-xs'>
+                  {t(
+                    'Referral reward transfer is disabled until the administrator confirms compliance terms.'
+                  )}
+                </p>
+              ) : null}
+            </TitledCard>
 
-            <section className='mt-6 rounded-2xl border border-[#263552] bg-[#101624] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-6'>
-              <div className='mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-                <h3 className='text-lg font-bold text-slate-50'>
-                  {t('Invited Users')}
-                </h3>
+            <TitledCard
+              title={t('Invited Users')}
+              icon={<Users className='h-4 w-4' />}
+              disableHoverEffect
+              action={
                 <div className='relative w-full sm:w-80'>
-                  <Search className='absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-500' />
+                  <Search className='text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2' />
                   <Input
                     aria-label={t('Search')}
                     placeholder={t('Search invited users or orders...')}
                     value={keyword}
                     onChange={(event) => handleSearch(event.target.value)}
-                    className='h-10 border-[#344866] bg-[#0c1425] pl-10 text-slate-100 placeholder:text-slate-500 focus-visible:ring-sky-400/30'
+                    className='h-9 pl-10'
                   />
                 </div>
-              </div>
-
+              }
+              contentClassName='space-y-4'
+            >
               <ReferralRecordList
                 records={records}
                 loading={recordsLoading}
@@ -495,8 +476,8 @@ export function ReferralProgram() {
               />
 
               {!recordsLoading && total > 0 ? (
-                <div className='mt-4 flex flex-col items-center gap-3 border-t border-[#263552] pt-4 sm:flex-row sm:justify-between'>
-                  <div className='text-xs text-slate-500 sm:text-sm'>
+                <div className='flex flex-col items-center gap-3 border-t pt-4 sm:flex-row sm:justify-between'>
+                  <div className='text-muted-foreground text-xs sm:text-sm'>
                     {t('Showing')} {(page - 1) * pageSize + 1}-
                     {Math.min(page * pageSize, total)} {t('of')} {total}
                   </div>
@@ -507,12 +488,11 @@ export function ReferralProgram() {
                       aria-label={t('Previous page')}
                       onClick={() => handlePageChange(page - 1)}
                       disabled={page <= 1}
-                      className='border-[#344866] bg-[#0c1425] text-slate-200 hover:bg-[#172235] hover:text-white'
                     >
                       <ChevronLeft className='size-4' />
                     </Button>
-                    <div className='min-w-14 text-center text-sm text-slate-400'>
-                      <span className='font-semibold text-slate-100'>
+                    <div className='text-muted-foreground min-w-14 text-center text-sm'>
+                      <span className='text-foreground font-semibold'>
                         {page}
                       </span>
                       <span className='mx-1'>/</span>
@@ -524,14 +504,13 @@ export function ReferralProgram() {
                       aria-label={t('Next page')}
                       onClick={() => handlePageChange(page + 1)}
                       disabled={page >= totalPages}
-                      className='border-[#344866] bg-[#0c1425] text-slate-200 hover:bg-[#172235] hover:text-white'
                     >
                       <ChevronRight className='size-4' />
                     </Button>
                   </div>
                 </div>
               ) : null}
-            </section>
+            </TitledCard>
           </div>
         </SectionPageLayout.Content>
       </SectionPageLayout>

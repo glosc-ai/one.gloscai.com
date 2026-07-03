@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -725,11 +726,43 @@ func GetUserModelsCategorized(c *gin.Context) {
 }
 
 func UpdateUser(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
 	var updatedUser model.User
-	err := json.NewDecoder(c.Request.Body).Decode(&updatedUser)
+	err = common.Unmarshal(body, &updatedUser)
 	if err != nil || updatedUser.Id == 0 {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
+	}
+	var requestFields map[string]json.RawMessage
+	if err := common.Unmarshal(body, &requestFields); err != nil {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	affiliateRebateRatioRaw, hasAffiliateRebateRatio := requestFields["affiliate_rebate_ratio"]
+	var affiliateRebateRatioOverride interface{}
+	if hasAffiliateRebateRatio {
+		if strings.TrimSpace(string(affiliateRebateRatioRaw)) == "null" {
+			updatedUser.AffiliateRebateRatio = nil
+		} else {
+			var affiliateRebateRatio float64
+			if err := common.Unmarshal(affiliateRebateRatioRaw, &affiliateRebateRatio); err != nil {
+				common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+				return
+			}
+			updatedUser.AffiliateRebateRatio = &affiliateRebateRatio
+		}
+		if updatedUser.AffiliateRebateRatio != nil &&
+			(*updatedUser.AffiliateRebateRatio < 0 || *updatedUser.AffiliateRebateRatio > 100) {
+			common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+			return
+		}
+		if updatedUser.AffiliateRebateRatio != nil {
+			affiliateRebateRatioOverride = *updatedUser.AffiliateRebateRatio
+		}
 	}
 	if updatedUser.Password == "" {
 		updatedUser.Password = "$I_LOVE_U" // make Validator happy :)
@@ -761,6 +794,13 @@ func UpdateUser(c *gin.Context) {
 	if err := model.DB.Transaction(func(tx *gorm.DB) error {
 		if err := updatedUser.EditWithTx(tx, updatePassword); err != nil {
 			return err
+		}
+		if hasAffiliateRebateRatio {
+			if err := tx.Model(&model.User{}).
+				Where("id = ?", updatedUser.Id).
+				Updates(map[string]interface{}{"affiliate_rebate_ratio": affiliateRebateRatioOverride}).Error; err != nil {
+				return err
+			}
 		}
 		touched, err := updateAdminPermissionsForUserInTx(c, tx, updatedUser.Id, originUser.Role, updatedUser.AdminPermissions)
 		authzTouched = touched

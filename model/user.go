@@ -45,6 +45,7 @@ type User struct {
 	AffCount         int                        `json:"aff_count" gorm:"type:int;default:0;column:aff_count"`
 	AffQuota         int                        `json:"aff_quota" gorm:"type:int;default:0;column:aff_quota"`           // 邀请剩余额度
 	AffHistoryQuota  int                        `json:"aff_history_quota" gorm:"type:int;default:0;column:aff_history"` // 邀请历史额度
+	AffiliateRebateRatio *float64 `json:"affiliate_rebate_ratio" gorm:"column:affiliate_rebate_ratio"`
 	InviterId        int                        `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
 	DeletedAt        gorm.DeletedAt             `gorm:"index"`
 	LinuxDOId        string                     `json:"linux_do_id" gorm:"column:linux_do_id;index"`
@@ -345,6 +346,30 @@ func GetUserById(id int, selectAll bool) (*User, error) {
 		err = DB.Omit("password").First(&user, "id = ?", id).Error
 	}
 	return &user, err
+}
+
+func GetEffectiveAffiliateRebateRatio(userId int) (float64, error) {
+	return GetEffectiveAffiliateRebateRatioWithTx(DB, userId)
+}
+
+func GetEffectiveAffiliateRebateRatioWithTx(tx *gorm.DB, userId int) (float64, error) {
+	ratio := common.AffiliateRebateRatio
+	if userId == 0 {
+		return ratio, nil
+	}
+
+	var user User
+	err := tx.Select("affiliate_rebate_ratio").Where("id = ?", userId).First(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return ratio, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	if user.AffiliateRebateRatio != nil {
+		ratio = *user.AffiliateRebateRatio
+	}
+	return ratio, nil
 }
 
 func GetUserIdByAffCode(affCode string) (int, error) {

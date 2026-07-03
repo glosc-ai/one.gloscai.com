@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type ColumnDef } from '@tanstack/react-table'
+import type { ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 
 import { BadgeCell } from '@/components/data-table'
@@ -31,7 +31,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { formatQuota, formatTimestamp } from '@/lib/format'
+import { formatPercent, formatQuota, formatTimestamp } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import {
@@ -40,7 +40,7 @@ import {
   USER_ROLES,
   isUserDeleted,
 } from '../constants'
-import { type User } from '../types'
+import type { User } from '../types'
 import { DataTableRowActions } from './data-table-row-actions'
 
 function getQuotaProgressColor(percentage: number): string {
@@ -277,6 +277,7 @@ export function useUsersColumns(): ColumnDef<User>[] {
         const affCount = user.aff_count || 0
         const affHistoryQuota = user.aff_history_quota || 0
         const inviterId = user.inviter_id || 0
+        const affiliateRebateRatio = user.affiliate_rebate_ratio
 
         return (
           <div className='flex max-w-full min-w-0 flex-wrap items-center gap-1 overflow-hidden'>
@@ -335,6 +336,27 @@ export function useUsersColumns(): ColumnDef<User>[] {
                 variant='neutral'
                 copyable={false}
               />
+            )}
+            {affiliateRebateRatio != null && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <StatusBadge
+                      label={`${t('Custom Rate')}: ${formatPercent(affiliateRebateRatio)}`}
+                      variant='info'
+                      copyable={false}
+                      className='cursor-help'
+                    />
+                  }
+                />
+                <TooltipContent>
+                  <p className='text-xs'>
+                    {t(
+                      'User-specific recharge commission rate overrides the system default'
+                    )}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
         )
