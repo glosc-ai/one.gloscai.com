@@ -19,8 +19,12 @@ For commercial licensing, please contact support@quantumnous.com
 import { type ColumnDef } from '@tanstack/react-table'
 import { Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatTimestampToDate } from '@/lib/format'
-import { getLobeIcon } from '@/lib/lobe-icon'
+
+import { BadgeCell, BadgeListCell } from '@/components/data-table'
+import { GroupBadge } from '@/components/group-badge'
+import { ProviderBadge } from '@/components/provider-badge'
+import { StatusBadge } from '@/components/status-badge'
+import { TableId } from '@/components/table-id'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -337,7 +341,14 @@ export function useModelsColumns(vendors: Vendor[] = []): ColumnDef<Model>[] {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger render={<div />}>
-                {renderLimitedItems(categoryBadges, 2)}
+                <div className='flex flex-wrap gap-1'>
+                  {categoryBadges.slice(0, 2)}
+                  {categoryArray.length > 2 && (
+                    <span className='text-muted-foreground text-xs'>
+                      +{categoryArray.length - 2}
+                    </span>
+                  )}
+                </div>
               </TooltipTrigger>
               {categoryArray.length > 2 && (
                 <TooltipContent

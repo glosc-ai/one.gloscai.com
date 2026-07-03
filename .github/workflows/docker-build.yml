@@ -57,7 +57,6 @@ jobs:
                   echo "tag=${TAG}" >> $GITHUB_OUTPUT
                   echo "${TAG}" > VERSION
                   echo "Building tag: ${TAG} for ${{ matrix.arch }}"
-
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
 
@@ -103,7 +102,6 @@ jobs:
                   echo "ghcr.io/glosc-ai/one.gloscai.com:${TAG}-${{ matrix.arch }}" >> $GITHUB_STEP_SUMMARY
                   echo "${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
                   echo '```' >> $GITHUB_STEP_SUMMARY
-
     create_manifests:
         name: Create multi-arch manifests
         needs: [build_single_arch]
@@ -127,14 +125,12 @@ jobs:
                     -t ghcr.io/glosc-ai/one.gloscai.com:${TAG} \
                     ghcr.io/glosc-ai/one.gloscai.com:${TAG}-amd64 \
                     ghcr.io/glosc-ai/one.gloscai.com:${TAG}-arm64
-
             - name: Create & push manifest (latest)
               run: |
                   docker buildx imagetools create \
                     -t ghcr.io/glosc-ai/one.gloscai.com:latest \
                     ghcr.io/glosc-ai/one.gloscai.com:latest-amd64 \
                     ghcr.io/glosc-ai/one.gloscai.com:latest-arm64
-
             - name: Manifest summary
               run: |
                   echo "### Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY

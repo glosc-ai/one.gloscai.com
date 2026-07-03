@@ -165,6 +165,7 @@ export const ModelPricingEditorPanel = forwardRef<
   })
   const [billingExpr, setBillingExpr] = useState('')
   const [requestRuleExpr, setRequestRuleExpr] = useState('')
+  const [editorReloadToken, setEditorReloadToken] = useState(0)
   const [mediaConfig, setMediaConfig] = useState<MediaUnitConfig>(() =>
     createDefaultMediaUnitConfig()
   )

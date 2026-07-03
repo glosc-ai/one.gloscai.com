@@ -35,6 +35,7 @@ import {
   Eraser,
   Plus,
   Eye,
+  Link2,
   RefreshCw,
   Code,
   Route,
@@ -167,6 +168,7 @@ import {
 import type { Channel } from '../../types'
 import { useChannels } from '../channels-provider'
 import { AdvancedCustomEditorDialog } from '../dialogs/advanced-custom-editor-dialog'
+import { CodexOAuthDialog } from '../dialogs/codex-oauth-dialog'
 import { FetchModelsDialog } from '../dialogs/fetch-models-dialog'
 import { GitHubCopilotOAuthDialog } from '../dialogs/github-copilot-oauth-dialog'
 import {
@@ -2933,12 +2935,28 @@ export function ChannelMutateDrawer({
                               {currentType === 57 && (
                                 <div className='border-border/60 flex flex-col gap-3 border-y py-4'>
                                   <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-                                    <div className='text-muted-foreground text-xs'>
-                                      {t(
-                                        'Codex channels use an OAuth JSON credential as the key.'
-                                      )}
+                                    <div className='flex flex-col gap-0.5'>
+                                      <div className='text-sm font-semibold'>
+                                        {t('Codex Authorization')}
+                                      </div>
+                                      <div className='text-muted-foreground text-xs'>
+                                        {t(
+                                          'Codex channels use an OAuth JSON credential as the key.'
+                                        )}
+                                      </div>
                                     </div>
                                     <div className='flex flex-wrap items-center gap-2'>
+                                      <Button
+                                        type='button'
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={() =>
+                                          setCodexOAuthDialogOpen(true)
+                                        }
+                                      >
+                                        <Link2 className='mr-2 h-4 w-4' />
+                                        {t('Authorize')}
+                                      </Button>
                                       {isEditing && channelId && (
                                         <Button
                                           type='button'
@@ -2962,6 +2980,13 @@ export function ChannelMutateDrawer({
                                       )}
                                     </div>
                                   </div>
+                                  <Alert>
+                                    <AlertDescription>
+                                      {t(
+                                        'If authorization succeeds, the generated JSON will be inserted into the key field. You still need to save the channel to persist it.'
+                                      )}
+                                    </AlertDescription>
+                                  </Alert>
                                   <Alert className='border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-50'>
                                     <AlertDescription>
                                       {t(
@@ -2971,6 +2996,61 @@ export function ChannelMutateDrawer({
                                   </Alert>
                                 </div>
                               )}
+
+                              <CodexOAuthDialog
+                                open={codexOAuthDialogOpen}
+                                onOpenChange={setCodexOAuthDialogOpen}
+                                onKeyGenerated={(key) => {
+                                  form.setValue('key', key, {
+                                    shouldDirty: true,
+                                  })
+                                }}
+                              />
+
+                              {currentType === 58 && (
+                                <div className='border-border/60 flex flex-col gap-3 border-y py-4'>
+                                  <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+                                    <div className='flex flex-col gap-0.5'>
+                                      <div className='text-sm font-semibold'>
+                                        {t('GitHub Copilot Authorization')}
+                                      </div>
+                                      <div className='text-muted-foreground text-xs'>
+                                        {t(
+                                          'GitHub Copilot channels use a GitHub OAuth token as the key.'
+                                        )}
+                                      </div>
+                                    </div>
+                                    <Button
+                                      type='button'
+                                      variant='outline'
+                                      size='sm'
+                                      onClick={() =>
+                                        setGitHubCopilotOAuthDialogOpen(true)
+                                      }
+                                    >
+                                      <Link2 className='mr-2 h-4 w-4' />
+                                      {t('Authorize')}
+                                    </Button>
+                                  </div>
+                                  <Alert>
+                                    <AlertDescription>
+                                      {t(
+                                        'If authorization succeeds, the generated JSON will be inserted into the key field. You still need to save the channel to persist it.'
+                                      )}
+                                    </AlertDescription>
+                                  </Alert>
+                                </div>
+                              )}
+
+                              <GitHubCopilotOAuthDialog
+                                open={githubCopilotOAuthDialogOpen}
+                                onOpenChange={setGitHubCopilotOAuthDialogOpen}
+                                onKeyGenerated={(key) => {
+                                  form.setValue('key', key, {
+                                    shouldDirty: true,
+                                  })
+                                }}
+                              />
 
                               {isEditing && isMultiKeyChannel && (
                                 <FormField
@@ -3202,334 +3282,6 @@ export function ChannelMutateDrawer({
                                   />
                                   {t('Fill Related Models')}
                                 </Button>
-                              )}
-                            </div>
-                          </div>
-                          <Alert>
-                            <AlertDescription>
-                              {t(
-                                'If authorization succeeds, the generated JSON will be inserted into the key field. You still need to save the channel to persist it.'
-                              )}
-                            </AlertDescription>
-                          </Alert>
-                        </div>
-                      )}
-
-                      <CodexOAuthDialog
-                        open={codexOAuthDialogOpen}
-                        onOpenChange={setCodexOAuthDialogOpen}
-                        onKeyGenerated={(key) => {
-                          form.setValue('key', key, { shouldDirty: true })
-                        }}
-                      />
-
-                      {currentType === 58 && (
-                        <div className='border-border/60 flex flex-col gap-3 border-y py-4'>
-                          <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-                            <div className='flex flex-col gap-0.5'>
-                              <div className='text-sm font-semibold'>
-                                {t('GitHub Copilot Authorization')}
-                              </div>
-                              <div className='text-muted-foreground text-xs'>
-                                {t(
-                                  'GitHub Copilot channels use a GitHub OAuth token as the key.'
-                                )}
-                              </div>
-                            </div>
-                            <Button
-                              type='button'
-                              variant='outline'
-                              size='sm'
-                              onClick={() =>
-                                setGitHubCopilotOAuthDialogOpen(true)
-                              }
-                            >
-                              <Link2 className='mr-2 h-4 w-4' />
-                              {t('Authorize')}
-                            </Button>
-                          </div>
-                          <Alert>
-                            <AlertDescription>
-                              {t(
-                                'If authorization succeeds, the generated JSON will be inserted into the key field. You still need to save the channel to persist it.'
-                              )}
-                            </AlertDescription>
-                          </Alert>
-                        </div>
-                      )}
-
-                      <GitHubCopilotOAuthDialog
-                        open={githubCopilotOAuthDialogOpen}
-                        onOpenChange={setGitHubCopilotOAuthDialogOpen}
-                        onKeyGenerated={(key) => {
-                          form.setValue('key', key, { shouldDirty: true })
-                        }}
-                      />
-
-                      {isEditing && isMultiKeyChannel && (
-                        <FormField
-                          control={form.control}
-                          name='key_mode'
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t('Key Update Mode')}</FormLabel>
-                              <Select
-                                items={[
-                                  {
-                                    value: 'append',
-                                    label: t('Append to existing keys'),
-                                  },
-                                  {
-                                    value: 'replace',
-                                    label: t('Replace all existing keys'),
-                                  },
-                                ]}
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent alignItemWithTrigger={false}>
-                                  <SelectGroup>
-                                    <SelectItem value='append'>
-                                      {t('Append to existing keys')}
-                                    </SelectItem>
-                                    <SelectItem value='replace'>
-                                      {t('Replace all existing keys')}
-                                    </SelectItem>
-                                  </SelectGroup>
-                                </SelectContent>
-                              </Select>
-                              <FormDescription>
-                                {field.value === 'replace'
-                                  ? t(
-                                      'Replace mode: Will completely replace all existing keys'
-                                    )
-                                  : t(
-                                      'Append mode: New keys will be added to the end of the existing key list'
-                                    )}
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-
-                      {!isEditing && multiKeyMode === 'multi_to_single' && (
-                        <FormField
-                          control={form.control}
-                          name='multi_key_type'
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t('Multi-Key Strategy')}</FormLabel>
-                              <Select
-                                items={[
-                                  { value: 'random', label: t('Random') },
-                                  { value: 'polling', label: t('Polling') },
-                                ]}
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent alignItemWithTrigger={false}>
-                                  <SelectGroup>
-                                    <SelectItem value='random'>
-                                      {t('Random')}
-                                    </SelectItem>
-                                    <SelectItem value='polling'>
-                                      {t('Polling')}
-                                    </SelectItem>
-                                  </SelectGroup>
-                                </SelectContent>
-                              </Select>
-                              <FormDescription>
-                                {multiKeyType === 'polling' ? (
-                                  <span className='text-warning'>
-                                    {t(
-                                      'Polling mode requires Redis and memory cache, otherwise performance will be significantly degraded'
-                                    )}
-                                  </span>
-                                ) : (
-                                  t(
-                                    'Randomly select a key from the pool for each request'
-                                  )
-                                )}
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-                    </ChannelAuthSection>
-                  </ChannelApiAccessSection>
-
-                  {/* ── Models & Groups ── */}
-                  <ChannelModelsSection>
-                    <div className='space-y-5'>
-                      <div className='border-border/60 bg-muted/10 rounded-lg border p-4'>
-                        <FormField
-                          control={form.control}
-                          name='models'
-                          render={() => (
-                            <FormItem className='space-y-3'>
-                              <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-                                <div className='space-y-1'>
-                                  <FormLabel>{t('Models *')}</FormLabel>
-                                  <FormDescription>
-                                    {t(FIELD_DESCRIPTIONS.MODELS)}
-                                  </FormDescription>
-                                </div>
-                                <Badge variant='outline' className='w-fit'>
-                                  {t('Selected {{count}}', {
-                                    count: currentModelsArray.length,
-                                  })}
-                                </Badge>
-                              </div>
-                              <FormControl>
-                                <MultiSelect
-                                  options={modelOptions}
-                                  selected={currentModelsArray}
-                                  onChange={handleModelsChange}
-                                  placeholder={t(
-                                    'Select models or add custom ones'
-                                  )}
-                                  allowCreate
-                                  createLabel='Add custom model "{{value}}"'
-                                  maxVisibleChips={8}
-                                />
-                              </FormControl>
-                              {modelMappingGuardrail.exposedTargetModels
-                                .length > 0 && (
-                                <Alert className='border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-50'>
-                                  <AlertDescription className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-                                    <span>
-                                      {t('The mapped upstream model(s)')}{' '}
-                                      {formatModelNames(
-                                        modelMappingGuardrail.exposedTargetModels
-                                      )}{' '}
-                                      {t(
-                                        'are also listed here. Remove them from Models to keep the `/v1/models` response user-friendly and hide vendor-specific names.'
-                                      )}
-                                    </span>
-                                    <Button
-                                      type='button'
-                                      variant='outline'
-                                      size='sm'
-                                      onClick={() => {
-                                        const hiddenTargets = new Set(
-                                          modelMappingGuardrail.exposedTargetModels
-                                        )
-                                        updateModels(
-                                          currentModelsArray.filter(
-                                            (model) => !hiddenTargets.has(model)
-                                          )
-                                        )
-                                      }}
-                                    >
-                                      {t('Remove mapped targets')}
-                                    </Button>
-                                  </AlertDescription>
-                                </Alert>
-                              )}
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <Separator className='my-4' />
-
-                        <div className='space-y-3'>
-                          <div>
-                            <p className='text-sm font-medium'>
-                              {t('Quick actions')}
-                            </p>
-                            <p className='text-muted-foreground text-xs'>
-                              {t(
-                                'Use presets or upstream discovery to populate the model list faster.'
-                              )}
-                            </p>
-                          </div>
-                          <div className='flex flex-wrap gap-2'>
-                            <Button
-                              type='button'
-                              variant='outline'
-                              size='sm'
-                              onClick={handleFillRelatedModels}
-                              disabled={!basicModels.length}
-                            >
-                              <FileText
-                                className='mr-2 h-4 w-4'
-                                aria-hidden='true'
-                              />
-                              {t('Fill Related Models')}
-                            </Button>
-                            <Button
-                              type='button'
-                              variant='outline'
-                              size='sm'
-                              onClick={handleFillAllModels}
-                              disabled={!allModelsList.length}
-                            >
-                              <Plus
-                                className='mr-2 h-4 w-4'
-                                aria-hidden='true'
-                              />
-                              {t('Fill All Models')}
-                            </Button>
-                            {MODEL_FETCHABLE_TYPES.has(currentType) && (
-                              <Button
-                                type='button'
-                                variant='outline'
-                                size='sm'
-                                onClick={handleFetchModels}
-                              >
-                                <Sparkles
-                                  className='mr-2 h-4 w-4'
-                                  aria-hidden='true'
-                                />
-                                {t('Fetch from Upstream')}
-                              </Button>
-                            )}
-                            <Button
-                              type='button'
-                              variant='outline'
-                              size='sm'
-                              onClick={handleCopyModels}
-                              disabled={currentModelsArray.length === 0}
-                            >
-                              <Copy
-                                className='mr-2 h-4 w-4'
-                                aria-hidden='true'
-                              />
-                              {t('Copy All')}
-                            </Button>
-                            <Button
-                              type='button'
-                              variant='ghost'
-                              size='sm'
-                              onClick={handleClearModels}
-                              disabled={currentModelsArray.length === 0}
-                            >
-                              <Eraser
-                                className='mr-2 h-4 w-4'
-                                aria-hidden='true'
-                              />
-                              {t('Clear All')}
-                            </Button>
-                          </div>
-                          {prefillGroups.length > 0 && (
-                            <div className='flex flex-wrap items-center gap-2'>
-                              <span className='text-muted-foreground text-xs'>
-                                {t('Preset groups')}:
-                              </span>
-                              {prefillGroups.map((group) => (
                                 <Button
                                   type='button'
                                   variant='outline'

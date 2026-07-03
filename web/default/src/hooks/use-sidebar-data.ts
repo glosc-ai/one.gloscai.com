@@ -25,6 +25,7 @@ import {
   CreditCard,
   FileText,
   FlaskConical,
+  Gift,
   Image as ImageIcon,
   Key,
   LayoutDashboard,
@@ -34,6 +35,7 @@ import {
   OctagonX,
   Radio,
   ReceiptText,
+  ServerCog,
   Settings,
   Ticket,
   User,
@@ -42,7 +44,8 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { type SidebarData } from '@/components/layout/types'
+import type { SidebarData } from '@/components/layout/types'
+
 import { ROLE } from '@/lib/roles'
 
 /**
@@ -133,6 +136,11 @@ export function useSidebarData(): SidebarData {
             title: t('Wallet'),
             url: '/wallet',
             icon: Wallet,
+          },
+          {
+            title: t('Referral Program'),
+            url: '/referral',
+            icon: Gift,
           },
           {
             title: t('Profile'),

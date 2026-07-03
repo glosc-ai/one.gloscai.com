@@ -771,7 +771,7 @@ func RechargeDirectTopUp(tradeNo string, expectedPaymentProvider string, actualP
 	topUp := &TopUp{}
 
 	refCol := "`trade_no`"
-	if common.UsingPostgreSQL {
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
 		refCol = `"trade_no"`
 	}
 

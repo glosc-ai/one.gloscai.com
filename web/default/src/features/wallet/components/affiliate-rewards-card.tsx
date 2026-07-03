@@ -18,13 +18,14 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { ReceiptText, Share2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatPercent, formatQuota } from '@/lib/format'
-import { cn } from '@/lib/utils'
+
+import { CopyButton } from '@/components/copy-button'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatQuota } from '@/lib/format'
+import { formatPercent, formatQuota } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 import type { UserWalletData } from '../types'
 

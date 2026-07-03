@@ -445,6 +445,8 @@ func SetApiRouter(router *gin.Engine) {
 			adminAPIRoute.GET("/model-call-logs", middleware.AdminAPIKeyAuth(model.AdminAPIScopeModelCallLogs), controller.AdminAPIModelCallLogs)
 		}
 
+		registerAuthzRoutes(apiRouter)
+
 		// Deployments (model deployment management)
 		deploymentsRoute := apiRouter.Group("/deployments")
 		deploymentsRoute.Use(middleware.AdminAuth())

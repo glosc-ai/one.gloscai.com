@@ -55,6 +55,17 @@ func InitEnv() {
 		} else {
 			SessionSecret = ss
 		}
+	} else {
+		// SESSION_SECRET not configured: a random value is generated on each
+		// startup. All existing sessions are invalidated on every restart, and
+		// multiple instances in the same cluster will use different keys.
+		// This is acceptable for local development but is a security and
+		// availability risk in production.
+		log.Println("WARNING: SESSION_SECRET is not set. A random secret will be generated on each startup.")
+		log.Println("         All user sessions will be invalidated on every restart.")
+		log.Println("         Set SESSION_SECRET to a persistent random string for production deployments.")
+		log.Println("警告：SESSION_SECRET 未配置，每次重启将使用随机密钥，所有用户 Session 将失效。")
+		log.Println("      生产环境请设置 SESSION_SECRET 为固定的随机字符串。")
 	}
 	if os.Getenv("CRYPTO_SECRET") != "" {
 		CryptoSecret = os.Getenv("CRYPTO_SECRET")
@@ -85,6 +96,12 @@ func InitEnv() {
 	initNodeNameIdentity()
 	TLSInsecureSkipVerify = GetEnvOrDefaultBool("TLS_INSECURE_SKIP_VERIFY", false)
 	if TLSInsecureSkipVerify {
+		log.Println("SECURITY WARNING: TLS_INSECURE_SKIP_VERIFY is enabled.")
+		log.Println("                  All upstream HTTPS connections will skip certificate verification.")
+		log.Println("                  This exposes API keys and user data to man-in-the-middle attacks.")
+		log.Println("                  Do NOT use this setting in production.")
+		log.Println("安全警告：TLS_INSECURE_SKIP_VERIFY 已启用，所有上游 HTTPS 连接将跳过证书验证。")
+		log.Println("          这会使 API 密钥和用户数据面临中间人攻击风险，请勿在生产环境中使用。")
 		if tr, ok := http.DefaultTransport.(*http.Transport); ok && tr != nil {
 			if tr.TLSClientConfig != nil {
 				tr.TLSClientConfig.InsecureSkipVerify = true

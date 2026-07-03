@@ -186,6 +186,19 @@ func Distribute() func(c *gin.Context) {
 	}
 }
 
+// channelSupportsRequestPath reports whether a channel can serve the request path.
+// Advanced Custom channels are path-checked; all other channel types always pass.
+func channelSupportsRequestPath(channel *model.Channel, requestPath string) bool {
+	if channel == nil {
+		return false
+	}
+	if channel.Type != constant.ChannelTypeAdvancedCustom {
+		return true
+	}
+	config := channel.GetOtherSettings().AdvancedCustom
+	return config != nil && config.SupportsPath(requestPath)
+}
+
 func applyPlaygroundGroup(c *gin.Context, usingGroup string, requestedGroup string) (string, bool) {
 	if requestedGroup == "" {
 		return usingGroup, true

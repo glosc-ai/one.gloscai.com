@@ -16,11 +16,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useState } from 'react'
+
 import { useQueryClient } from '@tanstack/react-query'
 import { type Row } from '@tanstack/react-table'
 import {
   BadgeDollarSign,
-  MoreHorizontal,
   Pencil,
   Power,
   PowerOff,
@@ -33,6 +34,7 @@ import { DataTableRowActionMenu } from '@/components/data-table/core/row-action-
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuShortcut,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -93,6 +95,21 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         <TooltipContent>{t('Edit')}</TooltipContent>
       </Tooltip>
 
+      <DataTableRowActionMenu ariaLabel={t('Open menu')}>
+        <DropdownMenuItem onClick={handleToggleStatus}>
+          {isEnabled ? (
+            <>
+              <PowerOff size={16} />
+              {t('Disable')}
+            </>
+          ) : (
+            <>
+              <Power size={16} />
+              {t('Enable')}
+            </>
+          )}
+        </DropdownMenuItem>
+
         {!model.has_price && (
           <DropdownMenuItem onClick={handleConfigurePricing}>
             {t('Configure Pricing')}
@@ -104,7 +121,6 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
 
         <DropdownMenuSeparator />
 
-      <DataTableRowActionMenu ariaLabel={t('Open menu')}>
         <DropdownMenuItem
           onSelect={(e) => {
             e.preventDefault()

@@ -77,6 +77,8 @@ func ChannelType2APIType(channelType int) (int, bool) {
 		apiType = constant.APITypeCodex
 	case constant.ChannelTypeGitHubCopilot:
 		apiType = constant.APITypeGitHubCopilot
+	case constant.ChannelTypeAdvancedCustom:
+		apiType = constant.APITypeAdvancedCustom
 	}
 	if apiType == -1 {
 		return constant.APITypeOpenAI, false

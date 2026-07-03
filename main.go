@@ -169,6 +169,36 @@ func main() {
 
 	// Initialize HTTP server
 	server := gin.New()
+
+	// Configure trusted reverse-proxy IPs so that c.ClientIP() returns the real
+	// client address from X-Forwarded-For instead of the proxy address.
+	// Without this, an attacker can spoof the header and bypass IP-based rate limits.
+	//
+	// TRUSTED_PROXIES: comma-separated list of CIDR ranges or IP addresses.
+	//   - Set to the actual IP(s) / ranges of your load balancer / ingress.
+	//   - Leave empty to trust NO proxy (use when running without a reverse proxy).
+	//   - Example: TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12
+	if trustedProxiesEnv := strings.TrimSpace(os.Getenv("TRUSTED_PROXIES")); trustedProxiesEnv != "" {
+		var proxies []string
+		for _, p := range strings.Split(trustedProxiesEnv, ",") {
+			if trimmed := strings.TrimSpace(p); trimmed != "" {
+				proxies = append(proxies, trimmed)
+			}
+		}
+		if err := server.SetTrustedProxies(proxies); err != nil {
+			log.Printf("WARNING: failed to set trusted proxies: %v", err)
+		}
+	} else {
+		// Trust no proxy: c.ClientIP() will return the direct peer address.
+		// This is the safest default when running behind an unconfigured reverse proxy
+		// or directly exposed to the internet.
+		if err := server.SetTrustedProxies(nil); err != nil {
+			log.Printf("WARNING: failed to disable trusted proxies: %v", err)
+		}
+		log.Println("INFO: TRUSTED_PROXIES is not set. Trusting no proxy (direct peer IP used for rate limiting).")
+		log.Println("      Set TRUSTED_PROXIES to your load balancer CIDR if running behind a reverse proxy.")
+	}
+
 	server.Use(gin.CustomRecovery(func(c *gin.Context, err any) {
 		common.SysLog(fmt.Sprintf("panic detected: %v", err))
 		c.JSON(http.StatusInternalServerError, gin.H{

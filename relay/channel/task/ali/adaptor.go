@@ -51,11 +51,8 @@ type AliVideoInput struct {
 	Media          []AliMediaItem `json:"media,omitempty"`           // 多模态素材（wan2.7图生视频）
 }
 
-// AliMediaItem 表示 wan2.7 图生视频 media 数组中的单个素材。
-type AliMediaItem struct {
-	Type string `json:"type,omitempty"` // first_frame / last_frame / first_clip / driving_audio
-	URL  string `json:"url,omitempty"`
-}
+// AliMediaItem is kept as a compatibility alias for existing metadata handling.
+type AliMediaItem = AliVideoMedia
 
 // AliVideoParameters 视频参数
 type AliVideoParameters struct {
@@ -443,10 +440,6 @@ func ProcessAliOtherRatios(aliReq *AliVideoRequest) (map[string]float64, error) 
 		}
 	}
 	return otherRatios, nil
-}
-
-func isWan27I2VModel(model string) bool {
-	return strings.HasPrefix(model, "wan2.7-i2v")
 }
 
 func firstNonEmpty(values ...string) string {

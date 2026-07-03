@@ -25,8 +25,8 @@ import { RichContent } from '@/components/rich-content'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PublicLayout } from '@/components/layout'
-import { useTheme } from '@/context/theme-provider'
+import { isHttpUrl, isLikelyHtml } from '@/lib/content-format'
+
 import type { LegalDocumentResponse } from './types'
 
 type LegalDocumentProps = {
@@ -43,7 +43,6 @@ export function LegalDocument({
   emptyMessage,
 }: LegalDocumentProps) {
   const { t } = useTranslation()
-  const { resolvedTheme } = useTheme()
   const { data, isLoading } = useQuery({
     queryKey: [queryKey],
     queryFn: fetchDocument,
@@ -142,16 +141,8 @@ export function LegalDocument({
             content={rawContent}
             className='prose-neutral dark:prose-invert max-w-none'
           />
-        ) : (
-          <Markdown
-            variant='github'
-            githubTheme={resolvedTheme}
-            className='rounded-lg border p-6 shadow-sm sm:p-8'
-          >
-            {rawContent}
-          </Markdown>
-        )}
-      </div>
+        </div>
+      )}
     </PublicLayout>
   )
 }

@@ -25,20 +25,33 @@ type QuotaData struct {
 	Quota     int    `json:"quota" gorm:"default:0"`
 }
 
+type QuotaDataLogParams struct {
+	UserID    int
+	Username  string
+	ModelName string
+	Quota     int
+	CreatedAt int64
+	TokenUsed int
+	UseGroup  string
+	TokenID   int
+	ChannelID int
+	NodeName  string
+}
+
 type UserRegistrationTrendData struct {
 	CreatedAt int64 `json:"created_at"`
 	Count     int64 `json:"count"`
 }
 
 type UserPaymentTrendData struct {
-	CreatedAt        int64   `json:"created_at"`
-	CompleteTime     int64   `json:"complete_time"`
-	Count            int64   `json:"count"`
-	Amount           int64   `json:"amount"`
-	Money            float64 `json:"money"`
-	Status           string  `json:"status"`
-	PaymentMethod    string  `json:"payment_method"`
-	PaymentProvider  string  `json:"payment_provider"`
+	CreatedAt       int64   `json:"created_at"`
+	CompleteTime    int64   `json:"complete_time"`
+	Count           int64   `json:"count"`
+	Amount          int64   `json:"amount"`
+	Money           float64 `json:"money"`
+	Status          string  `json:"status"`
+	PaymentMethod   string  `json:"payment_method"`
+	PaymentProvider string  `json:"payment_provider"`
 }
 
 func UpdateQuotaData() {
@@ -248,14 +261,14 @@ func GetUserPaymentTrendData(
 	trendData = make([]*UserPaymentTrendData, 0, len(topUps))
 	for _, topUp := range topUps {
 		trendData = append(trendData, &UserPaymentTrendData{
-			CreatedAt:        topUp.CreateTime,
-			CompleteTime:     topUp.CompleteTime,
-			Count:            1,
-			Amount:           topUp.Amount,
-			Money:            topUp.Money,
-			Status:           topUp.Status,
-			PaymentMethod:    topUp.PaymentMethod,
-			PaymentProvider:  topUp.PaymentProvider,
+			CreatedAt:       topUp.CreateTime,
+			CompleteTime:    topUp.CompleteTime,
+			Count:           1,
+			Amount:          topUp.Amount,
+			Money:           topUp.Money,
+			Status:          topUp.Status,
+			PaymentMethod:   topUp.PaymentMethod,
+			PaymentProvider: topUp.PaymentProvider,
 		})
 	}
 	return trendData, nil
