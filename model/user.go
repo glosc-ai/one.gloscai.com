@@ -372,6 +372,16 @@ func GetEffectiveAffiliateRebateRatioWithTx(tx *gorm.DB, userId int) (float64, e
 	return ratio, nil
 }
 
+func CountInvitedUsersByInviterId(inviterId int) (int64, error) {
+	if inviterId == 0 {
+		return 0, nil
+	}
+
+	var count int64
+	err := DB.Model(&User{}).Where("inviter_id = ?", inviterId).Count(&count).Error
+	return count, err
+}
+
 func GetUserIdByAffCode(affCode string) (int, error) {
 	if affCode == "" {
 		return 0, errors.New("affCode 为空！")
