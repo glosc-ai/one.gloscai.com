@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -41,7 +42,48 @@ func redemptionSortClause(sortBy string, sortOrder string) string {
 	return safeSortClause(sortBy, redemptionAllowedSorts, "id", sortOrder)
 }
 
-func GetAllRedemptions(startIdx int, num int, sortBy string, sortOrder string) (redemptions []*Redemption, total int64, err error) {
+const redemptionStatusExpiredFilter = "expired"
+
+func applyRedemptionStatusFilter(query *gorm.DB, status string) *gorm.DB {
+	status = strings.TrimSpace(status)
+	if status == "" {
+		return query
+	}
+
+	if status == redemptionStatusExpiredFilter {
+		return query.Where(
+			"status = ? AND expired_time != 0 AND expired_time < ?",
+			common.RedemptionCodeStatusEnabled,
+			common.GetTimestamp(),
+		)
+	}
+
+	statusValue, err := strconv.Atoi(status)
+	if err != nil {
+		return query
+	}
+
+	switch statusValue {
+	case common.RedemptionCodeStatusEnabled:
+		return query.Where(
+			"status = ? AND (expired_time = 0 OR expired_time >= ?)",
+			statusValue,
+			common.GetTimestamp(),
+		)
+	case common.RedemptionCodeStatusDisabled, common.RedemptionCodeStatusUsed:
+		return query.Where("status = ?", statusValue)
+	default:
+		return query
+	}
+}
+
+func GetAllRedemptions(
+	startIdx int,
+	num int,
+	status string,
+	sortBy string,
+	sortOrder string,
+) (redemptions []*Redemption, total int64, err error) {
 	// 开始事务
 	tx := DB.Begin()
 	if tx.Error != nil {
@@ -53,15 +95,20 @@ func GetAllRedemptions(startIdx int, num int, sortBy string, sortOrder string) (
 		}
 	}()
 
+	query := applyRedemptionStatusFilter(tx.Model(&Redemption{}), status)
+
 	// 获取总数
-	err = tx.Model(&Redemption{}).Count(&total).Error
+	err = query.Count(&total).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
 	}
 
 	// 获取分页数据
-	err = tx.Order(redemptionSortClause(sortBy, sortOrder)).Limit(num).Offset(startIdx).Find(&redemptions).Error
+	err = query.Order(redemptionSortClause(sortBy, sortOrder)).
+		Limit(num).
+		Offset(startIdx).
+		Find(&redemptions).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
@@ -75,7 +122,14 @@ func GetAllRedemptions(startIdx int, num int, sortBy string, sortOrder string) (
 	return redemptions, total, nil
 }
 
-func SearchRedemptions(keyword string, startIdx int, num int, sortBy string, sortOrder string) (redemptions []*Redemption, total int64, err error) {
+func SearchRedemptions(
+	keyword string,
+	startIdx int,
+	num int,
+	status string,
+	sortBy string,
+	sortOrder string,
+) (redemptions []*Redemption, total int64, err error) {
 	tx := DB.Begin()
 	if tx.Error != nil {
 		return nil, 0, tx.Error
@@ -87,13 +141,16 @@ func SearchRedemptions(keyword string, startIdx int, num int, sortBy string, sor
 	}()
 
 	// Build query based on keyword type
-	query := tx.Model(&Redemption{})
+	query := applyRedemptionStatusFilter(tx.Model(&Redemption{}), status)
+	keyword = strings.TrimSpace(keyword)
 
 	// Only try to convert to ID if the string represents a valid integer
-	if id, err := strconv.Atoi(keyword); err == nil {
-		query = query.Where("id = ? OR name LIKE ?", id, keyword+"%")
-	} else {
-		query = query.Where("name LIKE ?", keyword+"%")
+	if keyword != "" {
+		if id, err := strconv.Atoi(keyword); err == nil {
+			query = query.Where("id = ? OR name LIKE ?", id, keyword+"%")
+		} else {
+			query = query.Where("name LIKE ?", keyword+"%")
+		}
 	}
 
 	// Get total count
@@ -104,7 +161,10 @@ func SearchRedemptions(keyword string, startIdx int, num int, sortBy string, sor
 	}
 
 	// Get paginated data
-	err = query.Order(redemptionSortClause(sortBy, sortOrder)).Limit(num).Offset(startIdx).Find(&redemptions).Error
+	err = query.Order(redemptionSortClause(sortBy, sortOrder)).
+		Limit(num).
+		Offset(startIdx).
+		Find(&redemptions).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err

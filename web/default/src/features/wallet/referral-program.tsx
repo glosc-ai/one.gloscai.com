@@ -33,10 +33,19 @@ import { useTranslation } from 'react-i18next'
 
 import { CopyButton } from '@/components/copy-button'
 import { SectionPageLayout } from '@/components/layout'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { TitledCard } from '@/components/ui/titled-card'
 import { getSelf } from '@/lib/api'
 import { formatPercent, formatQuota } from '@/lib/format'
@@ -154,24 +163,43 @@ function ReferralRecordList(props: ReferralRecordListProps) {
 
   if (props.loading) {
     return (
-      <div className='space-y-3'>
-        {recordSkeletonKeys.map((key) => (
-          <div key={key} className='rounded-lg border p-3 sm:p-4'>
-            <div className='flex items-start justify-between gap-4'>
-              <div className='space-y-2'>
-                <Skeleton className='h-4 w-40' />
-                <Skeleton className='h-3 w-28' />
-              </div>
-              <Skeleton className='h-7 w-24' />
-            </div>
-            <div className='mt-4 grid gap-3 sm:grid-cols-4'>
-              <Skeleton className='h-10' />
-              <Skeleton className='h-10' />
-              <Skeleton className='h-10' />
-              <Skeleton className='h-10' />
-            </div>
-          </div>
-        ))}
+      <div className='rounded-lg border'>
+        <Table className='min-w-[760px]'>
+          <TableHeader>
+            <TableRow className='bg-muted/40 hover:bg-muted/40'>
+              <TableHead className='px-4'>{t('User ID')}</TableHead>
+              <TableHead>{t('Created At')}</TableHead>
+              <TableHead>{t('Topup Amount')}</TableHead>
+              <TableHead>{t('Commission')}</TableHead>
+              <TableHead>{t('Rate')}</TableHead>
+              <TableHead className='px-4'>{t('Payment Method')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {recordSkeletonKeys.map((key) => (
+              <TableRow key={key}>
+                <TableCell className='px-4'>
+                  <Skeleton className='h-5 w-16' />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className='h-5 w-36' />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className='h-5 w-20' />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className='h-5 w-16' />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className='h-5 w-12' />
+                </TableCell>
+                <TableCell className='px-4'>
+                  <Skeleton className='h-5 w-32' />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     )
   }
@@ -179,9 +207,7 @@ function ReferralRecordList(props: ReferralRecordListProps) {
   if (props.records.length === 0) {
     return (
       <div className='text-muted-foreground flex min-h-28 flex-col items-center justify-center rounded-lg border border-dashed px-4 py-8 text-center'>
-        <p className='text-sm font-medium'>
-          {t('No referral records found')}
-        </p>
+        <p className='text-sm font-medium'>{t('No referral records found')}</p>
         <p className='mt-1 text-xs'>
           {props.keyword
             ? t('Try adjusting your search')
@@ -192,76 +218,46 @@ function ReferralRecordList(props: ReferralRecordListProps) {
   }
 
   return (
-    <div className='space-y-3'>
-      {props.records.map((record) => (
-        <div
-          key={record.id}
-          className='hover:bg-muted/30 rounded-lg border p-3 transition-colors sm:p-4'
-        >
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-            <div className='min-w-0 space-y-1'>
-              <div className='flex min-w-0 flex-wrap items-center gap-2'>
-                <span className='truncate text-sm font-semibold'>
-                  {record.invitee_username || t('Unknown User')}
-                </span>
-                <span className='text-muted-foreground bg-muted rounded-md px-2 py-0.5 text-xs'>
-                  {t('User ID')}: {record.invitee_id}
-                </span>
-              </div>
-              <div className='text-muted-foreground text-xs'>
+    <div className='rounded-lg border'>
+      <Table className='min-w-[760px]'>
+        <TableHeader>
+          <TableRow className='bg-muted/40 hover:bg-muted/40'>
+            <TableHead className='px-4'>{t('User ID')}</TableHead>
+            <TableHead>{t('Created At')}</TableHead>
+            <TableHead>{t('Topup Amount')}</TableHead>
+            <TableHead>{t('Commission')}</TableHead>
+            <TableHead>{t('Rate')}</TableHead>
+            <TableHead className='px-4'>{t('Payment Method')}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {props.records.map((record) => (
+            <TableRow key={record.id}>
+              <TableCell className='px-4 font-mono font-semibold'>
+                {record.invitee_id}
+              </TableCell>
+              <TableCell className='text-muted-foreground'>
                 {formatTimestamp(record.created_at)}
-              </div>
-            </div>
-            <div className='text-success bg-success/10 w-fit rounded-lg px-3 py-1 text-sm font-semibold'>
-              +{formatQuota(record.rebate_quota)}
-            </div>
-          </div>
-
-          <div className='mt-4 grid gap-3 sm:grid-cols-4'>
-            <ReferralRecordMetric
-              label={t('Topup Amount')}
-              value={formatQuota(record.recharge_quota)}
-            />
-            <ReferralRecordMetric
-              label={t('Commission')}
-              value={`+${formatQuota(record.rebate_quota)}`}
-              valueClassName='text-success'
-            />
-            <ReferralRecordMetric
-              label={t('Rate')}
-              value={`${record.rebate_ratio}%`}
-            />
-            <ReferralRecordMetric
-              label={t('Payment Method')}
-              value={getPaymentMethodName(record.payment_method, t)}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-interface ReferralRecordMetricProps {
-  label: string
-  value: string
-  valueClassName?: string
-}
-
-function ReferralRecordMetric(props: ReferralRecordMetricProps) {
-  return (
-    <div className='bg-muted/40 min-w-0 rounded-lg px-3 py-2'>
-      <div className='text-muted-foreground truncate text-xs'>
-        {props.label}
-      </div>
-      <div
-        className={cn(
-          'mt-1 truncate text-sm font-semibold',
-          props.valueClassName
-        )}
-      >
-        {props.value}
-      </div>
+              </TableCell>
+              <TableCell className='font-semibold'>
+                {formatQuota(record.recharge_quota)}
+              </TableCell>
+              <TableCell>
+                <Badge
+                  variant='secondary'
+                  className='bg-success/10 text-success'
+                >
+                  +{formatQuota(record.rebate_quota)}
+                </Badge>
+              </TableCell>
+              <TableCell>{record.rebate_ratio}%</TableCell>
+              <TableCell className='max-w-48 truncate px-4 font-medium'>
+                {getPaymentMethodName(record.payment_method, t)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -326,7 +322,9 @@ export function ReferralProgram() {
   return (
     <>
       <SectionPageLayout>
-        <SectionPageLayout.Title>{t('Referral Program')}</SectionPageLayout.Title>
+        <SectionPageLayout.Title>
+          {t('Referral Program')}
+        </SectionPageLayout.Title>
         <SectionPageLayout.Content>
           <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5'>
             <div className='grid gap-3 sm:gap-4 lg:grid-cols-4'>
@@ -460,7 +458,7 @@ export function ReferralProgram() {
                   <Search className='text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2' />
                   <Input
                     aria-label={t('Search')}
-                    placeholder={t('Search invited users or orders...')}
+                    placeholder={t('Search user IDs or orders...')}
                     value={keyword}
                     onChange={(event) => handleSearch(event.target.value)}
                     className='h-9 pl-10'

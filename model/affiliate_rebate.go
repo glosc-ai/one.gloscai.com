@@ -123,8 +123,7 @@ func applyAffiliateRebateTx(tx *gorm.DB, topUp *TopUp, rechargeQuota int) (int, 
 
 func GetAffiliateRebateLogs(inviterId int, keyword string, pageInfo *common.PageInfo) ([]*AffiliateRebateLog, int64, error) {
 	query := DB.Model(&AffiliateRebate{}).
-		Select("affiliate_rebates.id, affiliate_rebates.inviter_id, affiliate_rebates.invitee_id, COALESCE(users.username, '') AS invitee_username, affiliate_rebates.top_up_id, affiliate_rebates.trade_no, affiliate_rebates.recharge_quota, affiliate_rebates.recharge_amount, affiliate_rebates.rebate_quota, affiliate_rebates.rebate_ratio, affiliate_rebates.payment_method, affiliate_rebates.payment_provider, affiliate_rebates.created_at").
-		Joins("LEFT JOIN users ON users.id = affiliate_rebates.invitee_id").
+		Select("affiliate_rebates.id, affiliate_rebates.inviter_id, affiliate_rebates.invitee_id, '' AS invitee_username, affiliate_rebates.top_up_id, affiliate_rebates.trade_no, affiliate_rebates.recharge_quota, affiliate_rebates.recharge_amount, affiliate_rebates.rebate_quota, affiliate_rebates.rebate_ratio, affiliate_rebates.payment_method, affiliate_rebates.payment_provider, affiliate_rebates.created_at").
 		Where("affiliate_rebates.inviter_id = ?", inviterId)
 
 	keyword = strings.TrimSpace(keyword)
@@ -139,16 +138,14 @@ func GetAffiliateRebateLogs(inviterId int, keyword string, pageInfo *common.Page
 		}
 		if id, parseErr := strconv.Atoi(keyword); parseErr == nil {
 			query = query.Where(
-				"(affiliate_rebates.trade_no LIKE ? ESCAPE '!' OR users.username LIKE ? ESCAPE '!' OR affiliate_rebates.invitee_id = ? OR affiliate_rebates.id = ?)",
-				pattern,
+				"(affiliate_rebates.trade_no LIKE ? ESCAPE '!' OR affiliate_rebates.invitee_id = ? OR affiliate_rebates.id = ?)",
 				pattern,
 				id,
 				id,
 			)
 		} else {
 			query = query.Where(
-				"(affiliate_rebates.trade_no LIKE ? ESCAPE '!' OR users.username LIKE ? ESCAPE '!')",
-				pattern,
+				"affiliate_rebates.trade_no LIKE ? ESCAPE '!'",
 				pattern,
 			)
 		}

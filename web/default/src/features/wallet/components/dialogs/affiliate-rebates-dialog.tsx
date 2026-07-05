@@ -17,11 +17,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { formatNumber, formatQuota } from '@/lib/format'
+
+import { Dialog } from '@/components/dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Select,
@@ -32,8 +34,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Dialog } from '@/components/dialog'
-import { StatusBadge } from '@/components/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { formatNumber, formatQuota } from '@/lib/format'
+
 import { useAffiliateRebates } from '../../hooks'
 import { formatTimestamp, getPaymentMethodName } from '../../lib/billing'
 
@@ -41,6 +51,14 @@ interface AffiliateRebatesDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
+
+const rebateDialogSkeletonKeys = [
+  'rebate-skeleton-a',
+  'rebate-skeleton-b',
+  'rebate-skeleton-c',
+  'rebate-skeleton-d',
+  'rebate-skeleton-e',
+]
 
 export function AffiliateRebatesDialog({
   open,
@@ -60,6 +78,111 @@ export function AffiliateRebatesDialog({
   } = useAffiliateRebates({ enabled: open })
 
   const totalPages = Math.ceil(total / pageSize)
+  let recordsContent: ReactNode
+
+  if (loading) {
+    recordsContent = (
+      <div className='rounded-lg border'>
+        <Table className='min-w-[900px]'>
+          <TableHeader>
+            <TableRow className='bg-muted/40 hover:bg-muted/40'>
+              <TableHead className='px-4'>{t('User ID')}</TableHead>
+              <TableHead>{t('Created At')}</TableHead>
+              <TableHead>{t('Topup Amount')}</TableHead>
+              <TableHead>{t('Payment Amount')}</TableHead>
+              <TableHead>{t('Commission')}</TableHead>
+              <TableHead>{t('Rate')}</TableHead>
+              <TableHead className='px-4'>{t('Payment Method')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rebateDialogSkeletonKeys.map((key) => (
+              <TableRow key={key}>
+                <TableCell className='px-4'>
+                  <Skeleton className='h-5 w-16' />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className='h-5 w-36' />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className='h-5 w-20' />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className='h-5 w-20' />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className='h-5 w-16' />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className='h-5 w-12' />
+                </TableCell>
+                <TableCell className='px-4'>
+                  <Skeleton className='h-5 w-32' />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    )
+  } else if (records.length === 0) {
+    recordsContent = (
+      <div className='text-muted-foreground flex min-h-40 flex-col items-center justify-center py-10 text-center'>
+        <p className='text-sm font-medium'>{t('No referral records found')}</p>
+        <p className='mt-1 text-xs'>
+          {keyword
+            ? t('Try adjusting your search')
+            : t('Invited user top-ups will appear here')}
+        </p>
+      </div>
+    )
+  } else {
+    recordsContent = (
+      <div className='rounded-lg border'>
+        <Table className='min-w-[900px]'>
+          <TableHeader>
+            <TableRow className='bg-muted/40 hover:bg-muted/40'>
+              <TableHead className='px-4'>{t('User ID')}</TableHead>
+              <TableHead>{t('Created At')}</TableHead>
+              <TableHead>{t('Topup Amount')}</TableHead>
+              <TableHead>{t('Payment Amount')}</TableHead>
+              <TableHead>{t('Commission')}</TableHead>
+              <TableHead>{t('Rate')}</TableHead>
+              <TableHead className='px-4'>{t('Payment Method')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {records.map((record) => (
+              <TableRow key={record.id}>
+                <TableCell className='px-4 font-mono font-semibold'>
+                  {record.invitee_id}
+                </TableCell>
+                <TableCell className='text-muted-foreground'>
+                  {formatTimestamp(record.created_at)}
+                </TableCell>
+                <TableCell className='font-semibold'>
+                  {formatQuota(record.recharge_quota)}
+                </TableCell>
+                <TableCell>{formatNumber(record.recharge_amount)}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant='secondary'
+                    className='bg-success/10 text-success'
+                  >
+                    +{formatQuota(record.rebate_quota)}
+                  </Badge>
+                </TableCell>
+                <TableCell>{record.rebate_ratio}%</TableCell>
+                <TableCell className='max-w-48 truncate px-4 font-medium'>
+                  {getPaymentMethodName(record.payment_method, t)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    )
+  }
 
   return (
     <Dialog
@@ -76,7 +199,8 @@ export function AffiliateRebatesDialog({
           <div className='relative flex-1'>
             <Search className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
             <Input
-              placeholder={t('Search invited users or orders...')}
+              aria-label={t('Search')}
+              placeholder={t('Search user IDs or orders...')}
               value={keyword}
               onChange={(e) => handleSearch(e.target.value)}
               className='h-9 pl-10'
@@ -91,7 +215,7 @@ export function AffiliateRebatesDialog({
             ]}
             value={pageSize.toString()}
             onValueChange={(value) =>
-              value !== null && handlePageSizeChange(parseInt(value))
+              value !== null && handlePageSizeChange(Number.parseInt(value))
             }
           >
             <SelectTrigger className='h-9 w-[92px] sm:w-32'>
@@ -109,113 +233,7 @@ export function AffiliateRebatesDialog({
         </div>
 
         <ScrollArea className='max-h-[min(54vh,520px)] pr-3 sm:pr-4'>
-          {loading ? (
-            <div className='space-y-3'>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className='rounded-lg border p-3 sm:p-4'>
-                  <div className='flex items-start justify-between'>
-                    <div className='flex-1 space-y-2'>
-                      <Skeleton className='h-4 w-44' />
-                      <Skeleton className='h-3 w-32' />
-                    </div>
-                    <Skeleton className='h-5 w-16' />
-                  </div>
-                  <div className='mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4'>
-                    <Skeleton className='h-3 w-full' />
-                    <Skeleton className='h-3 w-full' />
-                    <Skeleton className='h-3 w-full' />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : records.length === 0 ? (
-            <div className='text-muted-foreground flex min-h-40 flex-col items-center justify-center py-10 text-center'>
-              <p className='text-sm font-medium'>
-                {t('No referral records found')}
-              </p>
-              <p className='mt-1 text-xs'>
-                {keyword
-                  ? t('Try adjusting your search')
-                  : t('Invited user top-ups will appear here')}
-              </p>
-            </div>
-          ) : (
-            <div className='space-y-3'>
-              {records.map((record) => (
-                <div
-                  key={record.id}
-                  className='hover:bg-muted/50 rounded-lg border p-3 transition-colors sm:p-4'
-                >
-                  <div className='flex items-start justify-between gap-2'>
-                    <div className='min-w-0 space-y-1'>
-                      <div className='flex min-w-0 items-center gap-2'>
-                        <span className='truncate text-sm font-semibold'>
-                          {record.invitee_username || t('Unknown User')}
-                        </span>
-                        <StatusBadge
-                          label={`${t('User ID')}: ${record.invitee_id}`}
-                          variant='neutral'
-                          size='sm'
-                          copyText={String(record.invitee_id)}
-                        />
-                      </div>
-                      <div className='text-muted-foreground text-xs'>
-                        {formatTimestamp(record.created_at)}
-                      </div>
-                    </div>
-                    <StatusBadge
-                      label={`+${formatQuota(record.rebate_quota)}`}
-                      variant='success'
-                      copyable={false}
-                    />
-                  </div>
-
-                  <div className='mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:grid-cols-5 sm:gap-4'>
-                    <div className='space-y-1'>
-                      <Label className='text-muted-foreground text-xs'>
-                        {t('Topup Amount')}
-                      </Label>
-                      <div className='text-sm font-semibold'>
-                        {formatQuota(record.recharge_quota)}
-                      </div>
-                    </div>
-                    <div className='space-y-1'>
-                      <Label className='text-muted-foreground text-xs'>
-                        {t('Payment Amount')}
-                      </Label>
-                      <div className='text-sm font-semibold'>
-                        {formatNumber(record.recharge_amount)}
-                      </div>
-                    </div>
-                    <div className='space-y-1'>
-                      <Label className='text-muted-foreground text-xs'>
-                        {t('Commission')}
-                      </Label>
-                      <div className='text-sm font-semibold text-green-600'>
-                        +{formatQuota(record.rebate_quota)}
-                      </div>
-                    </div>
-                    <div className='space-y-1'>
-                      <Label className='text-muted-foreground text-xs'>
-                        {t('Rate')}
-                      </Label>
-                      <div className='text-sm font-medium'>
-                        {record.rebate_ratio}%
-                      </div>
-                    </div>
-                    <div className='space-y-1'>
-                      <Label className='text-muted-foreground text-xs'>
-                        {t('Payment Method')}
-                      </Label>
-                      <div className='truncate text-sm font-medium'>
-                        {getPaymentMethodName(record.payment_method, t)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {recordsContent}
         </ScrollArea>
 
         {!loading && records.length > 0 && (
@@ -228,6 +246,7 @@ export function AffiliateRebatesDialog({
               <Button
                 variant='outline'
                 size='sm'
+                aria-label={t('Previous page')}
                 onClick={() => handlePageChange(page - 1)}
                 disabled={page <= 1}
                 className='h-8 w-8 p-0'
@@ -242,6 +261,7 @@ export function AffiliateRebatesDialog({
               <Button
                 variant='outline'
                 size='sm'
+                aria-label={t('Next page')}
                 onClick={() => handlePageChange(page + 1)}
                 disabled={page >= totalPages}
                 className='h-8 w-8 p-0'

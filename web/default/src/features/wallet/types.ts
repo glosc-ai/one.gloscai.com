@@ -272,7 +272,8 @@ export interface AffiliateRebateRecord {
   id: number
   inviter_id: number
   invitee_id: number
-  invitee_username: string
+  /** Deprecated privacy field; invitee names are not displayed. */
+  invitee_username?: string
   top_up_id: number
   trade_no: string
   recharge_quota: number

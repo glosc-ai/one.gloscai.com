@@ -81,6 +81,13 @@ export function RedemptionsTable() {
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
 
+  const statusFilter = useMemo(() => {
+    const value = columnFilters.find((filter) => filter.id === 'status')?.value
+    if (!Array.isArray(value)) return undefined
+    const first = value[0]
+    return typeof first === 'string' ? first : undefined
+  }, [columnFilters])
+
   const sortParams = useMemo(() => {
     const activeSort = sorting[0]
     if (
@@ -113,6 +120,7 @@ export function RedemptionsTable() {
       pagination.pageIndex + 1,
       pagination.pageSize,
       globalFilter,
+      statusFilter,
       sortParams,
       refreshTrigger,
     ],
@@ -121,6 +129,7 @@ export function RedemptionsTable() {
       const params = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
+        status: statusFilter,
         ...sortParams,
       }
 

@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type ColumnDef } from '@tanstack/react-table'
+import type { ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 
 import { MaskedValueDisplay } from '@/components/masked-value-display'
@@ -32,7 +32,7 @@ import { formatQuota, formatTimestampToDate } from '@/lib/format'
 
 import { REDEMPTION_FILTER_EXPIRED, REDEMPTION_STATUSES } from '../constants'
 import { isRedemptionExpired, isTimestampExpired } from '../lib'
-import { type Redemption } from '../types'
+import type { Redemption } from '../types'
 import { DataTableRowActions } from './data-table-row-actions'
 
 export function useRedemptionsColumns(): ColumnDef<Redemption>[] {
@@ -119,15 +119,15 @@ export function useRedemptionsColumns(): ColumnDef<Redemption>[] {
       filterFn: (row, id, value) => {
         const redemption = row.original
         const statusValue = row.getValue(id) as number
+        const expired = isRedemptionExpired(
+          redemption.expired_time,
+          statusValue
+        )
 
-        // Check if expired status is being filtered
-        if (value.includes(REDEMPTION_FILTER_EXPIRED)) {
-          if (isRedemptionExpired(redemption.expired_time, statusValue)) {
-            return true
-          }
+        if (expired) {
+          return value.includes(REDEMPTION_FILTER_EXPIRED)
         }
 
-        // Check regular status
         return value.includes(String(statusValue))
       },
       size: 120,
@@ -233,7 +233,7 @@ export function useRedemptionsColumns(): ColumnDef<Redemption>[] {
                   className='cursor-help'
                 />
               }
-            ></TooltipTrigger>
+            />
             <TooltipContent>
               <div className='space-y-1 text-xs'>
                 <div>

@@ -35,10 +35,11 @@ import type {
 export async function getRedemptions(
   params: GetRedemptionsParams = {}
 ): Promise<GetRedemptionsResponse> {
-  const { p = 1, page_size = 10, sort_by, sort_order } = params
+  const { p = 1, page_size = 10, status, sort_by, sort_order } = params
   const queryParams = new URLSearchParams()
   queryParams.set('p', String(p))
   queryParams.set('page_size', String(page_size))
+  if (status) queryParams.set('status', status)
   if (sort_by) queryParams.set('sort_by', sort_by)
   if (sort_order) queryParams.set('sort_order', sort_order)
   const res = await api.get(`/api/redemption/?${queryParams.toString()}`)
@@ -49,11 +50,12 @@ export async function getRedemptions(
 export async function searchRedemptions(
   params: SearchRedemptionsParams
 ): Promise<GetRedemptionsResponse> {
-  const { keyword = '', p = 1, page_size = 10, sort_by, sort_order } = params
+  const { keyword = '', p = 1, page_size = 10, status, sort_by, sort_order } = params
   const queryParams = new URLSearchParams()
   queryParams.set('keyword', keyword)
   queryParams.set('p', String(p))
   queryParams.set('page_size', String(page_size))
+  if (status) queryParams.set('status', status)
   if (sort_by) queryParams.set('sort_by', sort_by)
   if (sort_order) queryParams.set('sort_order', sort_order)
   const res = await api.get(`/api/redemption/search?${queryParams.toString()}`)

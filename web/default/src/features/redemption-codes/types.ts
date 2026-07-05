@@ -61,6 +61,7 @@ export type RedemptionSortBy =
 export interface GetRedemptionsParams {
   p?: number
   page_size?: number
+  status?: string
   sort_by?: RedemptionSortBy
   sort_order?: SortOrder
 }
@@ -80,6 +81,7 @@ export interface SearchRedemptionsParams {
   keyword?: string
   p?: number
   page_size?: number
+  status?: string
   sort_by?: RedemptionSortBy
   sort_order?: SortOrder
 }
