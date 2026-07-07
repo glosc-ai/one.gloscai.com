@@ -21,6 +21,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import type { OnChangeFn, SortingState } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
 import {
   DISABLED_ROW_DESKTOP,
@@ -32,7 +33,11 @@ import { useMediaQuery } from '@/hooks'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 
 import { getRedemptions, searchRedemptions } from '../api'
-import { REDEMPTION_STATUS, getRedemptionStatusOptions } from '../constants'
+import {
+  ERROR_MESSAGES,
+  REDEMPTION_STATUS,
+  getRedemptionStatusOptions,
+} from '../constants'
 import { isRedemptionExpired } from '../lib'
 import type { Redemption, RedemptionSortBy } from '../types'
 import { DataTableBulkActions } from './data-table-bulk-actions'
@@ -80,6 +85,11 @@ export function RedemptionsTable() {
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
+  const statusFilter =
+    (columnFilters.find((filter) => filter.id === 'status')?.value as
+      | string[]
+      | undefined) ?? []
+  const statusFilterValue = statusFilter[0] ?? ''
 
   const statusFilter = useMemo(() => {
     const value = columnFilters.find((filter) => filter.id === 'status')?.value
@@ -126,6 +136,7 @@ export function RedemptionsTable() {
     ],
     queryFn: async () => {
       const hasFilter = globalFilter?.trim()
+      const hasStatusFilter = statusFilterValue !== ''
       const params = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
@@ -133,9 +144,26 @@ export function RedemptionsTable() {
         ...sortParams,
       }
 
-      const result = hasFilter
-        ? await searchRedemptions({ ...params, keyword: globalFilter })
-        : await getRedemptions(params)
+      const result =
+        hasFilter || hasStatusFilter
+          ? await searchRedemptions({
+              ...params,
+              keyword: globalFilter,
+              status: statusFilterValue,
+            })
+          : await getRedemptions(params)
+
+      if (!result.success) {
+        toast.error(
+          result.message ||
+            t(
+              hasFilter || hasStatusFilter
+                ? ERROR_MESSAGES.SEARCH_FAILED
+                : ERROR_MESSAGES.LOAD_FAILED
+            )
+        )
+        return { items: [], total: 0 }
+      }
 
       return {
         items: result.data?.items || [],
