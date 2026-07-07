@@ -203,17 +203,18 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (*TaskSubmitRe
 		//     固定价格被视为“每秒单价”，实际额度 = 每秒单价 × 时长(秒)。
 		applyPerSecondBilling(c, info, modelName)
 
-		// 6. 将 OtherRatios 应用到基础额度
+		// 6. 将 OtherRatios 应用到基础额度（饱和转换，防止溢出成负数）
 		if !common.StringsContains(constant.TaskPricePatches, modelName) {
+			quotaWithRatios := float64(info.PriceData.Quota)
 			for _, ra := range info.PriceData.OtherRatios {
 				if ra != 1.0 {
-					info.PriceData.Quota = int(float64(info.PriceData.Quota) * ra)
+					quotaWithRatios *= ra
 				}
 			}
+			quota, clamp := common.QuotaFromFloatChecked(quotaWithRatios)
+			info.PriceData.Quota = quota
+			noteTaskQuotaClamp(info, clamp)
 		}
-		quota, clamp := common.QuotaFromFloatChecked(quotaWithRatios)
-		info.PriceData.Quota = quota
-		noteTaskQuotaClamp(info, clamp)
 	}
 
 	// 7. 预扣费（仅首次 — 重试时 info.Billing 已存在，跳过）

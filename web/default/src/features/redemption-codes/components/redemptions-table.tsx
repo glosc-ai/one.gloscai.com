@@ -85,12 +85,6 @@ export function RedemptionsTable() {
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
   })
-  const statusFilter =
-    (columnFilters.find((filter) => filter.id === 'status')?.value as
-      | string[]
-      | undefined) ?? []
-  const statusFilterValue = statusFilter[0] ?? ''
-
   const statusFilter = useMemo(() => {
     const value = columnFilters.find((filter) => filter.id === 'status')?.value
     if (!Array.isArray(value)) return undefined
@@ -136,7 +130,7 @@ export function RedemptionsTable() {
     ],
     queryFn: async () => {
       const hasFilter = globalFilter?.trim()
-      const hasStatusFilter = statusFilterValue !== ''
+      const hasStatusFilter = Boolean(statusFilter)
       const params = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
@@ -149,7 +143,7 @@ export function RedemptionsTable() {
           ? await searchRedemptions({
               ...params,
               keyword: globalFilter,
-              status: statusFilterValue,
+              status: statusFilter,
             })
           : await getRedemptions(params)
 

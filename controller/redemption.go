@@ -41,7 +41,7 @@ func SearchRedemptions(c *gin.Context) {
 		keyword,
 		pageInfo.GetStartIdx(),
 		pageInfo.GetPageSize(),
-		c.Query("status"),
+		status,
 		c.Query("sort_by"),
 		c.Query("sort_order"),
 	)

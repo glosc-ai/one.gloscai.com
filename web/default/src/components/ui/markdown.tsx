@@ -64,7 +64,8 @@ export function Markdown({
       <div
         className={cn(
           isGithubMarkdown ? 'markdown-body' : defaultMarkdownClassName,
-          isGithubMarkdown && 'wrap-anywhere',"bg-transparent!",
+          isGithubMarkdown && 'wrap-anywhere',
+          'bg-transparent!',
           className
         )}
         {...(isGithubMarkdown ? { 'data-theme': githubTheme } : {})}
@@ -74,7 +75,7 @@ export function Markdown({
           rehypePlugins={[rehypeRaw]}
           components={{
             // 自定义组件渲染（可选）
-            a: ({ node, ...props }) => (
+            a: ({ node: _node, ref: _ref, ...props }) => (
               <a {...props} target='_blank' rel='noopener noreferrer' />
             ),
           }}
