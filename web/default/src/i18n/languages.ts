@@ -24,26 +24,60 @@ export const INTERFACE_LANGUAGE_OPTIONS = [
   { code: 'ru', label: 'Русский' },
   { code: 'ja', label: '日本語' },
   { code: 'vi', label: 'Tiếng Việt' },
-  { code: 'zhTW', label: '繁體中文' }
+  { code: 'zhTW', label: '繁體中文' },
 ] as const
 
 export type InterfaceLanguageCode =
   (typeof INTERFACE_LANGUAGE_OPTIONS)[number]['code']
 
-export function normalizeInterfaceLanguage(value?: string | null): string {
-  if (!value) return 'en'
+export function getSupportedInterfaceLanguage(
+  value?: string | null
+): InterfaceLanguageCode | undefined {
+  if (!value) return undefined
 
-  var normalized = value.trim().replace(/_/g, '-').toLowerCase()
-  if (value === 'zh-TW' || value === 'zh-HK' || value === 'zh-MO' || value === 'zhTW') {
-    normalized = 'zhTW'
-  }
-  if (value === 'zh-CN' || value === 'zh-Hans' || value === "zhCN") {
-    normalized = 'zhCN'
+  const normalized = value.trim().replaceAll('_', '-').toLowerCase()
+  if (!normalized) return undefined
+
+  const exactLanguage = INTERFACE_LANGUAGE_OPTIONS.find(
+    (lang) => lang.code.toLowerCase() === normalized
+  )
+  if (exactLanguage) return exactLanguage.code
+
+  if (
+    normalized === 'zh' ||
+    normalized === 'zh-cn' ||
+    normalized === 'zh-sg' ||
+    normalized.startsWith('zh-hans')
+  ) {
+    return 'zhCN'
   }
 
-  return INTERFACE_LANGUAGE_OPTIONS.some((lang) => lang.code === normalized)
-    ? normalized
-    : 'en'
+  if (
+    normalized === 'zh-tw' ||
+    normalized === 'zh-hk' ||
+    normalized === 'zh-mo' ||
+    normalized.startsWith('zh-hant')
+  ) {
+    return 'zhTW'
+  }
+
+  const baseLanguage = normalized.split('-')[0]
+  switch (baseLanguage) {
+    case 'en':
+    case 'fr':
+    case 'ru':
+    case 'ja':
+    case 'vi':
+      return baseLanguage
+    default:
+      return undefined
+  }
+}
+
+export function normalizeInterfaceLanguage(
+  value?: string | null
+): InterfaceLanguageCode {
+  return getSupportedInterfaceLanguage(value) ?? 'en'
 }
 
 /**
