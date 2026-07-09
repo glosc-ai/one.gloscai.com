@@ -1,6 +1,7 @@
 package volcengine
 
 import (
+	"bytes"
 	"encoding/base64"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/dto"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,6 +67,47 @@ func TestAgentPlanRequestURLUsesPlanBase(t *testing.T) {
 			assert.Equal(t, test.want, got)
 		})
 	}
+}
+
+func TestAgentPlanDoRequestUsesAgentPlanURL(t *testing.T) {
+	service.InitHttpClient()
+
+	called := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		assert.Equal(t, "/api/plan/v3/chat/completions", r.URL.Path)
+		assert.Equal(t, "Bearer agent-key", r.Header.Get("Authorization"))
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"model":"doubao-seed-2.0-pro"}`, string(body))
+
+		w.Header().Set("Content-Type", "application/json")
+		_, err = w.Write([]byte(`{"id":"chatcmpl-test","object":"chat.completion","choices":[]}`))
+		require.NoError(t, err)
+	}))
+	defer upstream.Close()
+
+	adaptor := &AgentPlanAdaptor{}
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	resp, err := adaptor.DoRequest(c, &relaycommon.RelayInfo{
+		ChannelMeta: &relaycommon.ChannelMeta{
+			ChannelBaseUrl: upstream.URL,
+			ApiKey:         "agent-key",
+		},
+		RelayMode: relayconstant.RelayModeChatCompletions,
+	}, bytes.NewBufferString(`{"model":"doubao-seed-2.0-pro"}`))
+
+	require.NoError(t, err)
+	require.True(t, called)
+	httpResp, ok := resp.(*http.Response)
+	require.True(t, ok)
+	defer httpResp.Body.Close()
+	assert.Equal(t, http.StatusOK, httpResp.StatusCode)
 }
 
 func TestAgentPlanSetupRequestHeader(t *testing.T) {

@@ -155,6 +155,14 @@ func (a *AgentPlanAdaptor) ConvertAudioRequest(c *gin.Context, info *relaycommon
 	return bytes.NewReader(data), nil
 }
 
+func (a *AgentPlanAdaptor) ConvertRerankRequest(c *gin.Context, relayMode int, request dto.RerankRequest) (any, error) {
+	return request, nil
+}
+
+func (a *AgentPlanAdaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, requestBody io.Reader) (any, error) {
+	return channel.DoApiRequest(a, c, info, requestBody)
+}
+
 func (a *AgentPlanAdaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NewAPIError) {
 	if info.RelayMode == relayconstant.RelayModeAudioSpeech {
 		format := c.GetString(contextKeyResponseFormat)
