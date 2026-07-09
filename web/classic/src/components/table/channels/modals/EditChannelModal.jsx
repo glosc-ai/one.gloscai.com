@@ -132,7 +132,7 @@ const DEPRECATED_DOUBAO_CODING_PLAN_BASE_URL = 'doubao-coding-plan';
 
 // 支持并且已适配通过接口获取模型列表的渠道类型
 const MODEL_FETCHABLE_TYPES = new Set([
-  1, 4, 14, 34, 17, 26, 27, 24, 47, 25, 20, 23, 31, 40, 42, 48, 43, 58,
+  1, 4, 14, 34, 17, 26, 27, 24, 47, 25, 20, 23, 31, 40, 42, 48, 43, 58, 60,
 ]);
 
 function type2secretPrompt(type) {
@@ -158,6 +158,8 @@ function type2secretPrompt(type) {
       return '请输入 JSON 格式的 OAuth 凭据（必须包含 access_token 和 account_id）';
     case 58:
       return '请输入通过 Copilot 设备登录流程获取的 GitHub OAuth Token，或 JSON：{"github_token":"..."}';
+    case 60:
+      return '请输入 Agent Plan 专属 API Key';
     default:
       return '请输入渠道对应的鉴权密钥';
   }
@@ -679,6 +681,13 @@ const EditChannelModal = (props) => {
             base_url: 'https://ark.cn-beijing.volces.com',
           }));
           break;
+        case 60:
+          localModels = getChannelModels(value);
+          setInputs((prevInputs) => ({
+            ...prevInputs,
+            base_url: 'https://ark.cn-beijing.volces.com/api/plan/v3',
+          }));
+          break;
         default:
           localModels = getChannelModels(value);
           break;
@@ -972,11 +981,14 @@ const EditChannelModal = (props) => {
       }
 
       if (
-        data.type === 45 &&
+        (data.type === 45 || data.type === 60) &&
         (!data.base_url ||
           (typeof data.base_url === 'string' && data.base_url.trim() === ''))
       ) {
-        data.base_url = 'https://ark.cn-beijing.volces.com';
+        data.base_url =
+          data.type === 60
+            ? 'https://ark.cn-beijing.volces.com/api/plan/v3'
+            : 'https://ark.cn-beijing.volces.com';
       }
 
       initialBaseUrlRef.current = data.base_url || '';

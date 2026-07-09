@@ -155,6 +155,17 @@ export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
       models: 'Models exposed by this channel',
     },
   },
+  60: {
+    id: 60,
+    name: CHANNEL_TYPES[60],
+    icon: 'volcengine',
+    defaultBaseUrl: 'https://ark.cn-beijing.volces.com/api/plan/v3',
+    hints: {
+      baseUrl: 'Default: https://ark.cn-beijing.volces.com/api/plan/v3',
+      key: 'Agent Plan API Key',
+      models: 'Use Agent Plan model IDs',
+    },
+  },
 }
 
 /**

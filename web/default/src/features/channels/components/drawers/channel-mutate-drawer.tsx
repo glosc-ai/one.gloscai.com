@@ -1182,11 +1182,16 @@ export function ChannelMutateDrawer({
   useEffect(() => {
     if (isEditing) return // Don't auto-set defaults when editing
 
-    // Type 45 (VolcEngine) - set default base_url
-    if (currentType === 45) {
+    // Type 45 (VolcEngine) and 60 (VolcEngine Agent Plan) - set default base_url
+    if (currentType === 45 || currentType === 60) {
       const currentBaseUrlValue = form.getValues('base_url')
       if (!currentBaseUrlValue || currentBaseUrlValue === '') {
-        form.setValue('base_url', 'https://ark.cn-beijing.volces.com')
+        form.setValue(
+          'base_url',
+          currentType === 60
+            ? 'https://ark.cn-beijing.volces.com/api/plan/v3'
+            : 'https://ark.cn-beijing.volces.com'
+        )
       }
     }
 

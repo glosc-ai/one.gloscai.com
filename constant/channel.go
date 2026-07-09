@@ -57,6 +57,7 @@ const (
 	ChannelTypeCodex          = 57
 	ChannelTypeGitHubCopilot  = 58
 	ChannelTypeAdvancedCustom = 59
+	ChannelTypeVolcEnginePlan = 60
 	ChannelTypeDummy          // this one is only for count, do not add any channel after this
 
 )
@@ -122,6 +123,7 @@ var ChannelBaseURLs = []string{
 	"https://chatgpt.com",                       //57
 	"https://api.individual.githubcopilot.com", //58
 	"", //59
+	"https://ark.cn-beijing.volces.com/api/plan/v3", //60
 }
 
 var ChannelTypeNames = map[int]string{
@@ -181,6 +183,7 @@ var ChannelTypeNames = map[int]string{
 	ChannelTypeCodex:          "Codex",
 	ChannelTypeGitHubCopilot:  "GitHubCopilot",
 	ChannelTypeAdvancedCustom: "Advanced Custom",
+	ChannelTypeVolcEnginePlan: "VolcEngine Agent Plan",
 }
 
 func GetChannelTypeName(channelType int) string {

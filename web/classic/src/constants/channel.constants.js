@@ -140,6 +140,11 @@ export const CHANNEL_OPTIONS = [
     label: '字节火山方舟、豆包通用',
   },
   {
+    value: 60,
+    color: 'blue',
+    label: '火山 Agent Plan',
+  },
+  {
     value: 48,
     color: 'blue',
     label: 'xAI',
@@ -198,7 +203,7 @@ export const CHANNEL_OPTIONS = [
 
 // Channel types that support upstream model list fetching in UI.
 export const MODEL_FETCHABLE_CHANNEL_TYPES = new Set([
-  1, 4, 14, 34, 17, 26, 27, 24, 47, 25, 20, 23, 31, 40, 42, 48, 43, 58,
+  1, 4, 14, 34, 17, 26, 27, 24, 47, 25, 20, 23, 31, 40, 42, 48, 43, 58, 60,
 ]);
 
 export const MODEL_TABLE_PAGE_SIZE = 10;

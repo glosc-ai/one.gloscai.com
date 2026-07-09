@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -1178,7 +1179,11 @@ func FetchModels(c *gin.Context) {
 
 	// remove line breaks and extra spaces for single-line key formats.
 	key := strings.TrimSpace(req.Key)
-	if req.Type != constant.ChannelTypeGitHubCopilot {
+	if req.Type == constant.ChannelTypeVolcEnginePlan {
+		if !strings.HasPrefix(key, "{") {
+			key = strings.TrimSpace(strings.Split(key, "\n")[0])
+		}
+	} else if req.Type != constant.ChannelTypeGitHubCopilot {
 		key = strings.Split(key, "\n")[0]
 	}
 
@@ -1238,8 +1243,24 @@ func FetchModels(c *gin.Context) {
 		return
 	}
 
+	if req.Type == constant.ChannelTypeVolcEnginePlan {
+		models, err := fetchVolcEngineAgentPlanModelIDs(key, "")
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": fmt.Sprintf("获取VolcEngine Agent Plan模型失败: %s", err.Error()),
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    models,
+		})
+		return
+	}
+
 	client := &http.Client{}
-	url := fmt.Sprintf("%s/v1/models", baseURL)
+	url := buildFetchModelsURL(req.Type, baseURL)
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -1260,15 +1281,20 @@ func FetchModels(c *gin.Context) {
 		})
 		return
 	}
+	defer response.Body.Close()
 	//check status code
 	if response.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
+		message := fmt.Sprintf("Failed to fetch models: status code %d", response.StatusCode)
+		if detail := strings.TrimSpace(string(body)); detail != "" {
+			message = fmt.Sprintf("%s: %s", message, detail)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to fetch models",
+			"message": message,
 		})
 		return
 	}
-	defer response.Body.Close()
 
 	var result struct {
 		Data []struct {
@@ -1276,7 +1302,7 @@ func FetchModels(c *gin.Context) {
 		} `json:"data"`
 	}
 
-	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
+	if err := common.DecodeJson(response.Body, &result); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),

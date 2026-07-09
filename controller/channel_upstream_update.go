@@ -1,11 +1,18 @@
 package controller
 
 import (
+	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +23,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/relay/channel/gemini"
 	"github.com/QuantumNous/new-api/relay/channel/ollama"
+	"github.com/QuantumNous/new-api/relay/channel/volcengine"
 	"github.com/QuantumNous/new-api/service"
 
 	"github.com/gin-gonic/gin"
@@ -133,6 +141,182 @@ func intersectModelNames(base []string, allowed []string) []string {
 		_, ok := allowedSet[model]
 		return ok
 	})
+}
+
+func buildFetchModelsURL(channelType int, baseURL string) string {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	switch channelType {
+	case constant.ChannelTypeAli:
+		return fmt.Sprintf("%s/compatible-mode/v1/models", baseURL)
+	case constant.ChannelTypeZhipu_v4:
+		if plan, ok := constant.ChannelSpecialBases[baseURL]; ok && plan.OpenAIBaseURL != "" {
+			return fmt.Sprintf("%s/models", strings.TrimRight(plan.OpenAIBaseURL, "/"))
+		}
+		return fmt.Sprintf("%s/api/paas/v4/models", baseURL)
+	case constant.ChannelTypeVolcEngine:
+		if plan, ok := constant.ChannelSpecialBases[baseURL]; ok && plan.OpenAIBaseURL != "" {
+			return fmt.Sprintf("%s/v1/models", strings.TrimRight(plan.OpenAIBaseURL, "/"))
+		}
+		return fmt.Sprintf("%s/v1/models", baseURL)
+	case constant.ChannelTypeMoonshot:
+		if plan, ok := constant.ChannelSpecialBases[baseURL]; ok && plan.OpenAIBaseURL != "" {
+			return fmt.Sprintf("%s/models", strings.TrimRight(plan.OpenAIBaseURL, "/"))
+		}
+		return fmt.Sprintf("%s/v1/models", baseURL)
+	default:
+		return fmt.Sprintf("%s/v1/models", baseURL)
+	}
+}
+
+func staticVolcEnginePlanModelIDs() []string {
+	return append([]string(nil), volcengine.AgentPlanModelList...)
+}
+
+type volcEngineOpenAPIModelListResponse struct {
+	ResponseMetadata struct {
+		Error *struct {
+			Code    string `json:"Code"`
+			Message string `json:"Message"`
+		} `json:"Error,omitempty"`
+	} `json:"ResponseMetadata"`
+	Result struct {
+		Datas  []volcEngineOpenAPIModelItem `json:"Datas"`
+		Data   []volcEngineOpenAPIModelItem `json:"Data"`
+		Models []volcEngineOpenAPIModelItem `json:"Models"`
+	} `json:"Result"`
+	Datas []volcEngineOpenAPIModelItem `json:"Datas"`
+}
+
+type volcEngineOpenAPIModelItem struct {
+	ModelID string `json:"ModelID"`
+}
+
+func fetchVolcEngineAgentPlanModelIDs(rawKey, proxy string) ([]string, error) {
+	credential := volcengine.ParseAgentPlanCredential(rawKey)
+	if credential.AccessKey == "" || credential.SecretKey == "" {
+		return staticVolcEnginePlanModelIDs(), nil
+	}
+
+	body, err := common.Marshal(map[string]any{})
+	if err != nil {
+		return nil, err
+	}
+	requestURL := fmt.Sprintf("%s/?Action=ListArkAgentPlanModel&Version=2024-01-01", credential.OpenAPIURL())
+	req, err := http.NewRequest(http.MethodPost, requestURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	signVolcEngineOpenAPIRequest(req, body, credential.AccessKey, credential.SecretKey, credential.OpenAPIRegion(), volcengine.AgentPlanOpenAPIServiceName)
+
+	client, err := service.NewProxyHttpClient(proxy)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("status code: %d: %s", resp.StatusCode, strings.TrimSpace(string(responseBody)))
+	}
+
+	var result volcEngineOpenAPIModelListResponse
+	if err := common.Unmarshal(responseBody, &result); err != nil {
+		return nil, err
+	}
+	if result.ResponseMetadata.Error != nil {
+		return nil, fmt.Errorf("%s: %s", result.ResponseMetadata.Error.Code, result.ResponseMetadata.Error.Message)
+	}
+
+	items := result.Result.Datas
+	if len(items) == 0 {
+		items = result.Result.Data
+	}
+	if len(items) == 0 {
+		items = result.Result.Models
+	}
+	if len(items) == 0 {
+		items = result.Datas
+	}
+
+	models := lo.Map(items, func(item volcEngineOpenAPIModelItem, _ int) string {
+		return item.ModelID
+	})
+	return normalizeModelNames(models), nil
+}
+
+func signVolcEngineOpenAPIRequest(req *http.Request, body []byte, accessKey, secretKey, region, serviceName string) {
+	payloadHash := sha256.Sum256(body)
+	hexPayloadHash := hex.EncodeToString(payloadHash[:])
+
+	now := time.Now().UTC()
+	xDate := now.Format("20060102T150405Z")
+	shortDate := now.Format("20060102")
+
+	req.Header.Set("Host", req.URL.Host)
+	req.Header.Set("X-Date", xDate)
+	req.Header.Set("X-Content-Sha256", hexPayloadHash)
+
+	query := req.URL.Query()
+	queryKeys := make([]string, 0, len(query))
+	for key := range query {
+		queryKeys = append(queryKeys, key)
+	}
+	sort.Strings(queryKeys)
+	queryParts := make([]string, 0)
+	for _, key := range queryKeys {
+		values := query[key]
+		sort.Strings(values)
+		for _, value := range values {
+			queryParts = append(queryParts, fmt.Sprintf("%s=%s", url.QueryEscape(key), url.QueryEscape(value)))
+		}
+	}
+
+	signedHeaders := "host;x-content-sha256;x-date"
+	canonicalHeaders := fmt.Sprintf("host:%s\nx-content-sha256:%s\nx-date:%s\n", req.URL.Host, hexPayloadHash, xDate)
+	canonicalRequest := fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s",
+		req.Method,
+		req.URL.EscapedPath(),
+		strings.Join(queryParts, "&"),
+		canonicalHeaders,
+		signedHeaders,
+		hexPayloadHash,
+	)
+
+	hashedCanonicalRequest := sha256.Sum256([]byte(canonicalRequest))
+	credentialScope := fmt.Sprintf("%s/%s/%s/request", shortDate, region, serviceName)
+	stringToSign := fmt.Sprintf("HMAC-SHA256\n%s\n%s\n%s",
+		xDate,
+		credentialScope,
+		hex.EncodeToString(hashedCanonicalRequest[:]),
+	)
+
+	kDate := hmacSHA256([]byte(secretKey), []byte(shortDate))
+	kRegion := hmacSHA256(kDate, []byte(region))
+	kService := hmacSHA256(kRegion, []byte(serviceName))
+	kSigning := hmacSHA256(kService, []byte("request"))
+	signature := hex.EncodeToString(hmacSHA256(kSigning, []byte(stringToSign)))
+
+	req.Header.Set("Authorization", fmt.Sprintf(
+		"HMAC-SHA256 Credential=%s/%s, SignedHeaders=%s, Signature=%s",
+		accessKey,
+		credentialScope,
+		signedHeaders,
+		signature,
+	))
+}
+
+func hmacSHA256(key []byte, data []byte) []byte {
+	h := hmac.New(sha256.New, key)
+	h.Write(data)
+	return h.Sum(nil)
 }
 
 func applySelectedModelChanges(originModels []string, addModels []string, removeModels []string) []string {
@@ -300,30 +484,12 @@ func fetchChannelUpstreamModelIDs(channel *model.Channel) ([]string, error) {
 		return normalizeModelNames(models), nil
 	}
 
-	var url string
-	switch channel.Type {
-	case constant.ChannelTypeAli:
-		url = fmt.Sprintf("%s/compatible-mode/v1/models", baseURL)
-	case constant.ChannelTypeZhipu_v4:
-		if plan, ok := constant.ChannelSpecialBases[baseURL]; ok && plan.OpenAIBaseURL != "" {
-			url = fmt.Sprintf("%s/models", plan.OpenAIBaseURL)
-		} else {
-			url = fmt.Sprintf("%s/api/paas/v4/models", baseURL)
+	if channel.Type == constant.ChannelTypeVolcEnginePlan {
+		key, _, apiErr := channel.GetNextEnabledKey()
+		if apiErr != nil {
+			return nil, fmt.Errorf("获取渠道密钥失败: %w", apiErr)
 		}
-	case constant.ChannelTypeVolcEngine:
-		if plan, ok := constant.ChannelSpecialBases[baseURL]; ok && plan.OpenAIBaseURL != "" {
-			url = fmt.Sprintf("%s/v1/models", plan.OpenAIBaseURL)
-		} else {
-			url = fmt.Sprintf("%s/v1/models", baseURL)
-		}
-	case constant.ChannelTypeMoonshot:
-		if plan, ok := constant.ChannelSpecialBases[baseURL]; ok && plan.OpenAIBaseURL != "" {
-			url = fmt.Sprintf("%s/models", plan.OpenAIBaseURL)
-		} else {
-			url = fmt.Sprintf("%s/v1/models", baseURL)
-		}
-	default:
-		url = fmt.Sprintf("%s/v1/models", baseURL)
+		return fetchVolcEngineAgentPlanModelIDs(key, channel.GetSetting().Proxy)
 	}
 
 	key, _, apiErr := channel.GetNextEnabledKey()
@@ -337,7 +503,7 @@ func fetchChannelUpstreamModelIDs(channel *model.Channel) ([]string, error) {
 		return nil, err
 	}
 
-	body, err := GetResponseBody(http.MethodGet, url, channel, headers)
+	body, err := GetResponseBody(http.MethodGet, buildFetchModelsURL(channel.Type, baseURL), channel, headers)
 	if err != nil {
 		return nil, err
 	}
