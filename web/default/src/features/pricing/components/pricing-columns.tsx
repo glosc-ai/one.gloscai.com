@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type ColumnDef } from '@tanstack/react-table'
+import type { ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -26,6 +26,11 @@ import {
 } from '@/components/data-table'
 import { GroupBadge } from '@/components/group-badge'
 import { StatusBadge } from '@/components/status-badge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { getLobeIcon } from '@/lib/lobe-icon'
 
 import { DEFAULT_TOKEN_UNIT, QUOTA_TYPE_VALUES } from '../constants'
@@ -82,14 +87,24 @@ export function usePricingColumns(
         const model = row.original
         const modelIconKey = model.icon || model.vendor_icon
         const modelIcon = modelIconKey ? getLobeIcon(modelIconKey, 14) : null
+        const displayName = model.display_name || model.model_name
 
         return (
           <div className='flex max-w-full min-w-0 items-center gap-2'>
             {modelIcon}
             <div className='flex min-w-0 items-center gap-1.5'>
-              <span className='truncate font-mono text-sm font-medium'>
-                {model.model_name}
-              </span>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <span className='min-w-0 truncate font-mono text-sm font-medium' />
+                  }
+                >
+                  {displayName}
+                </TooltipTrigger>
+                <TooltipContent className='max-w-sm font-mono text-xs break-all'>
+                  {displayName}
+                </TooltipContent>
+              </Tooltip>
               <ModelDiscountBadge model={model} />
             </div>
           </div>

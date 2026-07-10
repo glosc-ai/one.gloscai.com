@@ -23,6 +23,7 @@ import type {
   GetModelsResponse,
   GetModelResponse,
   BatchUpdateModelVendorResponse,
+  AutoMatchModelVendorsResponse,
   BatchUpdateModelTagsResponse,
   BatchUpdateModelCategoriesResponse,
   GetVendorsResponse,
@@ -116,6 +117,18 @@ export async function batchUpdateModelVendor(data: {
   icon?: string
 }): Promise<BatchUpdateModelVendorResponse> {
   const res = await api.put('/api/models/batch_vendor', data)
+  return res.data
+}
+
+/**
+ * Match vendors from model names
+ */
+export async function autoMatchModelVendors(
+  overwriteExisting: boolean
+): Promise<AutoMatchModelVendorsResponse> {
+  const res = await api.post('/api/models/auto_match_vendor', {
+    overwrite_existing: overwriteExisting,
+  })
   return res.data
 }
 

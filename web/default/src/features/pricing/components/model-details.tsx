@@ -81,11 +81,11 @@ import type {
   PricingModel,
   TokenUnit,
 } from '../types'
-import { DynamicPricingBreakdown } from './dynamic-pricing-breakdown'
 import { DiscountedPrice } from './discounted-price'
-import { ModelDiscountBadge } from './model-discount-badge'
+import { DynamicPricingBreakdown } from './dynamic-pricing-breakdown'
 import { ModelDetailsApi } from './model-details-api'
 import { ModelDetailsPerformance } from './model-details-performance'
+import { ModelDiscountBadge } from './model-discount-badge'
 
 // ----------------------------------------------------------------------------
 // Local UI helpers
@@ -536,6 +536,10 @@ function ModelBackendDetailsSection(props: { model: PricingModel }) {
 function ModelHeader(props: { model: PricingModel }) {
   const { t } = useTranslation()
   const model = props.model
+  const hasVendorAlias = Boolean(model.vendor_alias?.trim())
+  const headerMetadataName = hasVendorAlias
+    ? model.model_name
+    : model.vendor_name
   const modelIconKey = model.icon || model.vendor_icon
   const modelIcon = modelIconKey ? getLobeIcon(modelIconKey, 20) : null
   const description = model.description || model.vendor_description || null
@@ -549,7 +553,7 @@ function ModelHeader(props: { model: PricingModel }) {
       <div className='flex items-center gap-2.5'>
         {modelIcon}
         <h1 className='font-mono text-xl font-bold tracking-tight sm:text-2xl'>
-          {model.model_name}
+          {model.display_name || model.model_name}
         </h1>
         <ModelDiscountBadge model={model} className='mt-0.5' />
         <CopyButton
@@ -562,10 +566,19 @@ function ModelHeader(props: { model: PricingModel }) {
         />
       </div>
       <div className='mt-1 flex flex-wrap items-center gap-1.5 text-xs'>
-        {model.vendor_name && (
-          <span className='text-muted-foreground'>{model.vendor_name}</span>
+        {headerMetadataName && (
+          <span
+            className={cn(
+              'text-muted-foreground break-all',
+              hasVendorAlias && 'font-mono'
+            )}
+          >
+            {headerMetadataName}
+          </span>
         )}
-        <span className='text-muted-foreground/30'>·</span>
+        {headerMetadataName && (
+          <span className='text-muted-foreground/30'>·</span>
+        )}
         <span className='text-muted-foreground/70'>
           {model.quota_type === QUOTA_TYPE_VALUES.TOKEN
             ? t('Token-based')
@@ -1321,7 +1334,9 @@ export function ModelDetailsDrawer(props: ModelDetailsDrawerProps) {
         )}
       >
         <SheetHeader className='sr-only'>
-          <SheetTitle>{props.model.model_name}</SheetTitle>
+          <SheetTitle>
+            {props.model.display_name || props.model.model_name}
+          </SheetTitle>
           <SheetDescription>{t('Model details')}</SheetDescription>
         </SheetHeader>
         <div className='flex-1 overflow-y-auto px-4 pt-11 pb-5 sm:px-6 sm:pt-12 sm:pb-6'>
@@ -1377,11 +1392,9 @@ export function ModelDetails() {
             ))}
           </div>
           <div className='mt-6 space-y-3'>
-            {['section-1', 'section-2', 'section-3', 'section-4'].map(
-              (key) => (
-                <Skeleton key={key} className='h-24 w-full' />
-              )
-            )}
+            {['section-1', 'section-2', 'section-3', 'section-4'].map((key) => (
+              <Skeleton key={key} className='h-24 w-full' />
+            ))}
           </div>
         </div>
       </PublicLayout>

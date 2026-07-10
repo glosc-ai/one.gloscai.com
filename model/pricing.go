@@ -44,6 +44,7 @@ type Pricing struct {
 type PricingVendor struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
+	Alias       string `json:"alias,omitempty"`
 	Description string `json:"description,omitempty"`
 	Icon        string `json:"icon,omitempty"`
 }
@@ -234,6 +235,7 @@ func updatePricing() {
 		vendorsList = append(vendorsList, PricingVendor{
 			ID:          v.Id,
 			Name:        v.Name,
+			Alias:       v.Alias,
 			Description: v.Description,
 			Icon:        v.Icon,
 		})

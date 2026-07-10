@@ -16,8 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useSearch } from '@tanstack/react-router'
-import { useMemo, useCallback, useState } from 'react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
+import { useMemo, useCallback } from 'react'
 
 import {
   FILTER_ALL,
@@ -43,7 +43,7 @@ type FilterState = {
   group?: string
   quotaType?: string
   endpointType?: string
-  discount?: string
+  discount?: 'discounting'
   tag?: string
   category?: string
   tokenUnit?: TokenUnit
@@ -60,7 +60,8 @@ function normalizeViewMode(value: unknown): ViewMode {
 
 export function useFilters(models: PricingModel[]) {
   const search = useSearch({ from: '/pricing/' })
-  const [filterState, setFilterState] = useState<FilterState>(() => ({
+  const navigate = useNavigate({ from: '/pricing/' })
+  const filterState: FilterState = {
     search: search.search,
     sort: search.sort,
     vendor: search.vendor,
@@ -73,7 +74,7 @@ export function useFilters(models: PricingModel[]) {
     tokenUnit: search.tokenUnit,
     view: search.view,
     rechargePrice: search.rechargePrice,
-  }))
+  }
 
   const searchInput = filterState.search || ''
   const sortBy = filterState.sort || DEFAULT_SORT_OPTION
@@ -89,20 +90,20 @@ export function useFilters(models: PricingModel[]) {
   const viewMode = normalizeViewMode(filterState.view)
   const showRechargePrice = filterState.rechargePrice === true
 
-  const updateFilters = useCallback((updates: Record<string, unknown>) => {
-    setFilterState((prev) => {
-      const next: Record<string, unknown> = { ...prev, ...updates }
-      for (const key of Object.keys(next)) {
-        if (next[key] === undefined || next[key] === null) {
-          delete next[key]
-        }
-      }
-      return next as FilterState
-    })
-  }, [])
+  const updateFilters = useCallback(
+    (updates: Partial<FilterState>, replace = false) => {
+      void navigate({
+        to: '/pricing',
+        replace,
+        resetScroll: false,
+        search: (previous) => ({ ...previous, ...updates }),
+      })
+    },
+    [navigate]
+  )
 
   const setSearchInput = useCallback(
-    (v: string) => updateFilters({ search: v || undefined }),
+    (v: string) => updateFilters({ search: v || undefined }, true),
     [updateFilters]
   )
   const setSortBy = useCallback(
@@ -133,7 +134,10 @@ export function useFilters(models: PricingModel[]) {
   const setDiscountFilter = useCallback(
     (v: string) =>
       updateFilters({
-        discount: v === DISCOUNT_FILTERS.ALL ? undefined : v,
+        discount:
+          v === DISCOUNT_FILTERS.DISCOUNTING
+            ? DISCOUNT_FILTERS.DISCOUNTING
+            : undefined,
       }),
     [updateFilters]
   )
@@ -251,7 +255,7 @@ export function useFilters(models: PricingModel[]) {
   }, [updateFilters])
 
   const clearSearch = useCallback(() => {
-    updateFilters({ search: undefined })
+    updateFilters({ search: undefined }, true)
   }, [updateFilters])
 
   return {

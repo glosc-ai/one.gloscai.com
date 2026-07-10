@@ -407,6 +407,10 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			vendorRoute.GET("/", controller.GetAllVendors)
 			vendorRoute.GET("/search", controller.SearchVendors)
+			vendorRoute.POST("/auto_add", controller.AutoAddVendors)
+			vendorRoute.PUT("/batch_status", controller.BatchUpdateVendorStatus)
+			vendorRoute.POST("/batch_delete", controller.BatchDeleteVendors)
+			vendorRoute.POST("/remove_unused", controller.RemoveUnusedVendors)
 			vendorRoute.GET("/:id", controller.GetVendorMeta)
 			vendorRoute.POST("/", controller.CreateVendorMeta)
 			vendorRoute.PUT("/", controller.UpdateVendorMeta)
@@ -424,6 +428,7 @@ func SetApiRouter(router *gin.Engine) {
 			modelsRoute.GET("/search", controller.SearchModelsMeta)
 			modelsRoute.GET("/:id", controller.GetModelMeta)
 			modelsRoute.POST("/", controller.CreateModelMeta)
+			modelsRoute.POST("/auto_match_vendor", controller.AutoMatchModelVendors)
 			modelsRoute.PUT("/batch_vendor", controller.BatchUpdateModelVendor)
 			modelsRoute.PUT("/batch_tags", controller.BatchUpdateModelCategoryTags)
 			modelsRoute.PUT("/batch_categories", controller.BatchUpdateModelCategories)

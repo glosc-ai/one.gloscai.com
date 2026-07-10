@@ -44,10 +44,12 @@ export function filterBySearch(
   return models.filter(
     (m) =>
       m.model_name?.toLowerCase().includes(lowerQuery) ||
+      m.display_name?.toLowerCase().includes(lowerQuery) ||
       m.description?.toLowerCase().includes(lowerQuery) ||
       m.tags?.toLowerCase().includes(lowerQuery) ||
       m.categories?.toLowerCase().includes(lowerQuery) ||
-      m.vendor_name?.toLowerCase().includes(lowerQuery)
+      m.vendor_name?.toLowerCase().includes(lowerQuery) ||
+      m.vendor_alias?.toLowerCase().includes(lowerQuery)
   )
 }
 
@@ -125,7 +127,9 @@ function getModelDiscountScore(model: PricingModel): number {
 }
 
 function compareByName(a: PricingModel, b: PricingModel): number {
-  return (a.model_name || '').localeCompare(b.model_name || '')
+  const aName = a.display_name || a.model_name || ''
+  const bName = b.display_name || b.model_name || ''
+  return aName.localeCompare(bName)
 }
 
 /**
@@ -215,7 +219,7 @@ export function extractAllTags(models: PricingModel[]): string[] {
     }
   })
 
-  return Array.from(tagSet).sort((a, b) => a.localeCompare(b))
+  return [...tagSet].sort((a, b) => a.localeCompare(b))
 }
 
 /**
@@ -236,7 +240,7 @@ export function extractAllCategories(models: PricingModel[]): string[] {
     }
   })
 
-  return Array.from(categoryMap.values()).sort((a, b) => a.localeCompare(b))
+  return [...categoryMap.values()].sort((a, b) => a.localeCompare(b))
 }
 
 /**

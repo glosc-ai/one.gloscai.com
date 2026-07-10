@@ -47,6 +47,16 @@ type batchUpdateVendorResponse struct {
 	} `json:"data"`
 }
 
+type autoMatchVendorResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		UpdatedCount   int64 `json:"updated_count"`
+		UnmatchedCount int64 `json:"unmatched_count"`
+		AmbiguousCount int64 `json:"ambiguous_count"`
+		SkippedCount   int64 `json:"skipped_count"`
+	} `json:"data"`
+}
+
 type getModelsMetaResponse struct {
 	Success bool `json:"success"`
 	Data    struct {
@@ -489,6 +499,148 @@ func TestBatchUpdateModelVendor(t *testing.T) {
 		require.Zero(t, updatedModel.VendorID)
 		require.Empty(t, updatedModel.Icon)
 	}
+}
+
+func TestAutoMatchModelVendors(t *testing.T) {
+	db := setupModelListControllerTestDB(t)
+	openAI := model.Vendor{Name: "OpenAI", Icon: "OpenAI.Color", Status: 1}
+	anthropic := model.Vendor{Name: "Anthropic", Icon: "Anthropic", Status: 1}
+	moonshot := model.Vendor{Name: "Moonshot", Alias: "月之暗面", Icon: "Moonshot", Status: 1}
+	manual := model.Vendor{Name: "Manual", Status: 1}
+	disabled := model.Vendor{Name: "Disabled", Status: 1}
+	for _, vendor := range []*model.Vendor{&openAI, &anthropic, &moonshot, &manual, &disabled} {
+		require.NoError(t, vendor.Insert())
+	}
+	require.NoError(t, db.Model(&model.Vendor{}).Where("id = ?", disabled.Id).Update("status", 0).Error)
+
+	models := []model.Model{
+		{ModelName: "openai/gpt-5-pro", Icon: "openai-model", Status: 1},
+		{ModelName: "Anthropic/claude-3.5-haiku", Icon: "anthropic-model", Status: 1},
+		{ModelName: "moonshotai/kimi-k2", Icon: "moonshot-model", Status: 1},
+		{ModelName: "unknown/model", Icon: "unknown-model", Status: 1},
+		{ModelName: "gpt-5-without-namespace", Icon: "no-namespace-model", Status: 1},
+		{ModelName: "disabled/model", Icon: "disabled-model", Status: 1},
+		{ModelName: "openai/null-vendor", Icon: "null-vendor-model", Status: 1},
+		{ModelName: "openai/manually-assigned", VendorID: manual.Id, Icon: "manual-model", Status: 1},
+	}
+	for index := range models {
+		require.NoError(t, models[index].Insert())
+	}
+	require.NoError(t, db.Model(&model.Model{}).Where("id = ?", models[6].Id).UpdateColumn("vendor_id", nil).Error)
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/models/auto_match_vendor", nil)
+
+	AutoMatchModelVendors(ctx)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var payload autoMatchVendorResponse
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	assert.Equal(t, int64(4), payload.Data.UpdatedCount)
+	assert.Equal(t, int64(3), payload.Data.UnmatchedCount)
+	assert.Zero(t, payload.Data.AmbiguousCount)
+	assert.Equal(t, int64(1), payload.Data.SkippedCount)
+
+	var persisted []model.Model
+	require.NoError(t, db.Order("id ASC").Find(&persisted).Error)
+	require.Len(t, persisted, len(models))
+	assert.Equal(t, openAI.Id, persisted[0].VendorID)
+	assert.Equal(t, anthropic.Id, persisted[1].VendorID)
+	assert.Equal(t, moonshot.Id, persisted[2].VendorID)
+	assert.Zero(t, persisted[3].VendorID)
+	assert.Zero(t, persisted[4].VendorID)
+	assert.Zero(t, persisted[5].VendorID)
+	assert.Equal(t, openAI.Id, persisted[6].VendorID)
+	assert.Equal(t, manual.Id, persisted[7].VendorID)
+	assert.Equal(t, openAI.Icon, persisted[0].Icon)
+	assert.Equal(t, anthropic.Icon, persisted[1].Icon)
+	assert.Equal(t, moonshot.Icon, persisted[2].Icon)
+	assert.Equal(t, models[3].Icon, persisted[3].Icon)
+	assert.Equal(t, models[4].Icon, persisted[4].Icon)
+	assert.Equal(t, models[5].Icon, persisted[5].Icon)
+	assert.Equal(t, openAI.Icon, persisted[6].Icon)
+	assert.Equal(t, models[7].Icon, persisted[7].Icon)
+
+	foundMoonshot := false
+	for _, pricingVendor := range model.GetVendors() {
+		if pricingVendor.ID != moonshot.Id {
+			continue
+		}
+		foundMoonshot = true
+		assert.Equal(t, "月之暗面", pricingVendor.Alias)
+	}
+	assert.True(t, foundMoonshot)
+}
+
+func TestAutoMatchModelVendorsOverwritesExistingAssignments(t *testing.T) {
+	db := setupModelListControllerTestDB(t)
+	openAI := model.Vendor{Name: "OpenAI", Icon: "OpenAI.Color", Status: 1}
+	anthropic := model.Vendor{Name: "Anthropic", Icon: "Anthropic", Status: 1}
+	manual := model.Vendor{Name: "Manual", Status: 1}
+	ambiguous := model.Vendor{Name: "Ambiguous", Status: 1}
+	ambiguousNormalized := model.Vendor{Name: "Ambi-guous", Status: 1}
+	for _, vendor := range []*model.Vendor{&openAI, &anthropic, &manual, &ambiguous, &ambiguousNormalized} {
+		require.NoError(t, vendor.Insert())
+	}
+
+	models := []model.Model{
+		{ModelName: "openai/reassigned", VendorID: manual.Id, Icon: "reassigned-icon", Status: 1},
+		{ModelName: "anthropic/already-correct", VendorID: anthropic.Id, Icon: anthropic.Icon, Status: 1},
+		{ModelName: "anthropic/stale-icon", VendorID: anthropic.Id, Icon: "stale-icon", Status: 1},
+		{ModelName: "anthropic/unassigned", Icon: "unassigned-icon", Status: 1},
+		{ModelName: "openai/null-unassigned", Icon: "null-unassigned-icon", Status: 1},
+		{ModelName: "unknown/preserved", VendorID: manual.Id, Icon: "unknown-icon", Status: 1},
+		{ModelName: "ambiguous/preserved", VendorID: manual.Id, Icon: "ambiguous-icon", Status: 1},
+	}
+	for index := range models {
+		require.NoError(t, models[index].Insert())
+	}
+	require.NoError(t, db.Model(&model.Model{}).Where("id = ?", models[4].Id).UpdateColumn("vendor_id", nil).Error)
+	const unchangedUpdatedTime int64 = 1
+	require.NoError(t, db.Model(&model.Model{}).
+		Where("id IN ?", []int{models[1].Id, models[5].Id, models[6].Id}).
+		Update("updated_time", unchangedUpdatedTime).Error)
+
+	body, err := common.Marshal(gin.H{"overwrite_existing": true})
+	require.NoError(t, err)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/models/auto_match_vendor", bytes.NewReader(body))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	AutoMatchModelVendors(ctx)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var payload autoMatchVendorResponse
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &payload))
+	require.True(t, payload.Success)
+	assert.Equal(t, int64(4), payload.Data.UpdatedCount)
+	assert.Equal(t, int64(1), payload.Data.UnmatchedCount)
+	assert.Equal(t, int64(1), payload.Data.AmbiguousCount)
+	assert.Equal(t, int64(1), payload.Data.SkippedCount)
+
+	var persisted []model.Model
+	require.NoError(t, db.Order("id ASC").Find(&persisted).Error)
+	require.Len(t, persisted, len(models))
+	assert.Equal(t, openAI.Id, persisted[0].VendorID)
+	assert.Equal(t, anthropic.Id, persisted[1].VendorID)
+	assert.Equal(t, anthropic.Id, persisted[2].VendorID)
+	assert.Equal(t, anthropic.Id, persisted[3].VendorID)
+	assert.Equal(t, openAI.Id, persisted[4].VendorID)
+	assert.Equal(t, manual.Id, persisted[5].VendorID)
+	assert.Equal(t, manual.Id, persisted[6].VendorID)
+	assert.Equal(t, unchangedUpdatedTime, persisted[1].UpdatedTime)
+	assert.Equal(t, unchangedUpdatedTime, persisted[5].UpdatedTime)
+	assert.Equal(t, unchangedUpdatedTime, persisted[6].UpdatedTime)
+	assert.Equal(t, openAI.Icon, persisted[0].Icon)
+	assert.Equal(t, anthropic.Icon, persisted[1].Icon)
+	assert.Equal(t, anthropic.Icon, persisted[2].Icon)
+	assert.Equal(t, anthropic.Icon, persisted[3].Icon)
+	assert.Equal(t, openAI.Icon, persisted[4].Icon)
+	assert.Equal(t, models[5].Icon, persisted[5].Icon)
+	assert.Equal(t, models[6].Icon, persisted[6].Icon)
 }
 
 func TestBatchUpdateModelCategoryTags(t *testing.T) {

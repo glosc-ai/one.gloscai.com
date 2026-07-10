@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
   MoreHorizontal,
@@ -23,9 +24,12 @@ import {
   List,
   Building2,
   AlertCircle,
+  WandSparkles,
 } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -35,12 +39,18 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Switch } from '@/components/ui/switch'
 
+import { handleAutoMatchModelVendors } from '../lib'
 import { useModels } from './models-provider'
 
 export function ModelsPrimaryButtons() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const { setOpen, setCurrentRow } = useModels()
+  const [showAutoMatchConfirm, setShowAutoMatchConfirm] = useState(false)
+  const [overwriteExisting, setOverwriteExisting] = useState(false)
+  const [isAutoMatching, setIsAutoMatching] = useState(false)
 
   const handleCreateModel = () => {
     setCurrentRow(null)
@@ -63,51 +73,103 @@ export function ModelsPrimaryButtons() {
     setOpen('create-vendor') // Will be a separate vendors management dialog
   }
 
+  const handleAutoMatchDialogOpenChange = (open: boolean) => {
+    setShowAutoMatchConfirm(open)
+    if (!open) {
+      setOverwriteExisting(false)
+    }
+  }
+
+  const handleAutoMatch = async () => {
+    setIsAutoMatching(true)
+    try {
+      await handleAutoMatchModelVendors(overwriteExisting, queryClient, () => {
+        handleAutoMatchDialogOpenChange(false)
+      })
+    } finally {
+      setIsAutoMatching(false)
+    }
+  }
+
   return (
-    <div className='flex items-center gap-2'>
-      {/* Create Model */}
-      <Button onClick={handleCreateModel} size='sm'>
-        <Plus className='h-4 w-4' />
-        {t('Add Model')}
-      </Button>
+    <>
+      <div className='flex items-center gap-2'>
+        {/* Create Model */}
+        <Button onClick={handleCreateModel} size='sm'>
+          <Plus className='h-4 w-4' />
+          {t('Add Model')}
+        </Button>
 
-      {/* More Actions */}
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant='outline' size='sm' />}>
-          <MoreHorizontal className='h-4 w-4' />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align='end' className='w-56'>
-          <DropdownMenuItem onClick={handleMissingModels}>
-            {t('Missing Models')}
-            <DropdownMenuShortcut>
-              <AlertCircle className='h-4 w-4' />
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
+        {/* More Actions */}
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant='outline' size='sm' />}>
+            <MoreHorizontal className='h-4 w-4' />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align='end' className='w-56'>
+            <DropdownMenuItem onClick={handleMissingModels}>
+              {t('Missing Models')}
+              <DropdownMenuShortcut>
+                <AlertCircle className='h-4 w-4' />
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={handleSync}>
-            {t('Sync Upstream')}
-            <DropdownMenuShortcut>
-              <RefreshCw className='h-4 w-4' />
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSync}>
+              {t('Sync Upstream')}
+              <DropdownMenuShortcut>
+                <RefreshCw className='h-4 w-4' />
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
 
-          <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setShowAutoMatchConfirm(true)}
+              disabled={isAutoMatching}
+            >
+              {t('Auto Match Vendors')}
+              <DropdownMenuShortcut>
+                <WandSparkles className='h-4 w-4' />
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={handlePrefillGroups}>
-            {t('Prefill Groups')}
-            <DropdownMenuShortcut>
-              <List className='h-4 w-4' />
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
+            <DropdownMenuSeparator />
 
-          <DropdownMenuItem onClick={handleManageVendors}>
-            {t('Manage Vendors')}
-            <DropdownMenuShortcut>
-              <Building2 className='h-4 w-4' />
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+            <DropdownMenuItem onClick={handlePrefillGroups}>
+              {t('Prefill Groups')}
+              <DropdownMenuShortcut>
+                <List className='h-4 w-4' />
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem onClick={handleManageVendors}>
+              {t('Manage Vendors')}
+              <DropdownMenuShortcut>
+                <Building2 className='h-4 w-4' />
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <ConfirmDialog
+        open={showAutoMatchConfirm}
+        onOpenChange={handleAutoMatchDialogOpenChange}
+        title={t('Auto Match Vendors')}
+        desc={t(
+          'Only models with a clear vendor match will be updated with the vendor and its icon. Unmatched or ambiguous models will not be changed.'
+        )}
+        handleConfirm={handleAutoMatch}
+        isLoading={isAutoMatching}
+        confirmText={t('Match Vendors')}
+      >
+        <label className='flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm'>
+          <span>{t('Also update models with an existing vendor')}</span>
+          <Switch
+            checked={overwriteExisting}
+            onCheckedChange={setOverwriteExisting}
+            disabled={isAutoMatching}
+            aria-label={t('Also update models with an existing vendor')}
+          />
+        </label>
+      </ConfirmDialog>
+    </>
   )
 }

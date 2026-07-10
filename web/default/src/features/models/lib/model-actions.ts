@@ -16,13 +16,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type QueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import i18next from 'i18next'
 import { toast } from 'sonner'
+
 import {
   updateModelStatus,
   deleteModel as deleteModelAPI,
   batchUpdateModelVendor,
+  autoMatchModelVendors,
   batchUpdateModelTags,
   batchUpdateModelCategories,
 } from '../api'
@@ -317,6 +319,53 @@ export async function handleBatchUpdateModelVendor(
   } catch (error: unknown) {
     toast.error(
       (error as Error)?.message || i18next.t('Failed to update model vendors')
+    )
+  }
+}
+
+/**
+ * Automatically assign vendors based on model names
+ */
+export async function handleAutoMatchModelVendors(
+  overwriteExisting: boolean,
+  queryClient?: QueryClient,
+  onSuccess?: () => void
+): Promise<void> {
+  try {
+    const response = await autoMatchModelVendors(overwriteExisting)
+
+    if (!response.success) {
+      toast.error(
+        response.message || i18next.t('Failed to auto-match model vendors')
+      )
+      return
+    }
+
+    const updatedCount = response.data?.updated_count ?? 0
+    const unmatchedCount = response.data?.unmatched_count ?? 0
+    const ambiguousCount = response.data?.ambiguous_count ?? 0
+    const skippedCount = response.data?.skipped_count ?? 0
+
+    toast.success(
+      i18next.t(
+        'Vendor matching complete: {{updated}} matched, {{unmatched}} unmatched, {{ambiguous}} ambiguous, {{skipped}} skipped.',
+        {
+          updated: updatedCount,
+          unmatched: unmatchedCount,
+          ambiguous: ambiguousCount,
+          skipped: skippedCount,
+        }
+      )
+    )
+    await Promise.all([
+      queryClient?.invalidateQueries({ queryKey: modelsQueryKeys.lists() }),
+      queryClient?.invalidateQueries({ queryKey: ['pricing'] }),
+    ])
+    onSuccess?.()
+  } catch (error: unknown) {
+    toast.error(
+      (error as Error)?.message ||
+        i18next.t('Failed to auto-match model vendors')
     )
   }
 }

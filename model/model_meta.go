@@ -1,8 +1,10 @@
 package model
 
 import (
+	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/QuantumNous/new-api/common"
 
@@ -130,6 +132,179 @@ func BatchUpdateModelVendor(ids []int, vendorID int, icon *string) (int64, error
 	}
 	result := DB.Model(&Model{}).Where("id IN ?", ids).Updates(updates)
 	return result.RowsAffected, result.Error
+}
+
+type AutoMatchModelVendorsResult struct {
+	UpdatedCount   int64 `json:"updated_count"`
+	UnmatchedCount int64 `json:"unmatched_count"`
+	AmbiguousCount int64 `json:"ambiguous_count"`
+	SkippedCount   int64 `json:"skipped_count"`
+}
+
+const ambiguousVendorMatch = -1
+
+var vendorNamespaceAliases = map[string]string{
+	"moonshotai": "moonshot",
+}
+
+func normalizeVendorMatchKey(value string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return unicode.ToLower(r)
+		}
+		return -1
+	}, strings.TrimSpace(value))
+}
+
+func buildVendorMatchIndexes(vendors []Vendor) (map[string]int, map[string]int) {
+	nameIndex := make(map[string]int, len(vendors))
+	aliasIndex := make(map[string]int, len(vendors))
+	for _, vendor := range vendors {
+		nameKey := normalizeVendorMatchKey(vendor.Name)
+		if nameKey != "" {
+			if existingID, exists := nameIndex[nameKey]; exists && existingID != vendor.Id {
+				nameIndex[nameKey] = ambiguousVendorMatch
+			} else {
+				nameIndex[nameKey] = vendor.Id
+			}
+		}
+
+		aliasKey := normalizeVendorMatchKey(vendor.Alias)
+		if aliasKey == "" {
+			continue
+		}
+		if existingID, exists := aliasIndex[aliasKey]; exists && existingID != vendor.Id {
+			aliasIndex[aliasKey] = ambiguousVendorMatch
+		} else {
+			aliasIndex[aliasKey] = vendor.Id
+		}
+	}
+	return nameIndex, aliasIndex
+}
+
+func matchModelVendor(modelName string, nameIndex map[string]int, aliasIndex map[string]int) (int, bool) {
+	trimmedName := strings.TrimSpace(modelName)
+	if trimmedName == "" {
+		return 0, false
+	}
+
+	prefix, _, found := strings.Cut(trimmedName, "/")
+	if !found {
+		return 0, false
+	}
+	namespace := normalizeVendorMatchKey(prefix)
+	if namespace == "" {
+		return 0, false
+	}
+	return matchVendorNamespace(namespace, nameIndex, aliasIndex)
+}
+
+func matchVendorNamespace(namespace string, nameIndex map[string]int, aliasIndex map[string]int) (int, bool) {
+	if vendorID, exists := nameIndex[namespace]; exists {
+		return vendorID, vendorID == ambiguousVendorMatch
+	}
+	if vendorID, exists := aliasIndex[namespace]; exists {
+		return vendorID, vendorID == ambiguousVendorMatch
+	}
+
+	canonicalKey, exists := vendorNamespaceAliases[namespace]
+	if !exists {
+		return 0, false
+	}
+	if vendorID, exists := nameIndex[canonicalKey]; exists {
+		return vendorID, vendorID == ambiguousVendorMatch
+	}
+	if vendorID, exists := aliasIndex[canonicalKey]; exists {
+		return vendorID, vendorID == ambiguousVendorMatch
+	}
+	return 0, false
+}
+
+func updateAutoMatchedModelVendors(tx *gorm.DB, ids []int, vendorID int, vendorIcon string, updatedTime int64, overwriteExisting bool) (int64, error) {
+	const batchSize = 500
+	var updatedCount int64
+	for start := 0; start < len(ids); start += batchSize {
+		end := min(start+batchSize, len(ids))
+		models := tx.Model(&Model{}).Where("id IN ?", ids[start:end])
+		if overwriteExisting {
+			models = models.Where("(vendor_id <> ? OR vendor_id IS NULL OR icon <> ? OR icon IS NULL)", vendorID, vendorIcon)
+		} else {
+			models = models.Where("(vendor_id = ? OR vendor_id IS NULL)", 0)
+		}
+		updateResult := models.
+			Updates(map[string]interface{}{
+				"vendor_id":    vendorID,
+				"icon":         vendorIcon,
+				"updated_time": updatedTime,
+			})
+		if updateResult.Error != nil {
+			return updatedCount, updateResult.Error
+		}
+		updatedCount += updateResult.RowsAffected
+	}
+	return updatedCount, nil
+}
+
+// AutoMatchModelVendors assigns vendors and their icons from model namespaces.
+// Existing assignments are only rematched when overwriteExisting is true.
+func AutoMatchModelVendors(overwriteExisting bool) (AutoMatchModelVendorsResult, error) {
+	result := AutoMatchModelVendorsResult{}
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		var vendors []Vendor
+		if err := tx.Where("status = ?", 1).Order("id ASC").Find(&vendors).Error; err != nil {
+			return err
+		}
+		nameIndex, aliasIndex := buildVendorMatchIndexes(vendors)
+		vendorsByID := make(map[int]Vendor, len(vendors))
+		for _, vendor := range vendors {
+			vendorsByID[vendor.Id] = vendor
+		}
+
+		var models []Model
+		if err := tx.Select("id", "model_name", "vendor_id", "icon").Order("id ASC").Find(&models).Error; err != nil {
+			return err
+		}
+
+		assignments := make(map[int][]int)
+		for _, modelMeta := range models {
+			if modelMeta.VendorID != 0 && !overwriteExisting {
+				result.SkippedCount++
+				continue
+			}
+			vendorID, ambiguous := matchModelVendor(modelMeta.ModelName, nameIndex, aliasIndex)
+			if ambiguous {
+				result.AmbiguousCount++
+				continue
+			}
+			if vendorID == 0 {
+				result.UnmatchedCount++
+				continue
+			}
+			matchedVendor := vendorsByID[vendorID]
+			if modelMeta.VendorID == vendorID && modelMeta.Icon == matchedVendor.Icon {
+				result.SkippedCount++
+				continue
+			}
+			assignments[vendorID] = append(assignments[vendorID], modelMeta.Id)
+		}
+
+		vendorIDs := make([]int, 0, len(assignments))
+		for vendorID := range assignments {
+			vendorIDs = append(vendorIDs, vendorID)
+		}
+		sort.Ints(vendorIDs)
+
+		now := common.GetTimestamp()
+		for _, vendorID := range vendorIDs {
+			updatedCount, err := updateAutoMatchedModelVendors(tx, assignments[vendorID], vendorID, vendorsByID[vendorID].Icon, now, overwriteExisting)
+			if err != nil {
+				return err
+			}
+			result.UpdatedCount += updatedCount
+		}
+		return nil
+	})
+	return result, err
 }
 
 func BatchUpdateModelCategoryTags(ids []int, categoryTags []string) (int64, error) {

@@ -63,6 +63,7 @@ export interface Model {
 export interface Vendor {
   id: number
   name: string
+  alias?: string
   description?: string
   icon?: string
   status: number
@@ -155,6 +156,17 @@ export interface BatchUpdateModelVendorResponse {
   message?: string
   data?: {
     updated_count?: number
+  }
+}
+
+export interface AutoMatchModelVendorsResponse {
+  success: boolean
+  message?: string
+  data?: {
+    updated_count: number
+    unmatched_count: number
+    ambiguous_count: number
+    skipped_count: number
   }
 }
 
@@ -304,6 +316,7 @@ export type ModelFormValues = z.infer<typeof modelFormSchema>
 export const vendorFormSchema = z.object({
   id: z.number().optional(),
   name: z.string().min(1, 'Vendor name is required'),
+  alias: z.string().default(''),
   description: z.string().default(''),
   icon: z.string().default(''),
   status: z.number().default(1),

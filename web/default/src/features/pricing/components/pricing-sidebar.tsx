@@ -179,7 +179,7 @@ export function PricingSidebar(props: PricingSidebarProps) {
     ...props.vendors
       .map((vendor) => ({
         value: vendor.name,
-        label: vendor.name,
+        label: vendor.alias?.trim() || vendor.name,
         count: countBy(
           props.models,
           (model) => model.vendor_name === vendor.name

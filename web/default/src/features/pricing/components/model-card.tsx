@@ -17,10 +17,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { ChevronRight, Copy } from 'lucide-react'
-import { memo } from 'react'
+import { memo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { StatusBadge } from '@/components/status-badge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { getLobeIcon } from '@/lib/lobe-icon'
 import { cn } from '@/lib/utils'
@@ -67,7 +72,8 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
   const endpoints = props.model.supported_endpoint_types || []
   const modelIconKey = props.model.icon || props.model.vendor_icon
   const modelIcon = modelIconKey ? getLobeIcon(modelIconKey, 28) : null
-  const initial = props.model.model_name?.charAt(0).toUpperCase() || '?'
+  const displayName = props.model.display_name || props.model.model_name
+  const initial = displayName?.charAt(0).toUpperCase() || '?'
   const isDynamicPricing =
     props.model.billing_mode === 'tiered_expr' &&
     Boolean(props.model.billing_expr)
@@ -102,6 +108,163 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
     Math.max(endpoints.length - 2, 0) +
     Math.max(tags.length - 2, 0)
 
+  let pricingSummary: ReactNode
+  if (dynamicSummary?.isSpecialExpression) {
+    pricingSummary = (
+      <span className='min-w-0'>
+        <span className='text-amber-700 dark:text-amber-300'>
+          {t('Special billing expression')}
+        </span>
+        <code className='text-muted-foreground/70 mt-0.5 line-clamp-1 block font-mono text-[11px] break-all'>
+          {dynamicSummary.rawExpression}
+        </code>
+      </span>
+    )
+  } else if (dynamicSummary && dynamicSummary.primaryEntries.length > 0) {
+    pricingSummary = (
+      <>
+        {dynamicSummary.primaryEntries.map((entry) => (
+          <span
+            key={entry.key}
+            className='text-muted-foreground whitespace-nowrap'
+          >
+            {t(entry.shortLabel)}{' '}
+            <DiscountedPrice
+              original={
+                originalDynamicSummary?.entries.find(
+                  (item) => item.key === entry.key
+                )?.formatted ?? entry.formatted
+              }
+              discounted={entry.formatted}
+              discountedEnabled={discountEnabled}
+              adjustmentType={adjustmentType}
+              className='font-mono font-semibold'
+              discountedClassName='text-foreground'
+            />
+            /{tokenUnitLabel}
+          </span>
+        ))}
+      </>
+    )
+  } else if (dynamicSummary) {
+    pricingSummary = (
+      <span className='text-muted-foreground text-xs'>
+        {t('Dynamic Pricing')}
+      </span>
+    )
+  } else if (isTokenBased) {
+    pricingSummary = (
+      <>
+        <span className='text-muted-foreground whitespace-nowrap'>
+          {t('Input')}{' '}
+          <DiscountedPrice
+            original={formatPrice(
+              props.model,
+              'input',
+              tokenUnit,
+              showRechargePrice,
+              priceRate,
+              usdExchangeRate,
+              false
+            )}
+            discounted={formatPrice(
+              props.model,
+              'input',
+              tokenUnit,
+              showRechargePrice,
+              priceRate,
+              usdExchangeRate
+            )}
+            discountedEnabled={discountEnabled}
+            adjustmentType={adjustmentType}
+            className='font-mono font-semibold'
+            discountedClassName='text-foreground'
+          />
+          /{tokenUnitLabel}
+        </span>
+        <span className='text-muted-foreground whitespace-nowrap'>
+          {t('Output')}{' '}
+          <DiscountedPrice
+            original={formatPrice(
+              props.model,
+              'output',
+              tokenUnit,
+              showRechargePrice,
+              priceRate,
+              usdExchangeRate,
+              false
+            )}
+            discounted={formatPrice(
+              props.model,
+              'output',
+              tokenUnit,
+              showRechargePrice,
+              priceRate,
+              usdExchangeRate
+            )}
+            discountedEnabled={discountEnabled}
+            adjustmentType={adjustmentType}
+            className='font-mono font-semibold'
+            discountedClassName='text-foreground'
+          />
+          /{tokenUnitLabel}
+        </span>
+        {hasCachedPrice && (
+          <span className='text-muted-foreground/60 whitespace-nowrap'>
+            {t('Cached')}{' '}
+            <DiscountedPrice
+              original={formatPrice(
+                props.model,
+                'cache',
+                tokenUnit,
+                showRechargePrice,
+                priceRate,
+                usdExchangeRate,
+                false
+              )}
+              discounted={formatPrice(
+                props.model,
+                'cache',
+                tokenUnit,
+                showRechargePrice,
+                priceRate,
+                usdExchangeRate
+              )}
+              discountedEnabled={discountEnabled}
+              adjustmentType={adjustmentType}
+              className='font-mono'
+            />
+          </span>
+        )}
+      </>
+    )
+  } else {
+    pricingSummary = (
+      <span className='text-muted-foreground whitespace-nowrap'>
+        <DiscountedPrice
+          original={formatRequestPrice(
+            props.model,
+            showRechargePrice,
+            priceRate,
+            usdExchangeRate,
+            false
+          )}
+          discounted={formatRequestPrice(
+            props.model,
+            showRechargePrice,
+            priceRate,
+            usdExchangeRate
+          )}
+          discountedEnabled={discountEnabled}
+          adjustmentType={adjustmentType}
+          className='font-mono font-semibold'
+          discountedClassName='text-foreground'
+        />{' '}
+        / {t('request')}
+      </span>
+    )
+  }
+
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation()
     copyToClipboard(props.model.model_name || '')
@@ -126,159 +289,22 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
           </div>
           <div className='min-w-0'>
             <div className='flex min-w-0 items-center gap-1.5'>
-              <h3 className='text-foreground truncate font-mono text-[15px] leading-tight font-bold'>
-                {props.model.model_name}
-              </h3>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <h3 className='text-foreground min-w-0 truncate font-mono text-[15px] leading-tight font-bold' />
+                  }
+                >
+                  {displayName}
+                </TooltipTrigger>
+                <TooltipContent className='max-w-sm font-mono text-xs break-all'>
+                  {displayName}
+                </TooltipContent>
+              </Tooltip>
               <ModelDiscountBadge model={props.model} />
             </div>
             <div className='mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs sm:mt-1 sm:gap-x-3'>
-              {dynamicSummary ? (
-                dynamicSummary.isSpecialExpression ? (
-                  <span className='min-w-0'>
-                    <span className='text-amber-700 dark:text-amber-300'>
-                      {t('Special billing expression')}
-                    </span>
-                    <code className='text-muted-foreground/70 mt-0.5 line-clamp-1 block font-mono text-[11px] break-all'>
-                      {dynamicSummary.rawExpression}
-                    </code>
-                  </span>
-                ) : dynamicSummary.primaryEntries.length > 0 ? (
-                  <>
-                    {dynamicSummary.primaryEntries.map((entry) => (
-                      <span
-                        key={entry.key}
-                        className='text-muted-foreground whitespace-nowrap'
-                      >
-                        {t(entry.shortLabel)}{' '}
-                        <DiscountedPrice
-                          original={
-                            originalDynamicSummary?.entries.find(
-                              (item) => item.key === entry.key
-                            )?.formatted ?? entry.formatted
-                          }
-                          discounted={entry.formatted}
-                          discountedEnabled={discountEnabled}
-                          adjustmentType={adjustmentType}
-                          className='font-mono font-semibold'
-                          discountedClassName='text-foreground'
-                        />
-                        /{tokenUnitLabel}
-                      </span>
-                    ))}
-                  </>
-                ) : (
-                  <span className='text-muted-foreground text-xs'>
-                    {t('Dynamic Pricing')}
-                  </span>
-                )
-              ) : isTokenBased ? (
-                <>
-                  <span className='text-muted-foreground whitespace-nowrap'>
-                    {t('Input')}{' '}
-                    <DiscountedPrice
-                      original={formatPrice(
-                        props.model,
-                        'input',
-                        tokenUnit,
-                        showRechargePrice,
-                        priceRate,
-                        usdExchangeRate,
-                        false
-                      )}
-                      discounted={formatPrice(
-                        props.model,
-                        'input',
-                        tokenUnit,
-                        showRechargePrice,
-                        priceRate,
-                        usdExchangeRate
-                      )}
-                      discountedEnabled={discountEnabled}
-                      adjustmentType={adjustmentType}
-                      className='font-mono font-semibold'
-                      discountedClassName='text-foreground'
-                    />
-                    /{tokenUnitLabel}
-                  </span>
-                  <span className='text-muted-foreground whitespace-nowrap'>
-                    {t('Output')}{' '}
-                    <DiscountedPrice
-                      original={formatPrice(
-                        props.model,
-                        'output',
-                        tokenUnit,
-                        showRechargePrice,
-                        priceRate,
-                        usdExchangeRate,
-                        false
-                      )}
-                      discounted={formatPrice(
-                        props.model,
-                        'output',
-                        tokenUnit,
-                        showRechargePrice,
-                        priceRate,
-                        usdExchangeRate
-                      )}
-                      discountedEnabled={discountEnabled}
-                      adjustmentType={adjustmentType}
-                      className='font-mono font-semibold'
-                      discountedClassName='text-foreground'
-                    />
-                    /{tokenUnitLabel}
-                  </span>
-                  {hasCachedPrice && (
-                    <span className='text-muted-foreground/60 whitespace-nowrap'>
-                      {t('Cached')}{' '}
-                      <DiscountedPrice
-                        original={formatPrice(
-                          props.model,
-                          'cache',
-                          tokenUnit,
-                          showRechargePrice,
-                          priceRate,
-                          usdExchangeRate,
-                          false
-                        )}
-                        discounted={formatPrice(
-                          props.model,
-                          'cache',
-                          tokenUnit,
-                          showRechargePrice,
-                          priceRate,
-                          usdExchangeRate
-                        )}
-                        discountedEnabled={discountEnabled}
-                        adjustmentType={adjustmentType}
-                        className='font-mono'
-                      />
-                    </span>
-                  )}
-                </>
-              ) : (
-                <span className='text-muted-foreground whitespace-nowrap'>
-                  <DiscountedPrice
-                    original={formatRequestPrice(
-                      props.model,
-                      showRechargePrice,
-                      priceRate,
-                      usdExchangeRate,
-                      false
-                    )}
-                    discounted={formatRequestPrice(
-                      props.model,
-                      showRechargePrice,
-                      priceRate,
-                      usdExchangeRate
-                    )}
-                    discountedEnabled={discountEnabled}
-                    adjustmentType={adjustmentType}
-                    className='font-mono font-semibold'
-                    discountedClassName='text-foreground'
-                  />{' '}
-                  / {t('request')}
-                </span>
-              )}
+              {pricingSummary}
             </div>
           </div>
         </div>

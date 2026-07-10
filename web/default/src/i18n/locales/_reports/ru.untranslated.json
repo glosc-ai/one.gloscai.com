@@ -2,5 +2,14 @@
   "failed": "failed",
   "Midjourney": "Midjourney",
   "MidjourneyPlus": "MidjourneyPlus",
-  "Upgrade plaintext SMTP connection with STARTTLS before authentication": "Upgrade plaintext SMTP connection with STARTTLS before authentication"
+  "Upgrade plaintext SMTP connection with STARTTLS before authentication": "Upgrade plaintext SMTP connection with STARTTLS before authentication",
+  "An alternative name for matching": "An alternative name for matching",
+  "Optional alternative name used for matching during upstream sync": "Optional alternative name used for matching during upstream sync",
+  "Are you sure you want to delete vendor \"{{name}}\"? This action cannot be undone.": "Are you sure you want to delete vendor \"{{name}}\"? This action cannot be undone.",
+  "Delete Vendor": "Delete Vendor",
+  "Search by name, alias or description...": "Search by name, alias or description...",
+  "Vendor created successfully": "Vendor created successfully",
+  "Vendor Management": "Vendor Management",
+  "Vendor Name": "Vendor Name",
+  "Vendor updated successfully": "Vendor updated successfully"
 }

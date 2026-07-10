@@ -21,6 +21,7 @@ import {
   AudioLines,
   Bot,
   Box,
+  Building2,
   Clapperboard,
   CreditCard,
   FileText,
@@ -167,6 +168,11 @@ export function useSidebarData(): SidebarData {
             title: t('Models'),
             url: '/models/metadata',
             icon: Box,
+          },
+          {
+            title: t('Vendor Management'),
+            url: '/vendors',
+            icon: Building2,
           },
           {
             title: t('Users'),

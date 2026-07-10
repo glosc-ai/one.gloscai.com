@@ -4,37 +4,52 @@ import (
 	"strings"
 )
 
-// 简化的供应商映射规则
-var defaultVendorRules = map[string]string{
-	"gpt":      "OpenAI",
-	"dall-e":   "OpenAI",
-	"whisper":  "OpenAI",
-	"o1":       "OpenAI",
-	"o3":       "OpenAI",
-	"claude":   "Anthropic",
-	"gemini":   "Google",
-	"moonshot": "Moonshot",
-	"kimi":     "Moonshot",
-	"chatglm":  "智谱",
-	"glm-":     "智谱",
-	"qwen":     "阿里巴巴",
-	"deepseek": "DeepSeek",
-	"abab":     "MiniMax",
-	"ernie":    "百度",
-	"spark":    "讯飞",
-	"hunyuan":  "腾讯",
-	"command":  "Cohere",
-	"@cf/":     "Cloudflare",
-	"360":      "360",
-	"yi":       "零一万物",
-	"jina":     "Jina",
-	"mistral":  "Mistral",
-	"grok":     "xAI",
-	"llama":    "Meta",
-	"doubao":   "字节跳动",
-	"kling":    "快手",
-	"jimeng":   "即梦",
-	"vidu":     "Vidu",
+type defaultVendorRule struct {
+	Pattern    string
+	VendorName string
+}
+
+// Keep the rules ordered so overlapping model families are resolved consistently.
+var defaultVendorRules = []defaultVendorRule{
+	{Pattern: "gpt", VendorName: "OpenAI"},
+	{Pattern: "dall-e", VendorName: "OpenAI"},
+	{Pattern: "whisper", VendorName: "OpenAI"},
+	{Pattern: "o1", VendorName: "OpenAI"},
+	{Pattern: "o3", VendorName: "OpenAI"},
+	{Pattern: "claude", VendorName: "Anthropic"},
+	{Pattern: "gemini", VendorName: "Google"},
+	{Pattern: "moonshot", VendorName: "Moonshot"},
+	{Pattern: "kimi", VendorName: "Moonshot"},
+	{Pattern: "chatglm", VendorName: "智谱"},
+	{Pattern: "glm-", VendorName: "智谱"},
+	{Pattern: "qwen", VendorName: "阿里巴巴"},
+	{Pattern: "deepseek", VendorName: "DeepSeek"},
+	{Pattern: "abab", VendorName: "MiniMax"},
+	{Pattern: "ernie", VendorName: "百度"},
+	{Pattern: "spark", VendorName: "讯飞"},
+	{Pattern: "hunyuan", VendorName: "腾讯"},
+	{Pattern: "command", VendorName: "Cohere"},
+	{Pattern: "@cf/", VendorName: "Cloudflare"},
+	{Pattern: "360", VendorName: "360"},
+	{Pattern: "yi", VendorName: "零一万物"},
+	{Pattern: "jina", VendorName: "Jina"},
+	{Pattern: "mistral", VendorName: "Mistral"},
+	{Pattern: "grok", VendorName: "xAI"},
+	{Pattern: "llama", VendorName: "Meta"},
+	{Pattern: "doubao", VendorName: "字节跳动"},
+	{Pattern: "kling", VendorName: "快手"},
+	{Pattern: "jimeng", VendorName: "即梦"},
+	{Pattern: "vidu", VendorName: "Vidu"},
+}
+
+func inferDefaultVendorName(modelName string) string {
+	modelLower := strings.ToLower(strings.TrimSpace(modelName))
+	for _, rule := range defaultVendorRules {
+		if strings.Contains(modelLower, rule.Pattern) {
+			return rule.VendorName
+		}
+	}
+	return ""
 }
 
 // 供应商默认图标映射
@@ -77,12 +92,8 @@ func initDefaultVendorMapping(metaMap map[string]*Model, vendorMap map[int]*Vend
 
 		// 匹配供应商
 		vendorID := 0
-		modelLower := strings.ToLower(modelName)
-		for pattern, vendorName := range defaultVendorRules {
-			if strings.Contains(modelLower, pattern) {
-				vendorID = getOrCreateVendor(vendorName, vendorMap)
-				break
-			}
+		if vendorName := inferDefaultVendorName(modelName); vendorName != "" {
+			vendorID = getOrCreateVendor(vendorName, vendorMap)
 		}
 
 		// 创建模型元数据
@@ -99,9 +110,17 @@ func initDefaultVendorMapping(metaMap map[string]*Model, vendorMap map[int]*Vend
 func getOrCreateVendor(vendorName string, vendorMap map[int]*Vendor) int {
 	// 查找现有供应商
 	for id, vendor := range vendorMap {
-		if vendor.Name == vendorName {
+		if vendor.Name == vendorName || vendor.Alias == vendorName {
 			return id
 		}
+	}
+
+	// 管理员删除的默认供应商保持删除状态，除非之后手动重新创建。
+	var deletedCount int64
+	if err := DB.Unscoped().Model(&Vendor{}).
+		Where("name = ? AND deleted_at IS NOT NULL", vendorName).
+		Count(&deletedCount).Error; err == nil && deletedCount > 0 {
+		return 0
 	}
 
 	// 创建新供应商

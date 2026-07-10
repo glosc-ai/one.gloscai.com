@@ -241,8 +241,8 @@ func ensureVendorID(vendorName string, vendorByName map[string]upstreamVendor, v
 	if id, ok := vendorIDCache[vendorName]; ok {
 		return id
 	}
-	var existing model.Vendor
-	if err := model.DB.Where("name = ?", vendorName).First(&existing).Error; err == nil {
+	// 优先按名称匹配，其次按别名匹配，避免为同一供应商重复建档
+	if existing, err := model.GetVendorByNameOrAlias(vendorName); err == nil {
 		vendorIDCache[vendorName] = existing.Id
 		return existing.Id
 	}

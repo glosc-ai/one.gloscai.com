@@ -18,6 +18,10 @@ type batchUpdateModelVendorRequest struct {
 	Icon     *string `json:"icon"`
 }
 
+type autoMatchModelVendorsRequest struct {
+	OverwriteExisting bool `json:"overwrite_existing"`
+}
+
 type batchUpdateModelCategoryTagsRequest struct {
 	Ids  []int    `json:"ids"`
 	Tags []string `json:"tags"`
@@ -79,8 +83,8 @@ func getModelsMetaFilter(c *gin.Context) model.ModelsMetaFilter {
 			map[string]struct{}{"yes": {}, "sync": {}, "official": {}, "true": {}, "1": {}},
 			map[string]struct{}{"no": {}, "none": {}, "false": {}, "0": {}},
 		),
-		HasPrice: parseModelBoolFilter(priceFilter),
-		SortBy:   c.Query("sort_by"),
+		HasPrice:  parseModelBoolFilter(priceFilter),
+		SortBy:    c.Query("sort_by"),
 		SortOrder: c.Query("sort_order"),
 	}
 }
@@ -253,6 +257,24 @@ func BatchUpdateModelVendor(c *gin.Context) {
 	}
 	model.RefreshPricing()
 	common.ApiSuccess(c, gin.H{"updated_count": updatedCount})
+}
+
+func AutoMatchModelVendors(c *gin.Context) {
+	var req autoMatchModelVendorsRequest
+	if c.Request.Body != nil && c.Request.ContentLength != 0 {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			common.ApiError(c, err)
+			return
+		}
+	}
+
+	result, err := model.AutoMatchModelVendors(req.OverwriteExisting)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	model.RefreshPricing()
+	common.ApiSuccess(c, result)
 }
 
 func BatchUpdateModelCategoryTags(c *gin.Context) {
