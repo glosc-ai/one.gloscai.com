@@ -21,6 +21,7 @@ import (
 
 type taskPollingFetchAdaptor struct {
 	mu           sync.Mutex
+	initMetas    []relaycommon.ChannelMeta
 	taskIDs      []string
 	fetched      chan string
 	blockTaskID  string
@@ -29,7 +30,14 @@ type taskPollingFetchAdaptor struct {
 	blockOnce    sync.Once
 }
 
-func (a *taskPollingFetchAdaptor) Init(_ *relaycommon.RelayInfo) {}
+func (a *taskPollingFetchAdaptor) Init(info *relaycommon.RelayInfo) {
+	if info == nil || info.ChannelMeta == nil {
+		return
+	}
+	a.mu.Lock()
+	a.initMetas = append(a.initMetas, *info.ChannelMeta)
+	a.mu.Unlock()
+}
 
 func (a *taskPollingFetchAdaptor) FetchTask(_ string, _ string, body map[string]any, _ string) (*http.Response, error) {
 	taskID, _ := body["task_id"].(string)
@@ -88,6 +96,12 @@ func (a *taskPollingFetchAdaptor) fetchedTaskIDs() []string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return append([]string(nil), a.taskIDs...)
+}
+
+func (a *taskPollingFetchAdaptor) initializedChannelMetas() []relaycommon.ChannelMeta {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]relaycommon.ChannelMeta(nil), a.initMetas...)
 }
 
 func seedTaskPollingChannel(t *testing.T, id int, disableSleep bool) {
@@ -183,6 +197,42 @@ func TestUpdateVideoTasksCanSkipPollingSleepPerChannel(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 2, adaptor.fetchCount())
+}
+
+func TestUpdateVideoTasksInitializesAdaptorWithChannelMetadata(t *testing.T) {
+	truncate(t)
+
+	const channelID = 103
+	baseURL := "https://ark.cn-beijing.volces.com"
+	credential := `{"api_key":"agent-plan-key","access_key":"ak","secret_key":"sk"}`
+	channel := &model.Channel{
+		Id:      channelID,
+		Type:    constant.ChannelTypeVolcEnginePlan,
+		Name:    "agent_plan_polling_channel",
+		Key:     credential,
+		BaseURL: &baseURL,
+		Status:  common.ChannelStatusEnabled,
+	}
+	require.NoError(t, model.DB.Create(channel).Error)
+	task := seedPollingTask(t, channelID, "task_public_agent_plan", "upstream_agent_plan")
+
+	adaptor := &taskPollingFetchAdaptor{}
+	previousFactory := GetTaskAdaptorFunc
+	GetTaskAdaptorFunc = func(constant.TaskPlatform) TaskPollingAdaptor { return adaptor }
+	t.Cleanup(func() { GetTaskAdaptorFunc = previousFactory })
+
+	err := UpdateVideoTasks(context.Background(), constant.TaskPlatform("60"), map[int][]string{
+		channelID: {task.GetUpstreamTaskID()},
+	}, map[string]*model.Task{
+		task.GetUpstreamTaskID(): task,
+	})
+
+	require.NoError(t, err)
+	metas := adaptor.initializedChannelMetas()
+	require.Len(t, metas, 1)
+	assert.Equal(t, constant.ChannelTypeVolcEnginePlan, metas[0].ChannelType)
+	assert.Equal(t, baseURL, metas[0].ChannelBaseUrl)
+	assert.Equal(t, credential, metas[0].ApiKey)
 }
 
 func TestUpdateVideoTasksDefaultSleepDoesNotBlockOtherChannels(t *testing.T) {

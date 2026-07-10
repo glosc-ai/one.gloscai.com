@@ -81,3 +81,20 @@ type TaskAdaptor interface {
 type OpenAIVideoConverter interface {
 	ConvertToOpenAIVideo(originTask *model.Task) ([]byte, error)
 }
+
+type TaskListParams struct {
+	PageNum     int
+	PageSize    int
+	Status      string
+	TaskIDs     []string
+	Model       string
+	ServiceTier string
+}
+
+type TaskListAdaptor interface {
+	FetchTaskList(baseURL, key string, params TaskListParams, proxy string) (*http.Response, error)
+}
+
+type TaskDeleteAdaptor interface {
+	DeleteTask(baseURL, key, taskID, proxy string) (*http.Response, error)
+}

@@ -403,9 +403,10 @@ func updateVideoTasks(ctx context.Context, platform constant.TaskPlatform, chann
 	}
 	info := &relaycommon.RelayInfo{}
 	info.ChannelMeta = &relaycommon.ChannelMeta{
+		ChannelType:    cacheGetChannel.Type,
 		ChannelBaseUrl: cacheGetChannel.GetBaseURL(),
+		ApiKey:         cacheGetChannel.Key,
 	}
-	info.ApiKey = cacheGetChannel.Key
 	adaptor.Init(info)
 	disablePollingSleep := cacheGetChannel.GetOtherSettings().DisableTaskPollingSleep
 	for i, taskId := range taskIds {

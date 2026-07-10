@@ -25,6 +25,12 @@ func TestChannelDeleteRoutesUseSensitiveWritePermission(t *testing.T) {
 	assertChannelRoutePermission(t, http.MethodPut, "/", authz.ChannelWrite, controller.UpdateChannel)
 	assertChannelRoutePermission(t, http.MethodPut, "/tag", authz.ChannelWrite, controller.EditTagChannels)
 	assertChannelRoutePermission(t, http.MethodPost, "/batch/tag", authz.ChannelWrite, controller.BatchSetChannelTag)
+	assertChannelRoutePermission(t, http.MethodDelete, "/:id/agent-plan/video/tasks/:task_id", authz.ChannelSensitiveWrite, controller.DeleteAgentPlanVideoTask)
+}
+
+func TestAgentPlanVideoTaskRoutesUseChannelPermissions(t *testing.T) {
+	assertChannelRoutePermission(t, http.MethodGet, "/:id/agent-plan/video/tasks", authz.ChannelOperate, controller.ListAgentPlanVideoTasks)
+	assertChannelRoutePermission(t, http.MethodGet, "/:id/agent-plan/video/tasks/:task_id", authz.ChannelOperate, controller.GetAgentPlanVideoTask)
 }
 
 func TestChannelStatusRoutesRegisterWithoutConflict(t *testing.T) {

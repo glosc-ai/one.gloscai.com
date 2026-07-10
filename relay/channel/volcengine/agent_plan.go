@@ -36,7 +36,8 @@ type agentPlanTTSChunk struct {
 	Data    string `json:"data"`
 }
 
-func normalizeAgentPlanBaseURL(baseURL string) string {
+// NormalizeAgentPlanBaseURL returns the canonical Agent Plan API v3 base URL.
+func NormalizeAgentPlanBaseURL(baseURL string) string {
 	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	if baseURL == "" {
 		baseURL = AgentPlanDefaultBaseURL
@@ -51,7 +52,7 @@ func normalizeAgentPlanBaseURL(baseURL string) string {
 }
 
 func (a *AgentPlanAdaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
-	baseURL := normalizeAgentPlanBaseURL(info.ChannelBaseUrl)
+	baseURL := NormalizeAgentPlanBaseURL(info.ChannelBaseUrl)
 
 	switch info.RelayMode {
 	case relayconstant.RelayModeChatCompletions:

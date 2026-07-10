@@ -50,9 +50,10 @@ func updateVideoTaskAll(ctx context.Context, platform constant.TaskPlatform, cha
 	}
 	info := &relaycommon.RelayInfo{}
 	info.ChannelMeta = &relaycommon.ChannelMeta{
+		ChannelType:    cacheGetChannel.Type,
 		ChannelBaseUrl: cacheGetChannel.GetBaseURL(),
+		ApiKey:         cacheGetChannel.Key,
 	}
-	info.ApiKey = cacheGetChannel.Key
 	adaptor.Init(info)
 	for _, taskId := range taskIds {
 		if err := updateVideoSingleTask(ctx, adaptor, cacheGetChannel, taskId, taskM); err != nil {

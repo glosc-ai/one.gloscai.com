@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/relay/channel"
 	"github.com/QuantumNous/new-api/relay/channel/task/taskcommon"
+	"github.com/QuantumNous/new-api/relay/channel/volcengine"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/service"
 
@@ -124,14 +126,14 @@ func (a *TaskAdaptor) ValidateRequestAndSetAction(c *gin.Context, info *relaycom
 
 // BuildRequestURL constructs the upstream URL.
 func (a *TaskAdaptor) BuildRequestURL(_ *relaycommon.RelayInfo) (string, error) {
-	return fmt.Sprintf("%s/contents/generations/tasks", doubaoTaskAPIBaseURL(a.baseURL)), nil
+	return fmt.Sprintf("%s/contents/generations/tasks", doubaoTaskAPIBaseURL(a.baseURL, a.ChannelType)), nil
 }
 
 // BuildRequestHeader sets required headers.
 func (a *TaskAdaptor) BuildRequestHeader(_ *gin.Context, req *http.Request, _ *relaycommon.RelayInfo) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+a.apiKey)
+	req.Header.Set("Authorization", "Bearer "+doubaoTaskAPIKey(a.apiKey, a.ChannelType, a.baseURL))
 	return nil
 }
 
@@ -240,21 +242,63 @@ func (a *TaskAdaptor) DoResponse(c *gin.Context, resp *http.Response, info *rela
 
 // FetchTask fetch task status
 func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy string) (*http.Response, error) {
-	taskID, ok := body["task_id"].(string)
-	if !ok {
+	taskID, _ := body["task_id"].(string)
+	taskID = strings.TrimSpace(taskID)
+	if taskID == "" {
 		return nil, fmt.Errorf("invalid task_id")
 	}
+	tasksURL := fmt.Sprintf("%s/contents/generations/tasks/%s", doubaoTaskAPIBaseURL(baseUrl, a.ChannelType), url.PathEscape(taskID))
+	return a.doTaskRequest(http.MethodGet, tasksURL, key, proxy)
+}
 
-	uri := fmt.Sprintf("%s/contents/generations/tasks/%s", doubaoTaskAPIBaseURL(baseUrl), taskID)
+func (a *TaskAdaptor) FetchTaskList(baseURL, key string, params channel.TaskListParams, proxy string) (*http.Response, error) {
+	query := url.Values{}
+	if params.PageNum > 0 {
+		query.Set("page_num", strconv.Itoa(params.PageNum))
+	}
+	if params.PageSize > 0 {
+		query.Set("page_size", strconv.Itoa(params.PageSize))
+	}
+	if status := strings.TrimSpace(params.Status); status != "" {
+		query.Set("filter.status", status)
+	}
+	if filterModel := strings.TrimSpace(params.Model); filterModel != "" {
+		query.Set("filter.model", filterModel)
+	}
+	if serviceTier := strings.TrimSpace(params.ServiceTier); serviceTier != "" {
+		query.Set("filter.service_tier", serviceTier)
+	}
+	for _, taskID := range params.TaskIDs {
+		if taskID = strings.TrimSpace(taskID); taskID != "" {
+			query.Add("filter.task_ids", taskID)
+		}
+	}
 
-	req, err := http.NewRequest(http.MethodGet, uri, nil)
+	tasksURL := fmt.Sprintf("%s/contents/generations/tasks", doubaoTaskAPIBaseURL(baseURL, a.ChannelType))
+	if encodedQuery := query.Encode(); encodedQuery != "" {
+		tasksURL += "?" + encodedQuery
+	}
+	return a.doTaskRequest(http.MethodGet, tasksURL, key, proxy)
+}
+
+func (a *TaskAdaptor) DeleteTask(baseURL, key, taskID, proxy string) (*http.Response, error) {
+	taskID = strings.TrimSpace(taskID)
+	if taskID == "" {
+		return nil, fmt.Errorf("invalid task_id")
+	}
+	tasksURL := fmt.Sprintf("%s/contents/generations/tasks/%s", doubaoTaskAPIBaseURL(baseURL, a.ChannelType), url.PathEscape(taskID))
+	return a.doTaskRequest(http.MethodDelete, tasksURL, key, proxy)
+}
+
+func (a *TaskAdaptor) doTaskRequest(method, requestURL, key, proxy string) (*http.Response, error) {
+	req, err := http.NewRequest(method, requestURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("Authorization", "Bearer "+doubaoTaskAPIKey(key, a.ChannelType, requestURL))
 
 	client, err := service.GetHttpClientWithProxy(proxy)
 	if err != nil {
@@ -263,8 +307,11 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy 
 	return client.Do(req)
 }
 
-func doubaoTaskAPIBaseURL(baseURL string) string {
+func doubaoTaskAPIBaseURL(baseURL string, channelType int) string {
 	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if channelType == constant.ChannelTypeVolcEnginePlan {
+		return volcengine.NormalizeAgentPlanBaseURL(baseURL)
+	}
 	if baseURL == "" {
 		baseURL = constant.ChannelBaseURLs[constant.ChannelTypeDoubaoVideo]
 	}
@@ -272,6 +319,13 @@ func doubaoTaskAPIBaseURL(baseURL string) string {
 		return baseURL
 	}
 	return baseURL + "/api/v3"
+}
+
+func doubaoTaskAPIKey(rawKey string, channelType int, baseURL string) string {
+	if channelType == constant.ChannelTypeVolcEnginePlan || strings.Contains(baseURL, "/api/plan/v3") {
+		return volcengine.AgentPlanAPIKey(rawKey)
+	}
+	return rawKey
 }
 
 func (a *TaskAdaptor) GetModelList() []string {
@@ -303,6 +357,12 @@ func (a *TaskAdaptor) convertToRequestPayload(req *relaycommon.TaskSubmitReq) (*
 	metadata := req.Metadata
 	if err := taskcommon.UnmarshalMetadata(metadata, &r); err != nil {
 		return nil, errors.Wrap(err, "unmarshal metadata failed")
+	}
+	if r.Duration != nil {
+		duration := int(*r.Duration)
+		if duration < 1 || duration > relaycommon.MaxTaskDurationSeconds {
+			return nil, fmt.Errorf("duration must be between 1 and %d", relaycommon.MaxTaskDurationSeconds)
+		}
 	}
 
 	if sec, _ := strconv.Atoi(req.Seconds); sec > 0 {
@@ -343,10 +403,13 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 		// 解析 usage 信息用于按倍率计费
 		taskResult.CompletionTokens = resTask.Usage.CompletionTokens
 		taskResult.TotalTokens = resTask.Usage.TotalTokens
-	case "failed":
+	case "failed", "cancelled", "canceled", "deleted":
 		taskResult.Status = model.TaskStatusFailure
 		taskResult.Progress = "100%"
 		taskResult.Reason = resTask.Error.Message
+		if taskResult.Reason == "" {
+			taskResult.Reason = resTask.Status
+		}
 	default:
 		// Unknown status, treat as processing
 		taskResult.Status = model.TaskStatusInProgress
