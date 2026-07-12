@@ -54,40 +54,59 @@ import { useUpdateOption } from '../hooks/use-update-option'
  * `discord.*` and `oidc.*` fields are modeled as nested objects here and
  * flattened back to dotted server keys only when persisting.
  */
-const oauthSchema = z.object({
-  GitHubOAuthEnabled: z.boolean(),
-  GitHubClientId: z.string(),
-  GitHubClientSecret: z.string(),
-  discord: z.object({
-    enabled: z.boolean(),
-    client_id: z.string(),
-    client_secret: z.string(),
-  }),
-  oidc: z.object({
-    enabled: z.boolean(),
-    client_id: z.string(),
-    client_secret: z.string(),
-    well_known: z.string(),
-    authorization_endpoint: z.string(),
-    token_endpoint: z.string(),
-    user_info_endpoint: z.string(),
-  }),
-  TelegramOAuthEnabled: z.boolean(),
-  TelegramBotToken: z.string(),
-  TelegramBotName: z.string(),
-  LinuxDOOAuthEnabled: z.boolean(),
-  LinuxDOClientId: z.string(),
-  LinuxDOClientSecret: z.string(),
-  LinuxDOMinimumTrustLevel: z.string(),
-  WeChatAuthEnabled: z.boolean(),
-  WeChatServerAddress: z.string(),
-  WeChatServerToken: z.string(),
-  WeChatAccountQRCodeImageURL: z.string(),
-  WeChatAppId: z.string(),
-  WeChatAppSecret: z.string(),
-})
+const createOAuthSchema = (t: (key: string) => string) =>
+  z.object({
+    GitHubOAuthEnabled: z.boolean(),
+    GitHubClientId: z.string(),
+    GitHubClientSecret: z.string(),
+    discord: z.object({
+      enabled: z.boolean(),
+      client_id: z.string(),
+      client_secret: z.string(),
+    }),
+    oidc: z.object({
+      enabled: z.boolean(),
+      client_id: z.string(),
+      client_secret: z.string(),
+      well_known: z.string(),
+      authorization_endpoint: z.string(),
+      token_endpoint: z.string(),
+      user_info_endpoint: z.string(),
+    }),
+    TelegramOAuthEnabled: z.boolean(),
+    TelegramBotToken: z.string(),
+    TelegramBotName: z.string(),
+    LinuxDOOAuthEnabled: z.boolean(),
+    LinuxDOClientId: z.string(),
+    LinuxDOClientSecret: z.string(),
+    LinuxDOMinimumTrustLevel: z.string(),
+    WeChatAuthEnabled: z.boolean(),
+    WeChatServerAddress: z.string(),
+    WeChatServerToken: z.string(),
+    WeChatAccountQRCodeImageURL: z.string(),
+    WeChatAppId: z.string(),
+    WeChatAppSecret: z.string(),
+    WeChatRedirectURI: z.string().refine((value) => {
+      const trimmed = value.trim()
+      if (!trimmed) return true
 
-type OAuthFormValues = z.infer<typeof oauthSchema>
+      try {
+        const url = new URL(trimmed)
+        const isHttp = url.protocol === 'http:' || url.protocol === 'https:'
+        return (
+          isHttp &&
+          Boolean(url.host) &&
+          !url.username &&
+          !url.password &&
+          !url.hash
+        )
+      } catch {
+        return false
+      }
+    }, t('Provide a valid URL starting with http:// or https://')),
+  })
+
+type OAuthFormValues = z.infer<ReturnType<typeof createOAuthSchema>>
 
 type FlatOAuthDefaults = {
   GitHubOAuthEnabled: boolean
@@ -116,6 +135,7 @@ type FlatOAuthDefaults = {
   WeChatAccountQRCodeImageURL: string
   WeChatAppId: string
   WeChatAppSecret: string
+  WeChatRedirectURI: string
 }
 
 const oauthTabContentClassName =
@@ -152,6 +172,11 @@ const buildFormDefaults = (defaults: FlatOAuthDefaults): OAuthFormValues => ({
   WeChatAccountQRCodeImageURL: defaults.WeChatAccountQRCodeImageURL ?? '',
   WeChatAppId: defaults.WeChatAppId ?? '',
   WeChatAppSecret: defaults.WeChatAppSecret ?? '',
+  WeChatRedirectURI:
+    defaults.WeChatRedirectURI?.trim() ||
+    (typeof window === 'undefined'
+      ? '/oauth/wechat'
+      : `${window.location.origin}/oauth/wechat`),
 })
 
 const normalizeFormValues = (values: OAuthFormValues): FlatOAuthDefaults => ({
@@ -181,6 +206,7 @@ const normalizeFormValues = (values: OAuthFormValues): FlatOAuthDefaults => ({
   WeChatAccountQRCodeImageURL: values.WeChatAccountQRCodeImageURL,
   WeChatAppId: values.WeChatAppId,
   WeChatAppSecret: values.WeChatAppSecret,
+  WeChatRedirectURI: values.WeChatRedirectURI.trim(),
 })
 
 type OAuthSectionProps = {
@@ -191,10 +217,7 @@ export function OAuthSection(props: OAuthSectionProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
   const [activeTab, setActiveTab] = useState('github')
-  const wechatRedirectUri =
-    typeof window === 'undefined'
-      ? '/oauth/wechat'
-      : `${window.location.origin}/oauth/wechat`
+  const oauthSchema = useMemo(() => createOAuthSchema(t), [t])
 
   const formDefaults = useMemo(
     () => buildFormDefaults(props.defaultValues),
@@ -206,7 +229,9 @@ export function OAuthSection(props: OAuthSectionProps) {
     defaultValues: formDefaults,
   })
 
-  const baselineRef = useRef<FlatOAuthDefaults>(props.defaultValues)
+  const baselineRef = useRef<FlatOAuthDefaults>(
+    normalizeFormValues(formDefaults)
+  )
   const baselineSerializedRef = useRef<string>(
     JSON.stringify(props.defaultValues)
   )
@@ -214,9 +239,10 @@ export function OAuthSection(props: OAuthSectionProps) {
   useEffect(() => {
     const serialized = JSON.stringify(props.defaultValues)
     if (serialized === baselineSerializedRef.current) return
-    baselineRef.current = props.defaultValues
+    const nextFormDefaults = buildFormDefaults(props.defaultValues)
+    baselineRef.current = normalizeFormValues(nextFormDefaults)
     baselineSerializedRef.current = serialized
-    form.reset(buildFormDefaults(props.defaultValues))
+    form.reset(nextFormDefaults)
   }, [props.defaultValues, form])
 
   const onSubmit = async (values: OAuthFormValues) => {
@@ -282,9 +308,10 @@ export function OAuthSection(props: OAuthSectionProps) {
       })
     }
 
-    baselineRef.current = normalized
+    const nextFormDefaults = buildFormDefaults(normalized)
+    baselineRef.current = normalizeFormValues(nextFormDefaults)
     baselineSerializedRef.current = JSON.stringify(normalized)
-    form.reset(buildFormDefaults(normalized))
+    form.reset(nextFormDefaults)
   }
 
   const handleReset = () => {
@@ -958,17 +985,34 @@ export function OAuthSection(props: OAuthSectionProps) {
                   )}
                 />
 
-                <FormItem>
-                  <FormLabel>{t('OAuth callback URL')}</FormLabel>
-                  <FormControl>
-                    <Input value={wechatRedirectUri} readOnly />
-                  </FormControl>
-                  <FormDescription>
-                    {t(
-                      'Configure this URL as the website app authorization callback in WeChat Open Platform'
-                    )}
-                  </FormDescription>
-                </FormItem>
+                <FormField
+                  control={form.control}
+                  name='WeChatRedirectURI'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('OAuth callback URL')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type='url'
+                          autoComplete='url'
+                          value={field.value ?? ''}
+                          onChange={(event) =>
+                            field.onChange(event.target.value)
+                          }
+                          name={field.name}
+                          onBlur={field.onBlur}
+                          ref={field.ref}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {t(
+                          'Configure this URL as the website app authorization callback in WeChat Open Platform'
+                        )}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </TabsContent>
             </Tabs>
           </SettingsForm>

@@ -105,6 +105,7 @@ export interface SystemStatus {
     passkey_login?: boolean
     wechat_login?: boolean
     wechat_app_id?: string
+    wechat_redirect_uri?: string
     wechat_qrcode?: string
     wechat_qr_code?: string
     wechat_qrcode_image_url?: string
@@ -149,6 +150,7 @@ export interface SystemStatus {
   passkey_login?: boolean
   wechat_login?: boolean
   wechat_app_id?: string
+  wechat_redirect_uri?: string
   wechat_qrcode?: string
   wechat_qr_code?: string
   wechat_qrcode_image_url?: string

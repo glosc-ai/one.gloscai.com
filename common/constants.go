@@ -137,6 +137,7 @@ var LinuxDOMinimumTrustLevel = 0
 
 var WeChatAppId = ""
 var WeChatAppSecret = ""
+var WeChatRedirectURI = ""
 var WeChatServerAddress = ""
 var WeChatServerToken = ""
 var WeChatAccountQRCodeImageURL = ""

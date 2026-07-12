@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -40,6 +41,20 @@ func isPositiveOptionValue(value string) bool {
 	}
 	floatValue, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
 	return err == nil && floatValue > 0
+}
+
+func isValidWeChatRedirectURI(value string) bool {
+	if value == "" {
+		return true
+	}
+	parsedURL, err := url.Parse(value)
+	if err != nil {
+		return false
+	}
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return false
+	}
+	return parsedURL.Hostname() != "" && parsedURL.User == nil && parsedURL.Fragment == ""
 }
 
 func collectModelNamesFromOptionValue(raw string, modelNames map[string]struct{}) {
@@ -208,6 +223,13 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "WeChatRedirectURI":
+		redirectURI := strings.TrimSpace(option.Value.(string))
+		if !isValidWeChatRedirectURI(redirectURI) {
+			common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+			return
+		}
+		option.Value = redirectURI
 	case "TurnstileCheckEnabled":
 		if option.Value == "true" && common.TurnstileSiteKey == "" {
 			c.JSON(http.StatusOK, gin.H{

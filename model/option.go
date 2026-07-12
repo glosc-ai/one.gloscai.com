@@ -159,6 +159,7 @@ func InitOptionMap() {
 	common.OptionMap["TelegramBotName"] = ""
 	common.OptionMap["WeChatAppId"] = ""
 	common.OptionMap["WeChatAppSecret"] = ""
+	common.OptionMap["WeChatRedirectURI"] = ""
 	common.OptionMap["WeChatServerAddress"] = ""
 	common.OptionMap["WeChatServerToken"] = ""
 	common.OptionMap["WeChatAccountQRCodeImageURL"] = ""
@@ -573,6 +574,8 @@ func updateOptionMap(key string, value string) (err error) {
 		common.WeChatAppId = value
 	case "WeChatAppSecret":
 		common.WeChatAppSecret = value
+	case "WeChatRedirectURI":
+		common.WeChatRedirectURI = strings.TrimSpace(value)
 	case "WeChatServerAddress":
 		common.WeChatServerAddress = value
 	case "WeChatServerToken":
