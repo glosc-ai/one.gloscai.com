@@ -60,7 +60,7 @@ export function UserAuthForm({
 }: AuthFormProps) {
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
-  const [agreedToLegal, setAgreedToLegal] = useState(false)
+  const [agreedToLegal, setAgreedToLegal] = useState(true)
   const [passkeySupported, setPasskeySupported] = useState(false)
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false)
   const legalConsentErrorMessage = t('Please agree to the legal terms first')
@@ -100,14 +100,6 @@ export function UserAuthForm({
   )
   const hasAlternativeLogin =
     passkeyLoginEnabled || hasWeChatLogin || hasOAuthLogin
-
-  useEffect(() => {
-    if (requiresLegalConsent) {
-      setAgreedToLegal(false)
-    } else {
-      setAgreedToLegal(true)
-    }
-  }, [requiresLegalConsent])
 
   useEffect(() => {
     detectPasskeySupport()
