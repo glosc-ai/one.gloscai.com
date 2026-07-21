@@ -196,7 +196,7 @@ export function Pricing() {
             </p>
             <SearchBar
               value={searchInput}
-              onChange={setSearchInput}
+              onSearch={setSearchInput}
               onClear={clearSearch}
               placeholder={t(
                 'Search model name, provider, endpoint, tag, or category...'
