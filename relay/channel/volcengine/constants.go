@@ -1,5 +1,7 @@
 package volcengine
 
+import relayconstant "github.com/QuantumNous/new-api/relay/constant"
+
 var ModelList = []string{
 	"Doubao-pro-128k",
 	"Doubao-pro-32k",
@@ -34,6 +36,7 @@ var AgentPlanModelList = []string{
 	"doubao-seedance-2-0-fast-260128",
 	"doubao-seedance-2.0-mini",
 	"doubao-seed-tts-2.0",
+	relayconstant.VolcEngineAgentPlanSeedASRModel,
 }
 
 var ChannelName = "volcengine"
@@ -42,4 +45,5 @@ var AgentPlanChannelName = "volcengine-agent-plan"
 const (
 	AgentPlanDefaultBaseURL = "https://ark.cn-beijing.volces.com/api/plan/v3"
 	AgentPlanTTSHTTPURL     = "https://openspeech.bytedance.com/api/v3/plan/tts/unidirectional"
+	AgentPlanSeedASRWSURL   = "wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_nostream"
 )

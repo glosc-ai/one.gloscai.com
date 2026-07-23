@@ -13,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
+	relayconstant "github.com/QuantumNous/new-api/relay/constant"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/service/authz"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
@@ -327,6 +328,12 @@ func TokenAuth() func(c *gin.Context) {
 				}
 			}
 			c.Request.Header.Set("Authorization", "Bearer "+key)
+		}
+		if strings.HasPrefix(c.Request.URL.Path, relayconstant.VolcEngineAgentPlanSeedASRPath) &&
+			c.Request.Header.Get("Authorization") == "" {
+			if key := strings.TrimSpace(c.Request.Header.Get("X-Api-Key")); key != "" {
+				c.Request.Header.Set("Authorization", "Bearer "+key)
+			}
 		}
 		// 检查path包含/v1/messages 或 /v1/models
 		if strings.Contains(c.Request.URL.Path, "/v1/messages") || strings.Contains(c.Request.URL.Path, "/v1/models") {

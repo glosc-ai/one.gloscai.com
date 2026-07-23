@@ -67,6 +67,11 @@ func (a *AgentPlanAdaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, e
 		return baseURL + "/responses", nil
 	case relayconstant.RelayModeAudioSpeech:
 		return AgentPlanTTSHTTPURL, nil
+	case relayconstant.RelayModeRealtime:
+		if info.OriginModelName != relayconstant.VolcEngineAgentPlanSeedASRModel {
+			return "", fmt.Errorf("unsupported Agent Plan realtime model: %s", info.OriginModelName)
+		}
+		return AgentPlanSeedASRWSURL, nil
 	default:
 		if info.RelayFormat == types.RelayFormatClaude {
 			return baseURL + "/chat/completions", nil
@@ -87,6 +92,29 @@ func (a *AgentPlanAdaptor) SetupRequestHeader(c *gin.Context, req *http.Header, 
 		req.Set("X-Api-Resource-Id", "seed-tts-2.0")
 		req.Set("X-Api-Request-Id", generateRequestID())
 		req.Set("X-Control-Require-Usage-Tokens-Return", "*")
+		return nil
+	}
+	if info.RelayMode == relayconstant.RelayModeRealtime {
+		requestID := strings.TrimSpace(c.Request.Header.Get("X-Api-Request-Id"))
+		if requestID == "" {
+			requestID = generateRequestID()
+		}
+		connectID := strings.TrimSpace(c.Request.Header.Get("X-Api-Connect-Id"))
+		if connectID == "" {
+			connectID = requestID
+		}
+		sequence := strings.TrimSpace(c.Request.Header.Get("X-Api-Sequence"))
+		if sequence == "" {
+			sequence = "-1"
+		}
+
+		req.Del("Authorization")
+		req.Del("Content-Type")
+		req.Set("X-Api-Key", AgentPlanAPIKey(info.ApiKey))
+		req.Set("X-Api-Resource-Id", relayconstant.VolcEngineAgentPlanSeedASRResourceID)
+		req.Set("X-Api-Request-Id", requestID)
+		req.Set("X-Api-Connect-Id", connectID)
+		req.Set("X-Api-Sequence", sequence)
 		return nil
 	}
 
@@ -161,6 +189,9 @@ func (a *AgentPlanAdaptor) ConvertRerankRequest(c *gin.Context, relayMode int, r
 }
 
 func (a *AgentPlanAdaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, requestBody io.Reader) (any, error) {
+	if info.RelayMode == relayconstant.RelayModeRealtime {
+		return channel.DoWssRequest(a, c, info, requestBody)
+	}
 	return channel.DoApiRequest(a, c, info, requestBody)
 }
 
@@ -168,6 +199,9 @@ func (a *AgentPlanAdaptor) DoResponse(c *gin.Context, resp *http.Response, info 
 	if info.RelayMode == relayconstant.RelayModeAudioSpeech {
 		format := c.GetString(contextKeyResponseFormat)
 		return handleAgentPlanTTSResponse(c, resp, info, format)
+	}
+	if info.RelayMode == relayconstant.RelayModeRealtime {
+		return handleAgentPlanSeedASRResponse(c, info)
 	}
 
 	adaptor := openai.Adaptor{}

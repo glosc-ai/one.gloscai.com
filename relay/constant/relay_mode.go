@@ -6,6 +6,12 @@ import (
 )
 
 const (
+	VolcEngineAgentPlanSeedASRPath       = "/api/v3/plan/sauc/bigmodel_nostream"
+	VolcEngineAgentPlanSeedASRModel      = "bytedance/volc.seedasr.sauc.duration"
+	VolcEngineAgentPlanSeedASRResourceID = "volc.seedasr.sauc.duration"
+)
+
+const (
 	RelayModeUnknown = iota
 	RelayModeChatCompletions
 	RelayModeCompletions
@@ -90,6 +96,8 @@ func Path2RelayMode(path string) int {
 	} else if strings.HasPrefix(path, "/v1/rerank") {
 		relayMode = RelayModeRerank
 	} else if strings.HasPrefix(path, "/v1/realtime") {
+		relayMode = RelayModeRealtime
+	} else if strings.HasPrefix(path, VolcEngineAgentPlanSeedASRPath) {
 		relayMode = RelayModeRealtime
 	} else if strings.HasPrefix(path, "/v1beta/models") || strings.HasPrefix(path, "/v1/models") {
 		relayMode = RelayModeGemini

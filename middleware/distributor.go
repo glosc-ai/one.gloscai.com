@@ -378,6 +378,13 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			modelRequest.Model = modelName
 		}
 		c.Set("relay_mode", relayMode)
+	} else if strings.HasPrefix(c.Request.URL.Path, relayconstant.VolcEngineAgentPlanSeedASRPath) {
+		resourceID := strings.TrimSpace(c.Request.Header.Get("X-Api-Resource-Id"))
+		if resourceID != "" && resourceID != relayconstant.VolcEngineAgentPlanSeedASRResourceID {
+			return nil, false, fmt.Errorf("unsupported X-Api-Resource-Id: %s", resourceID)
+		}
+		modelRequest.Model = relayconstant.VolcEngineAgentPlanSeedASRModel
+		c.Set("relay_mode", relayconstant.RelayModeRealtime)
 	} else if !strings.HasPrefix(c.Request.URL.Path, "/v1/audio/transcriptions") &&
 		!strings.HasPrefix(c.Request.URL.Path, "/pg/audio/transcriptions") &&
 		!strings.Contains(c.Request.Header.Get("Content-Type"), "multipart/form-data") {

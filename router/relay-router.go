@@ -173,6 +173,18 @@ func SetRelayRouter(router *gin.Engine) {
 		httpRouter.DELETE("/models/:model", controller.RelayNotImplemented)
 	}
 
+	seedASRRouter := router.Group("/api/v3/plan/sauc")
+	seedASRRouter.Use(middleware.RouteTag("relay"))
+	seedASRRouter.Use(middleware.SystemPerformanceCheck())
+	seedASRRouter.Use(middleware.TokenAuth())
+	seedASRRouter.Use(middleware.ModelRequestRateLimit())
+	seedASRRouter.Use(middleware.Distribute())
+	{
+		seedASRRouter.GET("/bigmodel_nostream", func(c *gin.Context) {
+			controller.Relay(c, types.RelayFormatOpenAIRealtime)
+		})
+	}
+
 	relayMjRouter := router.Group("/mj")
 	relayMjRouter.Use(middleware.RouteTag("relay"))
 	relayMjRouter.Use(middleware.SystemPerformanceCheck())

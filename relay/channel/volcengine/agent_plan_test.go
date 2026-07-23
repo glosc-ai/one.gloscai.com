@@ -52,6 +52,12 @@ func TestAgentPlanRequestURLUsesPlanBase(t *testing.T) {
 			relayMode: relayconstant.RelayModeAudioSpeech,
 			want:      AgentPlanTTSHTTPURL,
 		},
+		{
+			name:      "streaming ASR uses SeedASR websocket endpoint",
+			baseURL:   "https://ark.cn-beijing.volces.com/api/plan/v3",
+			relayMode: relayconstant.RelayModeRealtime,
+			want:      AgentPlanSeedASRWSURL,
+		},
 	}
 
 	for _, test := range tests {
@@ -59,6 +65,9 @@ func TestAgentPlanRequestURLUsesPlanBase(t *testing.T) {
 			info := &relaycommon.RelayInfo{
 				ChannelMeta: &relaycommon.ChannelMeta{ChannelBaseUrl: test.baseURL},
 				RelayMode:   test.relayMode,
+			}
+			if test.relayMode == relayconstant.RelayModeRealtime {
+				info.OriginModelName = relayconstant.VolcEngineAgentPlanSeedASRModel
 			}
 
 			got, err := adaptor.GetRequestURL(info)
@@ -145,6 +154,25 @@ func TestAgentPlanSetupRequestHeader(t *testing.T) {
 	assert.Equal(t, "seed-tts-2.0", speechHeader.Get("X-Api-Resource-Id"))
 	assert.NotEmpty(t, speechHeader.Get("X-Api-Request-Id"))
 	assert.Empty(t, speechHeader.Get("Authorization"))
+
+	asrRequest := httptest.NewRequest(http.MethodGet, relayconstant.VolcEngineAgentPlanSeedASRPath, nil)
+	asrRequest.Header.Set("X-Api-Request-Id", "request-id")
+	asrRequest.Header.Set("X-Api-Connect-Id", "connect-id")
+	asrRequest.Header.Set("X-Api-Sequence", "-1")
+	c.Request = asrRequest
+	asrHeader := http.Header{}
+	err = adaptor.SetupRequestHeader(c, &asrHeader, &relaycommon.RelayInfo{
+		ChannelMeta: &relaycommon.ChannelMeta{ApiKey: `{"api_key":"agent-key","access_key":"ak","secret_key":"sk"}`},
+		RelayMode:   relayconstant.RelayModeRealtime,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "agent-key", asrHeader.Get("X-Api-Key"))
+	assert.Equal(t, relayconstant.VolcEngineAgentPlanSeedASRResourceID, asrHeader.Get("X-Api-Resource-Id"))
+	assert.Equal(t, "request-id", asrHeader.Get("X-Api-Request-Id"))
+	assert.Equal(t, "connect-id", asrHeader.Get("X-Api-Connect-Id"))
+	assert.Equal(t, "-1", asrHeader.Get("X-Api-Sequence"))
+	assert.Empty(t, asrHeader.Get("Authorization"))
+	assert.Empty(t, asrHeader.Get("Content-Type"))
 }
 
 func TestAgentPlanConvertAudioRequestBuildsTTSParams(t *testing.T) {
