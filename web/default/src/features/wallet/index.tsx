@@ -319,6 +319,11 @@ export function Wallet(props: WalletProps) {
                   topupAmount={topupAmount}
                   onTopupAmountChange={handleTopupAmountChange}
                   paymentAmount={paymentAmount}
+                  paymentUnit={
+                    selectedPaymentMethod?.type === 'linuxdo_credit'
+                      ? 'LDC'
+                      : undefined
+                  }
                   calculating={calculating}
                   onPaymentMethodSelect={handlePaymentMethodSelect}
                   paymentLoading={paymentLoading}
@@ -366,6 +371,9 @@ export function Wallet(props: WalletProps) {
         processing={processing || pancakeProcessing}
         discountRate={getDiscountRate()}
         usdExchangeRate={effectiveUsdExchangeRate}
+        paymentUnit={
+          selectedPaymentMethod?.type === 'linuxdo_credit' ? 'LDC' : undefined
+        }
       />
 
       <BillingHistoryDialog

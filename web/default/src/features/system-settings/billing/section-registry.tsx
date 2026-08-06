@@ -160,6 +160,12 @@ const BILLING_SECTIONS = [
           StripeUnitPrice: settings.StripeUnitPrice,
           StripeMinTopUp: settings.StripeMinTopUp,
           StripePromotionCodesEnabled: settings.StripePromotionCodesEnabled,
+          LinuxDOCreditEnabled: settings.LinuxDOCreditEnabled,
+          LinuxDOCreditGateway: settings.LinuxDOCreditGateway,
+          LinuxDOCreditClientID: settings.LinuxDOCreditClientID,
+          LinuxDOCreditSecret: settings.LinuxDOCreditSecret,
+          LinuxDOCreditUnitPrice: settings.LinuxDOCreditUnitPrice,
+          LinuxDOCreditMinTopUp: settings.LinuxDOCreditMinTopUp,
           CreemApiKey: settings.CreemApiKey,
           CreemWebhookSecret: settings.CreemWebhookSecret,
           CreemTestMode: settings.CreemTestMode,
@@ -181,14 +187,11 @@ const BILLING_SECTIONS = [
           WeChatPayAppId: settings.WeChatPayAppId ?? '',
           WeChatPayMchId: settings.WeChatPayMchId ?? '',
           WeChatPayApiV3Key: settings.WeChatPayApiV3Key ?? '',
-          WeChatPayMerchantSerialNo:
-            settings.WeChatPayMerchantSerialNo ?? '',
+          WeChatPayMerchantSerialNo: settings.WeChatPayMerchantSerialNo ?? '',
           WeChatPayMerchantPrivateKey:
             settings.WeChatPayMerchantPrivateKey ?? '',
-          WeChatPayPlatformPublicKey:
-            settings.WeChatPayPlatformPublicKey ?? '',
-          WeChatPayPlatformSerialNo:
-            settings.WeChatPayPlatformSerialNo ?? '',
+          WeChatPayPlatformPublicKey: settings.WeChatPayPlatformPublicKey ?? '',
+          WeChatPayPlatformSerialNo: settings.WeChatPayPlatformSerialNo ?? '',
           WeChatPayApiBase:
             settings.WeChatPayApiBase ?? 'https://api.mch.weixin.qq.com',
           WeChatPayTradeType: settings.WeChatPayTradeType ?? 'NATIVE',

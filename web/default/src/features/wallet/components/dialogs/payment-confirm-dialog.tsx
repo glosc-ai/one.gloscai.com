@@ -47,6 +47,7 @@ interface PaymentConfirmDialogProps {
   processing: boolean
   discountRate?: number
   usdExchangeRate?: number
+  paymentUnit?: string
 }
 
 export function PaymentConfirmDialog({
@@ -60,9 +61,11 @@ export function PaymentConfirmDialog({
   processing,
   discountRate = DEFAULT_DISCOUNT_RATE,
   usdExchangeRate = 1,
+  paymentUnit,
 }: PaymentConfirmDialogProps) {
   const { t } = useTranslation()
-  const hasDiscount = discountRate > 0 && discountRate < 1 && paymentAmount > 0
+  const hasDiscount =
+    !paymentUnit && discountRate > 0 && discountRate < 1 && paymentAmount > 0
   const originalAmount = hasDiscount ? paymentAmount / discountRate : 0
   const discountAmount = hasDiscount ? originalAmount - paymentAmount : 0
 
@@ -101,7 +104,10 @@ export function PaymentConfirmDialog({
             ) : (
               <div className='flex items-baseline gap-2'>
                 <span className='text-2xl font-semibold'>
-                  {formatCurrency(paymentAmount)}
+                  {formatCurrency(paymentAmount)}{' '}
+                  {paymentUnit ? (
+                    <span className='text-base'>{paymentUnit}</span>
+                  ) : null}
                 </span>
                 {hasDiscount && (
                   <span className='text-muted-foreground text-sm line-through'>

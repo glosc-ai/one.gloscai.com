@@ -70,7 +70,11 @@ interface SubscriptionPlansCardProps {
 
 function getEpayMethods(payMethods: PaymentMethod[] = []): PaymentMethod[] {
   return payMethods.filter(
-    (m) => m?.type && m.type !== 'stripe' && m.type !== 'creem'
+    (m) =>
+      m?.type &&
+      m.type !== 'stripe' &&
+      m.type !== 'creem' &&
+      m.type !== 'linuxdo_credit'
   )
 }
 
@@ -244,8 +248,8 @@ export function SubscriptionPlansCard({
         <CardContent className='space-y-4 p-3 sm:p-5'>
           <Skeleton className='h-20 w-full' />
           <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'>
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className='h-48 w-full' />
+            {Array.from({ length: 3 }, (_, i) => `plan-${i}`).map((key) => (
+              <Skeleton key={key} className='h-48 w-full' />
             ))}
           </div>
         </CardContent>
@@ -424,19 +428,21 @@ export function SubscriptionPlansCard({
                               ? `${planTitle} · ${t('Subscription')} #${subscription?.id}`
                               : `${t('Subscription')} #${subscription?.id}`}
                           </span>
-                          {isActive ? (
+                          {isActive && (
                             <StatusBadge
                               label={t('Active')}
                               variant='success'
                               copyable={false}
                             />
-                          ) : isCancelled ? (
+                          )}
+                          {isCancelled && (
                             <StatusBadge
                               label={t('Cancelled')}
                               variant='neutral'
                               copyable={false}
                             />
-                          ) : (
+                          )}
+                          {!isActive && !isCancelled && (
                             <StatusBadge
                               label={t('Expired')}
                               variant='neutral'
@@ -453,11 +459,9 @@ export function SubscriptionPlansCard({
                         )}
                       </div>
                       <div className='text-muted-foreground mt-1.5'>
-                        {isActive
-                          ? t('Until')
-                          : isCancelled
-                            ? t('Cancelled at')
-                            : t('Expired at')}{' '}
+                        {isActive && t('Until')}
+                        {isCancelled && t('Cancelled at')}
+                        {!isActive && !isCancelled && t('Expired at')}{' '}
                         {new Date(
                           (subscription?.end_time || 0) * 1000
                         ).toLocaleString()}
@@ -466,7 +470,7 @@ export function SubscriptionPlansCard({
                         <div className='text-muted-foreground mt-1'>
                           {t('Next reset')}:{' '}
                           {new Date(
-                            subscription!.next_reset_time! * 1000
+                            (subscription?.next_reset_time ?? 0) * 1000
                           ).toLocaleString()}
                         </div>
                       )}

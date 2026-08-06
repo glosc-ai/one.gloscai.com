@@ -91,6 +91,8 @@ const TopUp = () => {
   const [waffoPayMethods, setWaffoPayMethods] = useState([]);
   const [waffoMinTopUp, setWaffoMinTopUp] = useState(1);
   const [enableWaffoPancakeTopUp, setEnableWaffoPancakeTopUp] = useState(false);
+  const [enableLinuxDOCreditTopUp, setEnableLinuxDOCreditTopUp] =
+    useState(false);
   const [waffoPancakeMinTopUp, setWaffoPancakeMinTopUp] = useState(1);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -161,6 +163,9 @@ const TopUp = () => {
     if (typeof payment === 'string' && payment.startsWith('waffo:')) {
       return getWaffoAmount(value);
     }
+    if (payment === 'linuxdo_credit') {
+      return getLinuxDOCreditAmount(value);
+    }
     return getAmount(value);
   };
 
@@ -224,7 +229,12 @@ const TopUp = () => {
         showError(t('管理员未开启 Waffo 充值！'));
         return;
       }
-    } else {
+    } else if (payment === 'linuxdo_credit') {
+      if (!enableLinuxDOCreditTopUp) {
+        showError(t('管理员未开启 LINUX DO Credit 充值！'));
+        return;
+      }
+    } else if (payment !== 'linuxdo_credit') {
       if (!enableOnlineTopUp) {
         showError(t('管理员未开启在线充值！'));
         return;
@@ -278,6 +288,10 @@ const TopUp = () => {
       if (amount === 0) {
         await getStripeAmount();
       }
+    } else if (payWay === 'linuxdo_credit') {
+      if (amount === 0) {
+        await getLinuxDOCreditAmount();
+      }
     } else {
       // 普通支付处理
       if (amount === 0) {
@@ -297,6 +311,11 @@ const TopUp = () => {
         res = await API.post('/api/user/stripe/pay', {
           amount: parseInt(topUpCount),
           payment_method: 'stripe',
+        });
+      } else if (payWay === 'linuxdo_credit') {
+        res = await API.post('/api/user/linuxdo-credit/pay', {
+          amount: parseInt(topUpCount),
+          payment_method: payWay,
         });
       } else {
         // 普通支付请求
@@ -660,6 +679,8 @@ const TopUp = () => {
           const enableWaffoTopUp = data.enable_waffo_topup || false;
           const enableWaffoPancakeTopUp =
             data.enable_waffo_pancake_topup || false;
+          const enableLinuxDOCreditTopUp =
+            data.enable_linuxdo_credit_topup || false;
           const minTopUpValue = enableOnlineTopUp
             ? data.min_topup
             : enableStripeTopUp
@@ -668,8 +689,10 @@ const TopUp = () => {
                 ? data.waffo_min_topup
                 : enableWaffoPancakeTopUp
                   ? data.waffo_pancake_min_topup
-                  : 1;
-          setEnableOnlineTopUp(enableOnlineTopUp);
+                  : enableLinuxDOCreditTopUp
+                    ? data.linuxdo_credit_min_topup
+                    : 1;
+          setEnableOnlineTopUp(data.enable_online_topup || false);
           setEnableStripeTopUp(enableStripeTopUp);
           setEnableCreemTopUp(enableCreemTopUp);
           setEnableWaffoTopUp(enableWaffoTopUp);
@@ -677,6 +700,7 @@ const TopUp = () => {
           setWaffoMinTopUp(data.waffo_min_topup || 1);
           setEnableWaffoPancakeTopUp(enableWaffoPancakeTopUp);
           setWaffoPancakeMinTopUp(data.waffo_pancake_min_topup || 1);
+          setEnableLinuxDOCreditTopUp(enableLinuxDOCreditTopUp);
           setMinTopUp(minTopUpValue);
           setTopUpCount(minTopUpValue);
           setTopUpLink(data.topup_link || '');
@@ -801,7 +825,7 @@ const TopUp = () => {
   }, [statusState?.status]);
 
   const renderAmount = () => {
-    return amount + ' ' + t('元');
+    return amount + ' ' + (payWay === 'linuxdo_credit' ? 'LDC' : t('元'));
   };
 
   const getAmount = async (value) => {
@@ -829,6 +853,20 @@ const TopUp = () => {
     }
     setAmountLoading(false);
   };
+
+  async function getLinuxDOCreditAmount(value) {
+    const amountValue = value === undefined ? topUpCount : value;
+    setAmountLoading(true);
+    try {
+      const res = await API.post('/api/user/linuxdo-credit/amount', {
+        amount: parseFloat(amountValue),
+      });
+      const { message, data } = res.data || {};
+      setAmount(message === 'success' ? parseFloat(data) : 0);
+    } finally {
+      setAmountLoading(false);
+    }
+  }
 
   const getStripeAmount = async (value) => {
     if (value === undefined) {
@@ -886,7 +924,11 @@ const TopUp = () => {
     // 计算实际支付金额，考虑折扣
     const discount = preset.discount || topupInfo.discount[preset.value] || 1.0;
     const discountedAmount = preset.value * priceRatio * discount;
-    setAmount(discountedAmount);
+    if (payWay === 'linuxdo_credit') {
+      getLinuxDOCreditAmount(preset.value);
+    } else {
+      setAmount(discountedAmount);
+    }
   };
 
   // 格式化大数字显示
@@ -980,6 +1022,7 @@ const TopUp = () => {
           creemPreTopUp={creemPreTopUp}
           enableWaffoTopUp={enableWaffoTopUp}
           enableWaffoPancakeTopUp={enableWaffoPancakeTopUp}
+          enableLinuxDOCreditTopUp={enableLinuxDOCreditTopUp}
           presetAmounts={presetAmounts}
           selectedPreset={selectedPreset}
           selectPresetAmount={selectPresetAmount}
@@ -988,7 +1031,7 @@ const TopUp = () => {
           topUpCount={topUpCount}
           minTopUp={minTopUp}
           renderQuotaWithAmount={renderQuotaWithAmount}
-          getAmount={getAmount}
+          getAmount={(value) => requestAmountByPayment(payWay, value)}
           setTopUpCount={setTopUpCount}
           setSelectedPreset={setSelectedPreset}
           renderAmount={renderAmount}

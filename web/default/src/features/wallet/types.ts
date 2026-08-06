@@ -139,6 +139,8 @@ export interface TopupInfo {
   enable_alipay_topup?: boolean
   /** Whether official WeChat Pay topup is enabled */
   enable_wechat_pay_topup?: boolean
+  /** Whether LINUX DO Credit topup is enabled */
+  enable_linuxdo_credit_topup?: boolean
   /** Available payment methods */
   pay_methods: PaymentMethod[]
   /** Minimum topup amount for online topup */
@@ -149,6 +151,8 @@ export interface TopupInfo {
   alipay_min_topup?: number
   /** Minimum topup amount for official WeChat Pay */
   wechat_pay_min_topup?: number
+  /** Minimum topup amount for LINUX DO Credit */
+  linuxdo_credit_min_topup?: number
   /** Preset amount options */
   amount_options: number[]
   /** Discount rates by amount */

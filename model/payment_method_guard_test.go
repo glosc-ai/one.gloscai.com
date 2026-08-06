@@ -152,6 +152,27 @@ func TestRechargeDirectTopUp_AppliesAffiliateRebate(t *testing.T) {
 	assert.Equal(t, int64(1), count)
 }
 
+func TestRechargeLinuxDOCreditTopUp_RequiresOwnedOrderAndIsIdempotent(t *testing.T) {
+	truncateTables(t)
+
+	originalQuotaPerUnit := common.QuotaPerUnit
+	t.Cleanup(func() { common.QuotaPerUnit = originalQuotaPerUnit })
+	common.QuotaPerUnit = 500000
+
+	insertUserForPaymentGuardTest(t, 207, 0)
+	insertTopUpForPaymentGuardTest(t, "ldc-owned-order", 207, PaymentProviderLinuxDOCredit)
+
+	require.NoError(t, RechargeLinuxDOCreditTopUp("ldc-owned-order", "127.0.0.1"))
+	assert.Equal(t, 1000000, getUserQuotaForPaymentGuardTest(t, 207))
+	require.NoError(t, RechargeLinuxDOCreditTopUp("ldc-owned-order", "127.0.0.1"))
+	assert.Equal(t, 1000000, getUserQuotaForPaymentGuardTest(t, 207))
+
+	insertTopUpForPaymentGuardTest(t, "ldc-foreign-order", 207, PaymentProviderEpay)
+	require.ErrorIs(t, RechargeLinuxDOCreditTopUp("ldc-foreign-order", "127.0.0.1"), ErrPaymentMethodMismatch)
+	assert.Equal(t, common.TopUpStatusPending, getTopUpStatusForPaymentGuardTest(t, "ldc-foreign-order"))
+	assert.Equal(t, 1000000, getUserQuotaForPaymentGuardTest(t, 207))
+}
+
 func TestRechargeDirectTopUp_AppliesUserAffiliateRebateOverride(t *testing.T) {
 	truncateTables(t)
 

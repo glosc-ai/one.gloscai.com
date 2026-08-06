@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"math"
 	"strings"
 
 	"github.com/QuantumNous/new-api/service"
@@ -108,6 +109,31 @@ func isEpayWebhookConfigured() bool {
 
 func isEpayWebhookEnabled() bool {
 	return isEpayTopUpEnabled()
+}
+
+func isLinuxDOCreditTopUpEnabled() bool {
+	return isPaymentComplianceConfirmed() &&
+		setting.LinuxDOCreditEnabled &&
+		isLinuxDOCreditWebhookConfigured()
+}
+
+func isLinuxDOCreditWebhookConfigured() bool {
+	if _, err := linuxDOCreditPaymentURL(); err != nil {
+		return false
+	}
+	return strings.TrimSpace(setting.LinuxDOCreditClientID) != "" &&
+		strings.TrimSpace(setting.LinuxDOCreditSecret) != "" &&
+		!math.IsNaN(setting.LinuxDOCreditUnitPrice) &&
+		!math.IsInf(setting.LinuxDOCreditUnitPrice, 0) &&
+		setting.LinuxDOCreditUnitPrice > 0 &&
+		setting.LinuxDOCreditUnitPrice <= 1000000 &&
+		setting.LinuxDOCreditMinTopUp > 0 &&
+		setting.LinuxDOCreditMinTopUp <= linuxDOCreditMaxTopUp &&
+		hasPaymentNotifyAddress("")
+}
+
+func isLinuxDOCreditWebhookEnabled() bool {
+	return isLinuxDOCreditTopUpEnabled()
 }
 
 func hasPaymentNotifyAddress(customNotifyUrl string) bool {

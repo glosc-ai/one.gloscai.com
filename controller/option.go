@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -166,6 +167,25 @@ func UpdateOption(c *gin.Context) {
 		}
 		if ratio > 0 && !operation_setting.IsPaymentComplianceConfirmed() {
 			common.ApiErrorI18n(c, i18n.MsgPaymentComplianceRequired)
+			return
+		}
+	case "LinuxDOCreditGateway":
+		gatewayURL, parseErr := url.Parse(strings.TrimSpace(option.Value.(string)))
+		if parseErr != nil || gatewayURL.Scheme != "https" || gatewayURL.Hostname() == "" || gatewayURL.User != nil || gatewayURL.RawQuery != "" || gatewayURL.Fragment != "" {
+			common.ApiErrorMsg(c, "LINUX DO Credit 网关必须是有效的 HTTPS 地址")
+			return
+		}
+		option.Value = strings.TrimRight(gatewayURL.String(), "/")
+	case "LinuxDOCreditUnitPrice":
+		ratio, parseErr := strconv.ParseFloat(strings.TrimSpace(option.Value.(string)), 64)
+		if parseErr != nil || math.IsNaN(ratio) || math.IsInf(ratio, 0) || ratio <= 0 || ratio > 1000000 {
+			common.ApiErrorMsg(c, "LINUX DO Credit 兑换比例必须大于 0 且不超过 1000000")
+			return
+		}
+	case "LinuxDOCreditMinTopUp":
+		minimum, parseErr := strconv.Atoi(strings.TrimSpace(option.Value.(string)))
+		if parseErr != nil || minimum < 1 || minimum > linuxDOCreditMaxTopUp {
+			common.ApiErrorMsg(c, fmt.Sprintf("LINUX DO Credit 最低充值额度必须在 1 到 %d 之间", linuxDOCreditMaxTopUp))
 			return
 		}
 	default:

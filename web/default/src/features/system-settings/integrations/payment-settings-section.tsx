@@ -43,7 +43,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
@@ -66,6 +65,10 @@ import {
   type ChinaPaymentSettingsValues,
 } from './china-payment-settings-section'
 import { CreemProductsVisualEditor } from './creem-products-visual-editor'
+import {
+  LinuxDOCreditSettingsSection,
+  type LinuxDOCreditSettingsValues,
+} from './linuxdo-credit-settings-section'
 import { PaymentMethodsVisualEditor } from './payment-methods-visual-editor'
 import {
   formatJsonForEditor,
@@ -152,6 +155,12 @@ const paymentSchema = z.object({
   StripeUnitPrice: z.coerce.number().min(0),
   StripeMinTopUp: z.coerce.number().min(0),
   StripePromotionCodesEnabled: z.boolean(),
+  LinuxDOCreditEnabled: z.boolean(),
+  LinuxDOCreditGateway: z.string().url(),
+  LinuxDOCreditClientID: z.string(),
+  LinuxDOCreditSecret: z.string(),
+  LinuxDOCreditUnitPrice: z.coerce.number().positive().max(1000000),
+  LinuxDOCreditMinTopUp: z.coerce.number().int().min(1).max(4000),
   CreemApiKey: z.string(),
   CreemWebhookSecret: z.string(),
   CreemTestMode: z.boolean(),
@@ -185,6 +194,7 @@ const paymentSchema = z.object({
 
 type PaymentFormValues = z.infer<typeof paymentSchema>
 type WaffoFormFieldValues = Omit<WaffoSettingsValues, 'WaffoPayMethods'>
+type LinuxDOCreditFormFieldValues = LinuxDOCreditSettingsValues
 type PaymentBaseFormValues = Omit<
   PaymentFormValues,
   keyof WaffoFormFieldValues | keyof WaffoPancakeSettingsValues
@@ -411,6 +421,19 @@ export function PaymentSettingsSection({
     [setPaymentValue]
   )
 
+  const setLinuxDOCreditValue = React.useCallback(
+    <K extends keyof LinuxDOCreditFormFieldValues>(
+      key: K,
+      value: LinuxDOCreditFormFieldValues[K]
+    ) => {
+      setPaymentValue(
+        key as keyof PaymentFormValues,
+        value as PaymentFormValues[keyof PaymentFormValues]
+      )
+    },
+    [setPaymentValue]
+  )
+
   React.useEffect(() => {
     const parsedDefaults = JSON.parse(defaultsSignature) as PaymentFormValues
     initialRef.current = parsedDefaults
@@ -440,6 +463,14 @@ export function PaymentSettingsSection({
       StripeUnitPrice: values.StripeUnitPrice,
       StripeMinTopUp: values.StripeMinTopUp,
       StripePromotionCodesEnabled: values.StripePromotionCodesEnabled,
+      LinuxDOCreditEnabled: values.LinuxDOCreditEnabled,
+      LinuxDOCreditGateway: removeTrailingSlash(
+        values.LinuxDOCreditGateway.trim()
+      ),
+      LinuxDOCreditClientID: values.LinuxDOCreditClientID.trim(),
+      LinuxDOCreditSecret: values.LinuxDOCreditSecret.trim(),
+      LinuxDOCreditUnitPrice: values.LinuxDOCreditUnitPrice,
+      LinuxDOCreditMinTopUp: values.LinuxDOCreditMinTopUp,
       CreemApiKey: values.CreemApiKey.trim(),
       CreemWebhookSecret: values.CreemWebhookSecret.trim(),
       CreemTestMode: values.CreemTestMode,
@@ -485,6 +516,14 @@ export function PaymentSettingsSection({
       StripeMinTopUp: initialRef.current.StripeMinTopUp,
       StripePromotionCodesEnabled:
         initialRef.current.StripePromotionCodesEnabled,
+      LinuxDOCreditEnabled: initialRef.current.LinuxDOCreditEnabled,
+      LinuxDOCreditGateway: removeTrailingSlash(
+        initialRef.current.LinuxDOCreditGateway.trim()
+      ),
+      LinuxDOCreditClientID: initialRef.current.LinuxDOCreditClientID.trim(),
+      LinuxDOCreditSecret: initialRef.current.LinuxDOCreditSecret.trim(),
+      LinuxDOCreditUnitPrice: initialRef.current.LinuxDOCreditUnitPrice,
+      LinuxDOCreditMinTopUp: initialRef.current.LinuxDOCreditMinTopUp,
       CreemApiKey: initialRef.current.CreemApiKey.trim(),
       CreemWebhookSecret: initialRef.current.CreemWebhookSecret.trim(),
       CreemTestMode: initialRef.current.CreemTestMode,
@@ -605,6 +644,51 @@ export function PaymentSettingsSection({
       updates.push({
         key: 'StripePromotionCodesEnabled',
         value: sanitized.StripePromotionCodesEnabled,
+      })
+    }
+
+    if (sanitized.LinuxDOCreditEnabled !== initial.LinuxDOCreditEnabled) {
+      updates.push({
+        key: 'LinuxDOCreditEnabled',
+        value: sanitized.LinuxDOCreditEnabled,
+      })
+    }
+
+    if (sanitized.LinuxDOCreditGateway !== initial.LinuxDOCreditGateway) {
+      updates.push({
+        key: 'LinuxDOCreditGateway',
+        value: sanitized.LinuxDOCreditGateway,
+      })
+    }
+
+    if (sanitized.LinuxDOCreditClientID !== initial.LinuxDOCreditClientID) {
+      updates.push({
+        key: 'LinuxDOCreditClientID',
+        value: sanitized.LinuxDOCreditClientID,
+      })
+    }
+
+    if (
+      sanitized.LinuxDOCreditSecret &&
+      sanitized.LinuxDOCreditSecret !== initial.LinuxDOCreditSecret
+    ) {
+      updates.push({
+        key: 'LinuxDOCreditSecret',
+        value: sanitized.LinuxDOCreditSecret,
+      })
+    }
+
+    if (sanitized.LinuxDOCreditUnitPrice !== initial.LinuxDOCreditUnitPrice) {
+      updates.push({
+        key: 'LinuxDOCreditUnitPrice',
+        value: sanitized.LinuxDOCreditUnitPrice,
+      })
+    }
+
+    if (sanitized.LinuxDOCreditMinTopUp !== initial.LinuxDOCreditMinTopUp) {
+      updates.push({
+        key: 'LinuxDOCreditMinTopUp',
+        value: sanitized.LinuxDOCreditMinTopUp,
       })
     }
 
@@ -802,6 +886,14 @@ export function PaymentSettingsSection({
     WaffoPancakePrivateKey: currentFormValues.WaffoPancakePrivateKey,
     WaffoPancakeReturnURL: currentFormValues.WaffoPancakeReturnURL,
   }
+  const linuxDOCreditValues: LinuxDOCreditSettingsValues = {
+    LinuxDOCreditEnabled: currentFormValues.LinuxDOCreditEnabled,
+    LinuxDOCreditGateway: currentFormValues.LinuxDOCreditGateway,
+    LinuxDOCreditClientID: currentFormValues.LinuxDOCreditClientID,
+    LinuxDOCreditSecret: currentFormValues.LinuxDOCreditSecret,
+    LinuxDOCreditUnitPrice: currentFormValues.LinuxDOCreditUnitPrice,
+    LinuxDOCreditMinTopUp: currentFormValues.LinuxDOCreditMinTopUp,
+  }
 
   return (
     <SettingsSection title={t('Payment Gateway')}>
@@ -869,31 +961,40 @@ export function PaymentSettingsSection({
       />
 
       <Form {...form}>
-        <SettingsForm
-          onSubmit={form.handleSubmit(onSubmit)}
-          className={cn(
-            'gap-y-8',
-            !complianceConfirmed && 'pointer-events-none opacity-40'
-          )}
-          data-no-autosubmit='true'
-        >
-          <SettingsPageFormActions
-            onSave={form.handleSubmit(onSubmit)}
-            isSaving={updateOption.isPending || isSubmitting}
-            saveLabel='Save all settings'
-          />
-          <Tabs defaultValue='general' className='min-w-0'>
-            <div className='overflow-x-auto pb-1'>
-              <TabsList className='grid min-w-[44rem] grid-cols-6'>
-                <TabsTrigger value='general'>{t('General')}</TabsTrigger>
-                <TabsTrigger value='epay'>Epay</TabsTrigger>
-                <TabsTrigger value='stripe'>{t('Stripe')}</TabsTrigger>
-                <TabsTrigger value='creem'>Creem</TabsTrigger>
-                <TabsTrigger value='waffo-pancake'>Waffo Pancake</TabsTrigger>
-                <TabsTrigger value='waffo'>Waffo</TabsTrigger>
-              </TabsList>
-            </div>
+        <Tabs defaultValue='general' className='min-w-0'>
+          <div className='overflow-x-auto pb-1'>
+            <TabsList className='grid min-w-[66rem] grid-cols-9'>
+              <TabsTrigger value='general'>{t('General')}</TabsTrigger>
+              <TabsTrigger value='epay'>Epay</TabsTrigger>
+              <TabsTrigger value='linuxdo-credit'>
+                {t('LINUX DO Credit')}
+              </TabsTrigger>
+              <TabsTrigger value='stripe'>{t('Stripe')}</TabsTrigger>
+              <TabsTrigger value='creem'>Creem</TabsTrigger>
+              <TabsTrigger value='waffo-pancake'>Waffo Pancake</TabsTrigger>
+              <TabsTrigger value='waffo'>Waffo</TabsTrigger>
+              <TabsTrigger value='alipay-official'>
+                {t('Alipay Official')}
+              </TabsTrigger>
+              <TabsTrigger value='wechat-pay-official'>
+                {t('WeChat Pay Official')}
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
+          <SettingsForm
+            onSubmit={form.handleSubmit(onSubmit)}
+            className={cn(
+              'gap-y-8',
+              !complianceConfirmed && 'pointer-events-none opacity-40'
+            )}
+            data-no-autosubmit='true'
+          >
+            <SettingsPageFormActions
+              onSave={form.handleSubmit(onSubmit)}
+              isSaving={updateOption.isPending || isSubmitting}
+              saveLabel='Save all settings'
+            />
             <TabsContent value='general' className={paymentTabContentClassName}>
               <div className='space-y-4'>
                 <div>
@@ -1246,6 +1347,16 @@ export function PaymentSettingsSection({
                   />
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent
+              value='linuxdo-credit'
+              className={paymentTabContentClassName}
+            >
+              <LinuxDOCreditSettingsSection
+                values={linuxDOCreditValues}
+                onValueChange={setLinuxDOCreditValue}
+              />
             </TabsContent>
 
             <TabsContent value='stripe' className={paymentTabContentClassName}>
@@ -1617,13 +1728,29 @@ export function PaymentSettingsSection({
                 onPayMethodsChange={setWaffoPayMethods}
               />
             </TabsContent>
-          </Tabs>
-        </SettingsForm>
+          </SettingsForm>
+
+          <TabsContent
+            value='alipay-official'
+            className={paymentTabContentClassName}
+          >
+            <ChinaPaymentSettingsSection
+              defaultValues={chinaDefaultValues}
+              gateway='alipay'
+            />
+          </TabsContent>
+
+          <TabsContent
+            value='wechat-pay-official'
+            className={paymentTabContentClassName}
+          >
+            <ChinaPaymentSettingsSection
+              defaultValues={chinaDefaultValues}
+              gateway='wechat-pay'
+            />
+          </TabsContent>
+        </Tabs>
       </Form>
-
-      <Separator />
-
-      <ChinaPaymentSettingsSection defaultValues={chinaDefaultValues} />
     </SettingsSection>
   )
 }

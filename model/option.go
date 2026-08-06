@@ -88,6 +88,12 @@ func InitOptionMap() {
 	common.OptionMap["CustomCallbackAddress"] = ""
 	common.OptionMap["EpayId"] = ""
 	common.OptionMap["EpayKey"] = ""
+	common.OptionMap["LinuxDOCreditEnabled"] = strconv.FormatBool(setting.LinuxDOCreditEnabled)
+	common.OptionMap["LinuxDOCreditGateway"] = setting.LinuxDOCreditGateway
+	common.OptionMap["LinuxDOCreditClientID"] = setting.LinuxDOCreditClientID
+	common.OptionMap["LinuxDOCreditSecret"] = setting.LinuxDOCreditSecret
+	common.OptionMap["LinuxDOCreditUnitPrice"] = strconv.FormatFloat(setting.LinuxDOCreditUnitPrice, 'f', -1, 64)
+	common.OptionMap["LinuxDOCreditMinTopUp"] = strconv.Itoa(setting.LinuxDOCreditMinTopUp)
 	common.OptionMap["Price"] = strconv.FormatFloat(operation_setting.Price, 'f', -1, 64)
 	common.OptionMap["USDExchangeRate"] = strconv.FormatFloat(operation_setting.USDExchangeRate, 'f', -1, 64)
 	common.OptionMap["MinTopUp"] = strconv.Itoa(operation_setting.MinTopUp)
@@ -434,6 +440,18 @@ func updateOptionMap(key string, value string) (err error) {
 		operation_setting.EpayId = value
 	case "EpayKey":
 		operation_setting.EpayKey = value
+	case "LinuxDOCreditEnabled":
+		setting.LinuxDOCreditEnabled = value == "true"
+	case "LinuxDOCreditGateway":
+		setting.LinuxDOCreditGateway = value
+	case "LinuxDOCreditClientID":
+		setting.LinuxDOCreditClientID = value
+	case "LinuxDOCreditSecret":
+		setting.LinuxDOCreditSecret = value
+	case "LinuxDOCreditUnitPrice":
+		setting.LinuxDOCreditUnitPrice, _ = strconv.ParseFloat(value, 64)
+	case "LinuxDOCreditMinTopUp":
+		setting.LinuxDOCreditMinTopUp, _ = strconv.Atoi(value)
 	case "Price":
 		operation_setting.Price, _ = strconv.ParseFloat(value, 64)
 	case "USDExchangeRate":

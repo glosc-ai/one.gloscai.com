@@ -24,12 +24,14 @@ import {
   calculateAmount,
   calculateAlipayAmount,
   calculateStripeAmount,
+  calculateLinuxDOCreditAmount,
   calculateWeChatPayAmount,
   calculateWaffoPancakeAmount,
   requestPayment,
   requestAlipayPayment,
   getOfficialPaymentStatus,
   requestStripePayment,
+  requestLinuxDOCreditPayment,
   requestWeChatPayPayment,
   isApiSuccess,
 } from '../api'
@@ -38,6 +40,7 @@ import {
   isOfficialWeChatPayPayment,
   isStripePayment,
   isWaffoPancakePayment,
+  isLinuxDOCreditPayment,
   submitHtmlPaymentForm,
   submitPaymentForm,
 } from '../lib'
@@ -64,21 +67,23 @@ export function usePayment() {
         setCalculating(true)
 
         const isStripe = isStripePayment(paymentType)
-        const isPancake = isWaffoPancakePayment(paymentType)
-        const isAlipay = isOfficialAlipayPayment(paymentType)
-        const isWeChatPay = isOfficialWeChatPayPayment(paymentType)
-        const response = isStripe
-          ? await calculateStripeAmount({ amount: topupAmount })
-          : isAlipay
-            ? await calculateAlipayAmount({ amount: topupAmount })
-            : isWeChatPay
-              ? await calculateWeChatPayAmount({ amount: topupAmount })
-              : isPancake
-                ? await calculateWaffoPancakeAmount({ amount: topupAmount })
-                : await calculateAmount({ amount: topupAmount })
+        let response
+        if (isStripe) {
+          response = await calculateStripeAmount({ amount: topupAmount })
+        } else if (isOfficialAlipayPayment(paymentType)) {
+          response = await calculateAlipayAmount({ amount: topupAmount })
+        } else if (isOfficialWeChatPayPayment(paymentType)) {
+          response = await calculateWeChatPayAmount({ amount: topupAmount })
+        } else if (isLinuxDOCreditPayment(paymentType)) {
+          response = await calculateLinuxDOCreditAmount({ amount: topupAmount })
+        } else if (isWaffoPancakePayment(paymentType)) {
+          response = await calculateWaffoPancakeAmount({ amount: topupAmount })
+        } else {
+          response = await calculateAmount({ amount: topupAmount })
+        }
 
         if (isApiSuccess(response) && response.data) {
-          const calculatedAmount = parseFloat(response.data)
+          const calculatedAmount = Number.parseFloat(response.data)
           setAmount(calculatedAmount)
           return calculatedAmount
         }
@@ -86,7 +91,7 @@ export function usePayment() {
         // Don't show error for calculation, just set to 0
         setAmount(0)
         return 0
-      } catch (_error) {
+      } catch {
         setAmount(0)
         return 0
       } finally {
@@ -105,27 +110,36 @@ export function usePayment() {
         const isStripe = isStripePayment(paymentType)
         const isAlipay = isOfficialAlipayPayment(paymentType)
         const isWeChatPay = isOfficialWeChatPayPayment(paymentType)
+        const isLinuxDOCredit = isLinuxDOCreditPayment(paymentType)
         const amount = Math.floor(topupAmount)
 
-        const response = isStripe
-          ? await requestStripePayment({
-              amount,
-              payment_method: 'stripe',
-            })
-          : isAlipay
-            ? await requestAlipayPayment({
-                amount,
-                payment_method: paymentType,
-              })
-            : isWeChatPay
-              ? await requestWeChatPayPayment({
-                  amount,
-                  payment_method: paymentType,
-                })
-              : await requestPayment({
-                  amount,
-                  payment_method: paymentType,
-                })
+        let response
+        if (isStripe) {
+          response = await requestStripePayment({
+            amount,
+            payment_method: 'stripe',
+          })
+        } else if (isAlipay) {
+          response = await requestAlipayPayment({
+            amount,
+            payment_method: paymentType,
+          })
+        } else if (isWeChatPay) {
+          response = await requestWeChatPayPayment({
+            amount,
+            payment_method: paymentType,
+          })
+        } else if (isLinuxDOCredit) {
+          response = await requestLinuxDOCreditPayment({
+            amount,
+            payment_method: paymentType,
+          })
+        } else {
+          response = await requestPayment({
+            amount,
+            payment_method: paymentType,
+          })
+        }
 
         if (!isApiSuccess(response)) {
           toast.error(response.message || i18next.t('Payment request failed'))
@@ -191,7 +205,7 @@ export function usePayment() {
         }
 
         return false
-      } catch (_error) {
+      } catch {
         toast.error(i18next.t('Payment request failed'))
         return false
       } finally {

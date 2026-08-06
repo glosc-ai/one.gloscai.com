@@ -73,24 +73,26 @@ func topUpLogSortClause(sortBy string, sortOrder string) string {
 }
 
 const (
-	PaymentMethodStripe       = "stripe"
-	PaymentMethodCreem        = "creem"
-	PaymentMethodWaffo        = "waffo"
-	PaymentMethodWaffoPancake = "waffo_pancake"
-	PaymentMethodAlipay       = "alipay_official"
-	PaymentMethodWeChatPay    = "wechat_pay_official"
-	PaymentMethodBalance      = "balance"
+	PaymentMethodStripe        = "stripe"
+	PaymentMethodCreem         = "creem"
+	PaymentMethodWaffo         = "waffo"
+	PaymentMethodWaffoPancake  = "waffo_pancake"
+	PaymentMethodAlipay        = "alipay_official"
+	PaymentMethodWeChatPay     = "wechat_pay_official"
+	PaymentMethodLinuxDOCredit = "linuxdo_credit"
+	PaymentMethodBalance       = "balance"
 )
 
 const (
-	PaymentProviderEpay         = "epay"
-	PaymentProviderStripe       = "stripe"
-	PaymentProviderCreem        = "creem"
-	PaymentProviderWaffo        = "waffo"
-	PaymentProviderWaffoPancake = "waffo_pancake"
-	PaymentProviderAlipay       = "alipay"
-	PaymentProviderWeChatPay    = "wechat_pay"
-	PaymentProviderBalance      = "balance"
+	PaymentProviderEpay          = "epay"
+	PaymentProviderStripe        = "stripe"
+	PaymentProviderCreem         = "creem"
+	PaymentProviderWaffo         = "waffo"
+	PaymentProviderWaffoPancake  = "waffo_pancake"
+	PaymentProviderAlipay        = "alipay"
+	PaymentProviderWeChatPay     = "wechat_pay"
+	PaymentProviderLinuxDOCredit = "linuxdo_credit"
+	PaymentProviderBalance       = "balance"
 )
 
 var (
@@ -828,5 +830,63 @@ func RechargeDirectTopUp(tradeNo string, expectedPaymentProvider string, actualP
 		RecordTopupLog(topUp.UserId, fmt.Sprintf("在线充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, topUp.PaymentMethod, expectedPaymentProvider)
 	}
 
+	return nil
+}
+
+func RechargeLinuxDOCreditTopUp(tradeNo string, callerIp string) (err error) {
+	if tradeNo == "" {
+		return errors.New("未提供支付单号")
+	}
+
+	var quotaToAdd int
+	topUp := &TopUp{}
+	refCol := "`trade_no`"
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
+		refCol = `"trade_no"`
+	}
+
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		if err := lockForUpdate(tx).Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
+			return errors.New("充值订单不存在")
+		}
+		if topUp.PaymentProvider != PaymentProviderLinuxDOCredit || topUp.PaymentMethod != PaymentMethodLinuxDOCredit {
+			return ErrPaymentMethodMismatch
+		}
+		if topUp.Status == common.TopUpStatusSuccess {
+			return nil
+		}
+		if topUp.Status != common.TopUpStatusPending {
+			return errors.New("充值订单状态错误")
+		}
+
+		quotaToAdd = common.QuotaFromDecimal(
+			decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)),
+		)
+		if quotaToAdd <= 0 {
+			return errors.New("无效的充值额度")
+		}
+
+		topUp.CompleteTime = common.GetTimestamp()
+		topUp.Status = common.TopUpStatusSuccess
+		if err := tx.Save(topUp).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("quota", gorm.Expr("quota + ?", quotaToAdd)).Error; err != nil {
+			return err
+		}
+		if _, err := applyAffiliateRebateTx(tx, topUp, quotaToAdd); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		common.SysError("linux do credit topup failed: " + err.Error())
+		return err
+	}
+
+	if quotaToAdd > 0 {
+		syncUserQuotaCacheAfterTopUp(topUp.UserId, quotaToAdd)
+		RecordTopupLog(topUp.UserId, fmt.Sprintf("LINUX DO Credit 充值成功，充值额度: %v，支付 LDC: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, topUp.PaymentMethod, PaymentProviderLinuxDOCredit)
+	}
 	return nil
 }

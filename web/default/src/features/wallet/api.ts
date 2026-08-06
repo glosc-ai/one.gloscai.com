@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
+
 import { PAYMENT_TYPES } from './constants'
 import type {
   RedemptionRequest,
@@ -98,6 +99,18 @@ export async function calculateStripeAmount(
 }
 
 /**
+ * Calculate LINUX DO Credit required for a wallet top-up.
+ */
+export async function calculateLinuxDOCreditAmount(
+  request: AmountRequest
+): Promise<AmountResponse> {
+  const res = await api.post('/api/user/linuxdo-credit/amount', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
+}
+
+/**
  * Calculate payment amount for official Alipay
  */
 export async function calculateAlipayAmount(
@@ -134,6 +147,18 @@ export async function requestPayment(
     ...res.data,
     url: res.data.url || (res as unknown as { url?: string }).url,
   }
+}
+
+/**
+ * Create a LINUX DO Credit payment order.
+ */
+export async function requestLinuxDOCreditPayment(
+  request: PaymentRequest
+): Promise<PaymentResponse> {
+  const res = await api.post('/api/user/linuxdo-credit/pay', request, {
+    skipBusinessError: true,
+  } as Record<string, unknown>)
+  return res.data
 }
 
 /**
@@ -179,12 +204,12 @@ export async function getOfficialPaymentStatus(
   orderId: string,
   paymentType: string
 ): Promise<OfficialPaymentStatusResponse> {
-  const endpoint =
-    paymentType === PAYMENT_TYPES.ALIPAY_OFFICIAL
-      ? '/api/user/alipay/status'
-      : paymentType === PAYMENT_TYPES.WECHAT_PAY_OFFICIAL
-        ? '/api/user/wechat-pay/status'
-        : ''
+  let endpoint = ''
+  if (paymentType === PAYMENT_TYPES.ALIPAY_OFFICIAL) {
+    endpoint = '/api/user/alipay/status'
+  } else if (paymentType === PAYMENT_TYPES.WECHAT_PAY_OFFICIAL) {
+    endpoint = '/api/user/wechat-pay/status'
+  }
   if (!endpoint) {
     return { success: false, message: 'Payment request failed' }
   }

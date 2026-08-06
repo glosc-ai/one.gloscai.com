@@ -349,6 +349,12 @@ export type BillingSettings = {
   StripeUnitPrice: number
   StripeMinTopUp: number
   StripePromotionCodesEnabled: boolean
+  LinuxDOCreditEnabled: boolean
+  LinuxDOCreditGateway: string
+  LinuxDOCreditClientID: string
+  LinuxDOCreditSecret: string
+  LinuxDOCreditUnitPrice: number
+  LinuxDOCreditMinTopUp: number
   AlipayEnabled: boolean
   AlipayAppId: string
   AlipayPrivateKey: string

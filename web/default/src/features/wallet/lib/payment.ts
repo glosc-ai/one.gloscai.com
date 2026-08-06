@@ -88,6 +88,10 @@ export function isStripePayment(paymentType: string): boolean {
   return paymentType === PAYMENT_TYPES.STRIPE
 }
 
+export function isLinuxDOCreditPayment(paymentType: string): boolean {
+  return paymentType === PAYMENT_TYPES.LINUXDO_CREDIT
+}
+
 export function isOfficialAlipayPayment(paymentType: string): boolean {
   return paymentType === PAYMENT_TYPES.ALIPAY_OFFICIAL
 }
@@ -160,6 +164,10 @@ export function getMinTopupAmount(topupInfo: TopupInfo | null): number {
 
   if (topupInfo.enable_wechat_pay_topup) {
     return topupInfo.wechat_pay_min_topup || DEFAULT_MIN_TOPUP
+  }
+
+  if (topupInfo.enable_linuxdo_credit_topup) {
+    return topupInfo.linuxdo_credit_min_topup || DEFAULT_MIN_TOPUP
   }
 
   if (topupInfo.enable_stripe_topup) {

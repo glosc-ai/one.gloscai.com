@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,7 +35,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { SettingsSection } from '../components/settings-section'
+
 import { useUpdateOption } from '../hooks/use-update-option'
 import { removeTrailingSlash } from './utils'
 
@@ -67,9 +68,10 @@ export interface ChinaPaymentSettingsValues {
 
 interface Props {
   defaultValues: ChinaPaymentSettingsValues
+  gateway: 'alipay' | 'wechat-pay'
 }
 
-export function ChinaPaymentSettingsSection({ defaultValues }: Props) {
+export function ChinaPaymentSettingsSection({ defaultValues, gateway }: Props) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
   const [loading, setLoading] = useState(false)
@@ -83,79 +85,96 @@ export function ChinaPaymentSettingsSection({ defaultValues }: Props) {
     setLoading(true)
     try {
       const values = form.getValues()
-      const options: Array<{ key: string; value: string | number | boolean }> = [
-        { key: 'AlipayEnabled', value: values.AlipayEnabled },
-        { key: 'AlipayAppId', value: values.AlipayAppId.trim() },
-        {
-          key: 'AlipayGateway',
-          value:
-            removeTrailingSlash(values.AlipayGateway.trim()) ||
-            'https://openapi.alipay.com/gateway.do',
-        },
-        { key: 'AlipayProduct', value: values.AlipayProduct || 'page' },
-        { key: 'AlipayNotifyUrl', value: values.AlipayNotifyUrl.trim() },
-        { key: 'AlipayReturnUrl', value: values.AlipayReturnUrl.trim() },
-        { key: 'AlipayUnitPrice', value: Number(values.AlipayUnitPrice || 0) },
-        { key: 'AlipayMinTopUp', value: Number(values.AlipayMinTopUp || 0) },
-        { key: 'WeChatPayEnabled', value: values.WeChatPayEnabled },
-        { key: 'WeChatPayAppId', value: values.WeChatPayAppId.trim() },
-        { key: 'WeChatPayMchId', value: values.WeChatPayMchId.trim() },
-        {
-          key: 'WeChatPayMerchantSerialNo',
-          value: values.WeChatPayMerchantSerialNo.trim(),
-        },
-        {
-          key: 'WeChatPayPlatformSerialNo',
-          value: values.WeChatPayPlatformSerialNo.trim(),
-        },
-        {
-          key: 'WeChatPayApiBase',
-          value:
-            removeTrailingSlash(values.WeChatPayApiBase.trim()) ||
-            'https://api.mch.weixin.qq.com',
-        },
-        {
-          key: 'WeChatPayTradeType',
-          value: values.WeChatPayTradeType || 'NATIVE',
-        },
-        { key: 'WeChatPayNotifyUrl', value: values.WeChatPayNotifyUrl.trim() },
-        { key: 'WeChatPayReturnUrl', value: values.WeChatPayReturnUrl.trim() },
-        {
-          key: 'WeChatPayUnitPrice',
-          value: Number(values.WeChatPayUnitPrice || 0),
-        },
-        {
-          key: 'WeChatPayMinTopUp',
-          value: Number(values.WeChatPayMinTopUp || 0),
-        },
-      ]
+      const options: Array<{ key: string; value: string | number | boolean }> =
+        []
 
-      const alipayPrivateKey = values.AlipayPrivateKey.trim()
-      const alipayPublicKey = values.AlipayPublicKey.trim()
-      const wechatApiV3Key = values.WeChatPayApiV3Key.trim()
-      const wechatMerchantPrivateKey = values.WeChatPayMerchantPrivateKey.trim()
-      const wechatPlatformPublicKey = values.WeChatPayPlatformPublicKey.trim()
+      if (gateway === 'alipay') {
+        options.push(
+          { key: 'AlipayEnabled', value: values.AlipayEnabled },
+          { key: 'AlipayAppId', value: values.AlipayAppId.trim() },
+          {
+            key: 'AlipayGateway',
+            value:
+              removeTrailingSlash(values.AlipayGateway.trim()) ||
+              'https://openapi.alipay.com/gateway.do',
+          },
+          { key: 'AlipayProduct', value: values.AlipayProduct || 'page' },
+          { key: 'AlipayNotifyUrl', value: values.AlipayNotifyUrl.trim() },
+          { key: 'AlipayReturnUrl', value: values.AlipayReturnUrl.trim() },
+          {
+            key: 'AlipayUnitPrice',
+            value: Number(values.AlipayUnitPrice || 0),
+          },
+          { key: 'AlipayMinTopUp', value: Number(values.AlipayMinTopUp || 0) }
+        )
 
-      if (alipayPrivateKey) {
-        options.push({ key: 'AlipayPrivateKey', value: alipayPrivateKey })
-      }
-      if (alipayPublicKey) {
-        options.push({ key: 'AlipayPublicKey', value: alipayPublicKey })
-      }
-      if (wechatApiV3Key) {
-        options.push({ key: 'WeChatPayApiV3Key', value: wechatApiV3Key })
-      }
-      if (wechatMerchantPrivateKey) {
-        options.push({
-          key: 'WeChatPayMerchantPrivateKey',
-          value: wechatMerchantPrivateKey,
-        })
-      }
-      if (wechatPlatformPublicKey) {
-        options.push({
-          key: 'WeChatPayPlatformPublicKey',
-          value: wechatPlatformPublicKey,
-        })
+        const privateKey = values.AlipayPrivateKey.trim()
+        const publicKey = values.AlipayPublicKey.trim()
+        if (privateKey) {
+          options.push({ key: 'AlipayPrivateKey', value: privateKey })
+        }
+        if (publicKey) {
+          options.push({ key: 'AlipayPublicKey', value: publicKey })
+        }
+      } else {
+        options.push(
+          { key: 'WeChatPayEnabled', value: values.WeChatPayEnabled },
+          { key: 'WeChatPayAppId', value: values.WeChatPayAppId.trim() },
+          { key: 'WeChatPayMchId', value: values.WeChatPayMchId.trim() },
+          {
+            key: 'WeChatPayMerchantSerialNo',
+            value: values.WeChatPayMerchantSerialNo.trim(),
+          },
+          {
+            key: 'WeChatPayPlatformSerialNo',
+            value: values.WeChatPayPlatformSerialNo.trim(),
+          },
+          {
+            key: 'WeChatPayApiBase',
+            value:
+              removeTrailingSlash(values.WeChatPayApiBase.trim()) ||
+              'https://api.mch.weixin.qq.com',
+          },
+          {
+            key: 'WeChatPayTradeType',
+            value: values.WeChatPayTradeType || 'NATIVE',
+          },
+          {
+            key: 'WeChatPayNotifyUrl',
+            value: values.WeChatPayNotifyUrl.trim(),
+          },
+          {
+            key: 'WeChatPayReturnUrl',
+            value: values.WeChatPayReturnUrl.trim(),
+          },
+          {
+            key: 'WeChatPayUnitPrice',
+            value: Number(values.WeChatPayUnitPrice || 0),
+          },
+          {
+            key: 'WeChatPayMinTopUp',
+            value: Number(values.WeChatPayMinTopUp || 0),
+          }
+        )
+
+        const apiV3Key = values.WeChatPayApiV3Key.trim()
+        const merchantPrivateKey = values.WeChatPayMerchantPrivateKey.trim()
+        const platformPublicKey = values.WeChatPayPlatformPublicKey.trim()
+        if (apiV3Key) {
+          options.push({ key: 'WeChatPayApiV3Key', value: apiV3Key })
+        }
+        if (merchantPrivateKey) {
+          options.push({
+            key: 'WeChatPayMerchantPrivateKey',
+            value: merchantPrivateKey,
+          })
+        }
+        if (platformPublicKey) {
+          options.push({
+            key: 'WeChatPayPlatformPublicKey',
+            value: platformPublicKey,
+          })
+        }
       }
 
       for (const option of options) {
@@ -170,10 +189,7 @@ export function ChinaPaymentSettingsSection({ defaultValues }: Props) {
   }
 
   return (
-    <SettingsSection
-      title={t('Alipay and WeChat Pay')}
-      description={t('Configure official China payment gateways')}
-    >
+    <div className='space-y-4'>
       <Alert>
         <AlertDescription className='text-xs'>
           {t(
@@ -182,7 +198,7 @@ export function ChinaPaymentSettingsSection({ defaultValues }: Props) {
         </AlertDescription>
       </Alert>
 
-      <div className='space-y-6'>
+      {gateway === 'alipay' ? (
         <div className='space-y-4'>
           <div className='flex items-center justify-between gap-4 rounded-lg border p-4'>
             <div>
@@ -219,7 +235,9 @@ export function ChinaPaymentSettingsSection({ defaultValues }: Props) {
                 </SelectTrigger>
                 <SelectContent alignItemWithTrigger={false}>
                   <SelectGroup>
-                    <SelectItem value='page'>{t('Computer website')}</SelectItem>
+                    <SelectItem value='page'>
+                      {t('Computer website')}
+                    </SelectItem>
                     <SelectItem value='wap'>{t('Mobile website')}</SelectItem>
                     <SelectItem value='qrcode'>{t('QR code')}</SelectItem>
                   </SelectGroup>
@@ -281,7 +299,7 @@ export function ChinaPaymentSettingsSection({ defaultValues }: Props) {
             </div>
           </div>
         </div>
-
+      ) : (
         <div className='space-y-4'>
           <div className='flex items-center justify-between gap-4 rounded-lg border p-4'>
             <div>
@@ -320,7 +338,9 @@ export function ChinaPaymentSettingsSection({ defaultValues }: Props) {
                 </SelectTrigger>
                 <SelectContent alignItemWithTrigger={false}>
                   <SelectGroup>
-                    <SelectItem value='NATIVE'>{t('Native QR code')}</SelectItem>
+                    <SelectItem value='NATIVE'>
+                      {t('Native QR code')}
+                    </SelectItem>
                     <SelectItem value='MWEB'>{t('H5 payment')}</SelectItem>
                   </SelectGroup>
                 </SelectContent>
@@ -408,11 +428,11 @@ export function ChinaPaymentSettingsSection({ defaultValues }: Props) {
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <Button type='button' onClick={handleSave} disabled={loading}>
         {loading ? t('Saving...') : t('Save China payment settings')}
       </Button>
-    </SettingsSection>
+    </div>
   )
 }
