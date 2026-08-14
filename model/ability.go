@@ -8,7 +8,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/relaykit/dto"
 
 	"github.com/samber/lo"
 	"gorm.io/gorm"
@@ -130,7 +130,7 @@ func GetChannel(group string, model string, retry int, requestPath string) (*Cha
 	if err != nil {
 		return nil, err
 	}
-	abilities = filterAbilitiesByRequestPath(abilities, requestPath)
+	abilities = filterAbilitiesByRequestPathAndModel(abilities, requestPath, model)
 	channel := Channel{}
 	if len(abilities) > 0 {
 		// Randomly choose one
@@ -194,7 +194,7 @@ func filterAbilitiesByRequestPath(abilities []Ability, requestPath string) []Abi
 			filtered = append(filtered, ability)
 			continue
 		}
-		if config != nil && config.SupportsPath(requestPath) {
+		if config != nil && config.SupportsPathForModel(requestPath, model) {
 			filtered = append(filtered, ability)
 		}
 	}

@@ -58,6 +58,8 @@ const (
 	RelayModeGemini
 
 	RelayModeResponsesCompact
+
+	RelayModeAlphaSearch
 )
 
 func Path2RelayMode(path string) int {

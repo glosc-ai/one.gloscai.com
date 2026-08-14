@@ -1,6 +1,6 @@
 <div align="center">
 
-![new-api](/web/default/public/logo.png)
+![new-api](/web/public/logo.png)
 
 # New API
 
@@ -23,9 +23,9 @@
   </a><!--
   --><a href="https://hub.docker.com/r/CalciumIon/new-api">
     <img src="https://img.shields.io/badge/docker-dockerHub-blue" alt="docker">
-  </a><!--
-  --><a href="https://goreportcard.com/report/github.com/Calcium-Ion/new-api">
-    <img src="https://goreportcard.com/badge/github.com/Calcium-Ion/new-api" alt="GoReportCard">
+  </a>
+  <a href="https://atomgit.com/QuantumNous/new-api" target="_blank">
+    <img alt="AtomGit G-Star" src="https://atomgit.com/QuantumNous/new-api/star/badge.svg"/>
   </a>
 </p>
 
@@ -37,8 +37,9 @@
   <a href="https://hellogithub.com/repository/QuantumNous/new-api" target="_blank">
     <img src="https://api.hellogithub.com/v1/widgets/recommend.svg?rid=539ac4217e69431684ad4a0bab768811&claim_uid=tbFPfKIDHpc4TzR" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" />
   </a><!--
-  --><a href="https://www.producthunt.com/products/new-api/launches/new-api?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-new-api" target="_blank" rel="noopener noreferrer">
-    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1047693&theme=light&t=1769577875005" alt="New API - All-in-one AI asset management gateway. | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" />
+  -->
+  <a href="https://atomgit.com/QuantumNous/new-api" target="_blank">
+    <img alt="AtomGit G-Star" src="https://atomgit.com/QuantumNous/new-api/star/new_badge.svg" width="250" height="55" />
   </a>
 </p>
 
@@ -394,8 +395,20 @@ docker run --name new-api -d --restart always \
 ### ⚠️ 多机部署注意事项
 
 > [!WARNING]
-> - **必须设置** `SESSION_SECRET` - 否则登录状态不一致
-> - **公用 Redis 必须设置** `CRYPTO_SECRET` - 否则数据无法解密
+> - 所有节点必须使用同一个主数据库，并设置相同的 `SESSION_SECRET`；否则 Access Token、Refresh 会话和临时鉴权流程无法一致校验。
+> - 连接同一个 Redis 的节点还必须设置相同的 `CRYPTO_SECRET`，否则节点生成的缓存键摘要不一致，无法正确共享缓存。
+
+登录 Session 和单用户活跃数/签发数限制均以数据库为权威。Redis 中的 Session 仅为短期缓存，TTL 跟随 `SYNC_FREQUENCY`（默认 60 秒），且不会超过 Session 的剩余寿命。
+
+| Redis 拓扑 | Session 状态传播 | 限流语义 |
+| --- | --- | --- |
+| 所有节点共享 Redis | 撤销和版本发布通常即时传播 | Redis 限流额度在节点间共享 |
+| 每个节点使用独立 Redis | 最迟在有效 `SYNC_FREQUENCY` 内回源数据库收敛；版本轮换后，新 Token 在持有旧缓存的节点上可能短暂返回 401 | 每个节点独立计数，集群总额度最坏约为单节点阈值乘以节点数 |
+| 不使用 Redis | 每次 Session 校验直接读取数据库 | 各节点使用独立的内存限流额度 |
+
+缩短 `SYNC_FREQUENCY` 可减小独立 Redis 的陈旧窗口，但每个活跃 SID 在每个节点上会按该 TTL 增加一次数据库主键点查。上述保证只让 Session 鉴权在不同拓扑下保持有界陈旧；限流和其他 Redis 控制面缓存仍受拓扑影响。
+
+Token、Origin 校验和 PAT 契约见[用户鉴权与登录会话](./docs/authentication.md)。
 
 ### 🔄 渠道重试与缓存
 

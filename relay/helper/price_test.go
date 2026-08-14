@@ -9,9 +9,10 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/setting/billing_setting"
 	"github.com/QuantumNous/new-api/setting/config"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -54,7 +55,9 @@ func TestModelPriceHelperTieredUsesPreloadedRequestInput(t *testing.T) {
 		},
 	}
 
-	priceData, err := ModelPriceHelper(ctx, info, 1000, &types.TokenCountMeta{})
+	priceData, err := ModelPriceHelper(ctx, info, 1000, &types.TokenCountMeta{
+		BillingRatios: map[string]float64{"n": 3},
+	})
 	require.NoError(t, err)
 	require.Equal(t, 1500, priceData.QuotaToPreConsume)
 	require.NotNil(t, info.TieredBillingSnapshot)
