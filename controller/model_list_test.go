@@ -13,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/relaykit/dto"
+	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/config"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
@@ -1168,13 +1169,13 @@ func TestListModelsUsesAdvancedCustomEndpointTypesFromPricingCache(t *testing.T)
 
 	ListModels(ctx, constant.ChannelTypeOpenAI)
 
-	payload := decodeListModelsPayload(t, recorder)
-	require.Len(t, payload.Data, 1)
-	require.Equal(t, "gemini-3.5-flash", payload.Data[0].Id)
-	require.Equal(t, []constant.EndpointType{
-		constant.EndpointTypeOpenAI,
-		constant.EndpointTypeOpenAIResponse,
-	}, payload.Data[0].SupportedEndpointTypes)
+	data := decodeListModelsData(t, recorder)
+	require.Len(t, data, 1)
+	require.Equal(t, "gemini-3.5-flash", data[0].Id)
+	require.Equal(t, []types.EndpointType{
+		types.EndpointTypeOpenAI,
+		types.EndpointTypeOpenAIResponse,
+	}, data[0].SupportedEndpointTypes)
 }
 
 func TestListModelsTokenLimitIncludesTieredBillingModel(t *testing.T) {

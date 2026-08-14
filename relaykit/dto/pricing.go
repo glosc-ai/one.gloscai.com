@@ -4,12 +4,12 @@ import "github.com/QuantumNous/new-api/relaykit/types"
 
 // 这里不好动就不动了，本来想独立出来的（
 type OpenAIModels struct {
-	Id                     string                  `json:"id"`
-	Object                 string                  `json:"object"`
-	Created                int                     `json:"created"`
-	OwnedBy                string                  `json:"owned_by"`
-	Categories             []string                `json:"categories,omitempty"`
-	SupportedEndpointTypes []constant.EndpointType `json:"supported_endpoint_types"`
+	Id                     string               `json:"id"`
+	Object                 string               `json:"object"`
+	Created                int                  `json:"created"`
+	OwnedBy                string               `json:"owned_by"`
+	Categories             []string             `json:"categories,omitempty"`
+	SupportedEndpointTypes []types.EndpointType `json:"supported_endpoint_types"`
 }
 
 type AnthropicModel struct {

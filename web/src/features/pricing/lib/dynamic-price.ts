@@ -28,6 +28,7 @@ import {
   type BillingVar,
   type ParsedTier,
 } from './billing-expr'
+import { getDisplayGroupRatio } from './model-helpers'
 import { getModelDiscountMultiplier } from './price'
 
 type DynamicPriceOptions = {

@@ -108,8 +108,11 @@ func handleOAuthProvider(c *gin.Context, providerName string) {
 
 	// 1. Validate state (CSRF protection)
 	state := c.Query("state")
-	expectedState, _ := session.Get("oauth_state").(string)
-	if state == "" || expectedState == "" || state != expectedState {
+	pendingFlow, err := model.GetAuthFlow(state, model.AuthFlowMatch{
+		Purpose:  model.AuthFlowPurposeOAuth,
+		Provider: providerName,
+	})
+	if err != nil {
 		c.JSON(http.StatusForbidden, gin.H{
 			"success": false,
 			"message": i18n.T(c, i18n.MsgOAuthStateInvalid),

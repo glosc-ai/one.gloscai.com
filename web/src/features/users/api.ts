@@ -73,8 +73,8 @@ export async function searchUsers(
   if (status) queryParams.set('status', status)
   queryParams.set('p', String(p))
   queryParams.set('page_size', String(page_size))
-  if (params.sort_by) queryParams.set('sort_by', params.sort_by)
-  if (params.sort_order) queryParams.set('sort_order', params.sort_order)
+  if (sort_by) queryParams.set('sort_by', sort_by)
+  if (sort_order) queryParams.set('sort_order', sort_order)
   const res = await api.get(`/api/user/search?${queryParams.toString()}`)
   return res.data
 }

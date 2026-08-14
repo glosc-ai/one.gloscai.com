@@ -240,10 +240,6 @@ export function ModelsTable() {
           page_size: pagination.pageSize,
         })
       }
-      return getModels({
-        p: pagination.pageIndex + 1,
-        page_size: pagination.pageSize,
-      })
     },
   })
 

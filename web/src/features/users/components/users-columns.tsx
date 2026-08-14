@@ -31,7 +31,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { formatPercent, formatQuota, formatTimestamp } from '@/lib/format'
-import { cn } from '@/lib/utils'
 
 import {
   USER_STATUS,

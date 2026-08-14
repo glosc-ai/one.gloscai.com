@@ -42,10 +42,10 @@ import { useDialogs } from '@/hooks/use-dialog'
 import { useStatus } from '@/hooks/use-status'
 import { api } from '@/lib/api'
 import {
-  handleGitHubOAuth,
-  handleOIDCOAuth,
-  handleDiscordOAuth,
-  handleLinuxDOOAuth,
+  buildDiscordOAuthUrl,
+  buildGitHubOAuthUrl,
+  buildLinuxDOOAuthUrl,
+  buildOIDCOAuthUrl,
   handleWeChatOAuth,
 } from '@/lib/oauth'
 

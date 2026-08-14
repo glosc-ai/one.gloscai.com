@@ -127,28 +127,6 @@ export function UsersTable() {
     })
   }
 
-  const sortParams = useMemo(() => {
-    const activeSort = sorting[0]
-    if (
-      !activeSort ||
-      !USER_SORTABLE_COLUMNS.has(activeSort.id as UserSortBy)
-    ) {
-      return {}
-    }
-
-    return {
-      sort_by: activeSort.id as UserSortBy,
-      sort_order: activeSort.desc ? 'desc' : 'asc',
-    } as const
-  }, [sorting])
-
-  const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
-    setSorting(updater)
-    if (pagination.pageIndex > 0) {
-      onPaginationChange({ ...pagination, pageIndex: 0 })
-    }
-  }
-
   // Fetch data with React Query
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -211,7 +189,6 @@ export function UsersTable() {
     globalFilter,
     sorting,
     pagination,
-    sorting,
     globalFilterFn: (row, _columnId, filterValue) => {
       const searchValue = String(filterValue).toLowerCase()
       const fields = [
@@ -229,7 +206,6 @@ export function UsersTable() {
     onSortingChange: handleSortingChange,
     onGlobalFilterChange,
     onColumnFiltersChange,
-    onSortingChange: handleSortingChange,
     manualPagination: true,
     manualSorting: true,
     totalCount: data?.total || 0,

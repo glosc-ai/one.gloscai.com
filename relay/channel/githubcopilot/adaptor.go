@@ -7,14 +7,15 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/relay/channel"
 	"github.com/QuantumNous/new-api/relay/channel/claude"
 	"github.com/QuantumNous/new-api/relay/channel/openai"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
+	"github.com/QuantumNous/new-api/relaykit/dto"
+	"github.com/QuantumNous/new-api/relaykit/relayconvert"
+	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/types"
 
 	"github.com/gin-gonic/gin"
 )
@@ -51,14 +52,14 @@ func (a *Adaptor) ConvertOpenAIRequest(c *gin.Context, info *relaycommon.RelayIn
 		return nil, errors.New("github copilot channel: request is nil")
 	}
 	if isGitHubCopilotClaudeModel(request.Model) || (info != nil && isGitHubCopilotClaudeModel(info.UpstreamModelName)) {
-		claudeRequest, err := claude.RequestOpenAI2ClaudeMessage(c, *request)
+		result, err := relayconvert.ConvertRequest(c, info, types.RelayFormatClaude, request)
 		if err != nil {
 			return nil, err
 		}
-		if info != nil {
+		if claudeRequest, ok := result.Value.(*dto.ClaudeRequest); ok && info != nil {
 			info.UpstreamModelName = claudeRequest.Model
 		}
-		return claudeRequest, nil
+		return result.Value, nil
 	}
 
 	converted, err := a.openaiAdaptor.ConvertOpenAIRequest(c, info, request)

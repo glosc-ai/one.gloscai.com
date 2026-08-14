@@ -79,6 +79,7 @@ export function useFilters(models: PricingModel[]) {
   }
 
   const searchInput = filterState.search || ''
+  const debouncedSearchInput = useDebounce(searchInput, 200)
   const sortBy = filterState.sort || DEFAULT_SORT_OPTION
   const vendorFilter = filterState.vendor || FILTER_ALL
   const groupFilter = filterState.group || FILTER_ALL

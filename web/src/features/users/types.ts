@@ -120,14 +120,6 @@ export interface SearchUsersParams {
 
 export type SortOrder = 'asc' | 'desc'
 
-export type UserSortBy =
-  | 'id'
-  | 'username'
-  | 'quota'
-  | 'group'
-  | 'created_at'
-  | 'last_login_at'
-
 export interface UserFormData {
   username: string
   display_name: string

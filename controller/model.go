@@ -316,6 +316,8 @@ func ListModels(c *gin.Context, modelType int) {
 			})
 			return
 		}
+		firstID := useranthropicModels[0].ID
+		lastID := useranthropicModels[len(useranthropicModels)-1].ID
 		c.JSON(200, gin.H{
 			"data":     useranthropicModels,
 			"first_id": firstID,

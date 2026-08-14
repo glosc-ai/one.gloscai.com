@@ -37,6 +37,7 @@ type OAuthProvidersProps = {
   status: SystemStatus | null
   disabled?: boolean
   className?: string
+  redirectTo?: string
 }
 
 type ProviderButton = {
@@ -51,6 +52,7 @@ export function OAuthProviders({
   status,
   disabled = false,
   className,
+  redirectTo,
 }: OAuthProvidersProps) {
   const { t } = useTranslation()
   const {

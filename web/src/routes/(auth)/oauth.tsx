@@ -20,8 +20,11 @@ import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
 import i18next from 'i18next'
 import { useEffect } from 'react'
 import { toast } from 'sonner'
-import { useAuthStore, type AuthUser } from '@/stores/auth-store'
-import { api, getSelf } from '@/lib/api'
+
+import { wechatLoginByCode } from '@/features/auth/api'
+import { sanitizeAuthRedirect } from '@/features/auth/lib/auth-redirect'
+import { applyAuthBundle, isAuthBundle } from '@/lib/api'
+import { getServerErrorMessageKey } from '@/lib/server-error-message'
 
 function OAuthComponent() {
   const navigate = useNavigate()
@@ -35,10 +38,20 @@ function OAuthComponent() {
   useEffect(() => {
     ;(async () => {
       try {
-        if (search?.provider && search.code) {
-          await api.get(`/api/oauth/${search.provider}`, {
-            params: { code: search.code, state: search.state },
-          })
+        if (search?.provider === 'wechat' && search.code) {
+          const res = await wechatLoginByCode(search.code, search.state)
+          if (res?.success && isAuthBundle(res.data)) {
+            applyAuthBundle(res.data)
+            const target =
+              sanitizeAuthRedirect(search?.redirect, window.location.origin) ??
+              '/dashboard'
+            navigate({ href: target, replace: true })
+            return
+          }
+          if (getServerErrorMessageKey(res)) {
+            navigate({ to: '/sign-in', replace: true })
+            return
+          }
         }
       } catch (error: unknown) {
         if (getServerErrorMessageKey(error)) {

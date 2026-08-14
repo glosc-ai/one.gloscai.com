@@ -61,17 +61,9 @@ export function useOAuthLogin(
   }, [t])
 
   const resetSession = async () => {
-    try {
-      auth.reset()
-    } catch {
-      // ignore store reset errors
-    }
-    try {
-      await api.get('/api/user/logout', {
-        skipErrorHandler: true,
-      } as LogoutRequestConfig)
-    } catch {
-      // ignore logout errors
+    const response = await logout()
+    if (!response.success) {
+      throw new Error(response.message || t('Failed to sign out session'))
     }
     clearAuthentication()
   }
@@ -174,11 +166,7 @@ export function useOAuthLogin(
     setIsLoading(true)
     try {
       await resetSession()
-      const state = await getOAuthState()
-      if (!state) {
-        toast.error(t('Failed to initialize OAuth'))
-        return
-      }
+      const state = await createOAuthFlow('wechat', 'login')
 
       const url = buildWeChatOAuthUrl(
         status.wechat_app_id,
@@ -193,8 +181,48 @@ export function useOAuthLogin(
     }
   }
 
-  const handleTelegramLogin = () => {
-    toast.info(t('Telegram login requires widget integration; coming soon'))
+  const handleTelegramLogin = async () => {
+    if (!status?.telegram_bot_name?.trim()) {
+      toast.error(t('Login failed'))
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      await resetSession()
+      setIsTelegramDialogOpen(true)
+    } catch {
+      toast.error(
+        t('Failed to start {{provider}} login', { provider: 'Telegram' })
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleTelegramAuthorization = async (value: unknown) => {
+    const authorization = pickTelegramAuthorization(value)
+    if (!authorization) {
+      toast.error(t('Login failed'))
+      return
+    }
+
+    setIsTelegramPending(true)
+    try {
+      const response = await telegramLogin(authorization)
+      if (!response.success || !isAuthBundle(response.data)) {
+        toast.error(t('Login failed'))
+        return
+      }
+
+      setIsTelegramDialogOpen(false)
+      await handleLoginSuccess(response.data, redirectTo)
+      toast.success(t('Welcome back!'))
+    } catch {
+      toast.error(t('Login failed'))
+    } finally {
+      setIsTelegramPending(false)
+    }
   }
 
   const handleCustomOAuthLogin = async (provider: CustomOAuthProviderInfo) => {

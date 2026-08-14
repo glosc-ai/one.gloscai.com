@@ -189,7 +189,7 @@ func Distribute() func(c *gin.Context) {
 
 // channelSupportsRequestPath reports whether a channel can serve the request path.
 // Advanced Custom channels are path-checked; all other channel types always pass.
-func channelSupportsRequestPath(channel *model.Channel, requestPath string) bool {
+func channelSupportsRequestPath(channel *model.Channel, requestPath string, requestModel string) bool {
 	if channel == nil {
 		return false
 	}

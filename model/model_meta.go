@@ -674,8 +674,15 @@ func GetPreferredModelOwnerChannelTypes(modelNames []string, groups []string) (m
 	return result, nil
 }
 
-func SearchModels(keyword string, vendor string, offset int, limit int) ([]*Model, int64, error) {
-	return ListModelsMeta(ModelsMetaFilter{Keyword: keyword, Vendor: vendor}, offset, limit)
+func SearchModels(keyword string, vendor string, status string, syncOfficial string, offset int, limit int) ([]*Model, int64, error) {
+	filter := ModelsMetaFilter{Keyword: keyword, Vendor: vendor}
+	if statusValue, ok := parseModelStatusFilter(status); ok {
+		filter.Status = &statusValue
+	}
+	if syncValue, ok := parseModelSyncFilter(syncOfficial); ok {
+		filter.SyncOfficial = &syncValue
+	}
+	return ListModelsMeta(filter, offset, limit)
 }
 
 // parseModelStatusFilter maps UI/API status values to the models.status column.

@@ -48,8 +48,6 @@ import {
   saveAffiliateCode,
 } from '@/features/auth/lib/storage'
 import { useStatus } from '@/hooks/use-status'
-import { isAuthBundle } from '@/lib/api'
-import { getServerErrorMessageKey } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
 export function SignUpForm({
@@ -60,6 +58,7 @@ export function SignUpForm({
   const [isLoading, setIsLoading] = useState(false)
   const [verificationCode, setVerificationCode] = useState('')
   const [agreedToLegal, setAgreedToLegal] = useState(false)
+  const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0)
   const legalConsentErrorMessage = t('Please agree to the legal terms first')
 
   const { status } = useStatus()
@@ -188,15 +187,6 @@ export function SignUpForm({
     })
   } else if (isSendingCode) {
     sendCodeButtonContent = <Loader2 className='h-4 w-4 animate-spin' />
-  }
-
-  let verificationCodeAction: ReactNode = t('Send code')
-  if (isActive) {
-    verificationCodeAction = t('Resend ({{seconds}}s)', {
-      seconds: secondsLeft,
-    })
-  } else if (isSendingCode) {
-    verificationCodeAction = <Loader2 className='h-4 w-4 animate-spin' />
   }
 
   return (

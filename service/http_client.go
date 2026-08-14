@@ -40,6 +40,13 @@ type proxyURLConfig struct {
 	cacheKey  string
 }
 
+func newProxyURLConfig(parsedURL *url.URL) *proxyURLConfig {
+	return &proxyURLConfig{
+		parsedURL: parsedURL,
+		cacheKey:  parsedURL.String(),
+	}
+}
+
 func checkRedirect(req *http.Request, via []*http.Request) error {
 	urlStr := req.URL.String()
 	if err := validateURLWithCurrentFetchSetting(urlStr, true); err != nil {
@@ -138,16 +145,6 @@ func GetSSRFProtectedHTTPClient() *http.Client {
 		return GetHttpClient()
 	}
 	return ssrfProtectedHTTPClient
-}
-
-// GetHttpClientWithProxy returns the default client or a proxy-enabled one when proxyURL is provided.
-func GetHttpClientWithProxy(proxyURL string) (*http.Client, error) {
-	if proxyURL == "" {
-		if client := GetHttpClient(); client != nil {
-			return client, nil
-		}
-		return http.DefaultClient, nil
-	}
 }
 
 func warnLegacyProxyURLOnce(config *proxyURLConfig) {

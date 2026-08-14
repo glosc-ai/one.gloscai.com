@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -1283,23 +1282,10 @@ func FetchModels(c *gin.Context) {
 		return
 	}
 
-	baseURL := req.BaseURL
-	if baseURL == "" {
-		baseURL = constant.ChannelBaseURLs[req.Type]
-	}
-
-	// remove line breaks and extra spaces for single-line key formats.
-	key := strings.TrimSpace(req.Key)
-	if req.Type == constant.ChannelTypeVolcEnginePlan {
-		if !strings.HasPrefix(key, "{") {
-			key = strings.TrimSpace(strings.Split(key, "\n")[0])
-		}
-	} else if req.Type != constant.ChannelTypeGitHubCopilot {
-		key = strings.Split(key, "\n")[0]
-	}
-
-	if req.Type == constant.ChannelTypeOllama {
-		models, err := ollama.FetchOllamaModels(baseURL, key)
+	var channel *model.Channel
+	if req.Type == constant.ChannelTypeAdvancedCustom || req.ChannelID > 0 {
+		var err error
+		channel, err = buildAdvancedCustomModelPreviewChannel(req)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
@@ -1330,101 +1316,11 @@ func FetchModels(c *gin.Context) {
 	models, err := fetchChannelUpstreamModelIDs(channel)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"data":    models,
-		})
-		return
-	}
-
-	if req.Type == constant.ChannelTypeGitHubCopilot {
-		models, err := service.FetchGitHubCopilotModels(c.Request.Context(), baseURL, key, "")
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": fmt.Sprintf("获取GitHub Copilot模型失败: %s", err.Error()),
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"data":    models,
-		})
-		return
-	}
-
-	if req.Type == constant.ChannelTypeVolcEnginePlan {
-		models, err := fetchVolcEngineAgentPlanModelIDs(key, "")
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": fmt.Sprintf("获取VolcEngine Agent Plan模型失败: %s", err.Error()),
-			})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"data":    models,
-		})
-		return
-	}
-
-	client := &http.Client{}
-	url := buildFetchModelsURL(req.Type, baseURL)
-
-	request, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": fmt.Sprintf("获取模型列表失败: %s", err.Error()),
 		})
 		return
 	}
-
-	request.Header.Set("Authorization", "Bearer "+key)
-
-	response, err := client.Do(request)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-	defer response.Body.Close()
-	//check status code
-	if response.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
-		message := fmt.Sprintf("Failed to fetch models: status code %d", response.StatusCode)
-		if detail := strings.TrimSpace(string(body)); detail != "" {
-			message = fmt.Sprintf("%s: %s", message, detail)
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": message,
-		})
-		return
-	}
-
-	var result struct {
-		Data []struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}
-
-	if err := common.DecodeJson(response.Body, &result); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-		return
-	}
-
-	var models []string
-	for _, model := range result.Data {
-		models = append(models, model.ID)
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

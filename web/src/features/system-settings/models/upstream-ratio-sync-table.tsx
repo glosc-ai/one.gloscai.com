@@ -120,8 +120,8 @@ export function UpstreamRatioSyncTable({
   const filteredData = useMemo(() => {
     let data = dataSource
 
-    if (search.trim()) {
-      const lower = search.trim().toLowerCase()
+    if (debouncedSearch.trim()) {
+      const lower = debouncedSearch.trim().toLowerCase()
       data = data.filter((row) => row.model.toLowerCase().includes(lower))
     }
 
@@ -160,23 +160,25 @@ export function UpstreamRatioSyncTable({
     setPagination((previous) => ({ ...previous, pageIndex: 0 }))
   }, [])
 
-  const handleBulkSelect = useCallback(
-    (upstream: string, rows: ModelRow[]) => {
-      rows.forEach((row) => {
-        getOrderedRatioTypes(row.ratioTypes, ratioTypeFilter).forEach(
-          (ratioType) => {
-            const upstreamVal = row.ratioTypes[ratioType]?.upstreams?.[upstream]
-            const preferredField = getPreferredSyncField(
-              row.ratioTypes,
-              ratioType,
-              upstream
-            )
-            if (
-              preferredField === ratioType &&
-              isSelectableUpstreamValue(upstreamVal)
-            ) {
-              onSelectValue(
-                row.model,
+  const bulkSelectStateByUpstream = useMemo<
+    Record<string, UpstreamBulkSelectState>
+  >(() => {
+    return upstreamNames.reduce<Record<string, UpstreamBulkSelectState>>(
+      (states, upstreamName) => {
+        const selections: ResolutionSelection[] = []
+        const removalPlan: ResolutionRemovalPlan = new Map()
+
+        filteredData.forEach((row) => {
+          getAlignedRatioTypes(
+            row.ratioTypes,
+            [upstreamName],
+            ratioTypeFilter
+          ).forEach((ratioType) => {
+            const upstreamVal =
+              row.ratioTypes[ratioType]?.upstreams?.[upstreamName]
+            if (isSelectableUpstreamValue(upstreamVal)) {
+              selections.push({
+                model: row.model,
                 ratioType,
                 value: upstreamVal as number | string,
                 sourceName: upstreamName,

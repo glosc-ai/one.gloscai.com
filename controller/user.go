@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -327,11 +329,8 @@ func Register(c *gin.Context) {
 
 func GetAllUsers(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)
-	users, total, err := model.GetAllUsers(
-		pageInfo,
-		c.Query("sort_by"),
-		c.Query("sort_order"),
-	)
+	sortOptions := model.NewUserSortOptions(c.Query("sort_by"), c.Query("sort_order"))
+	users, total, err := model.GetAllUsers(pageInfo, sortOptions)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -367,8 +366,7 @@ func SearchUsers(c *gin.Context) {
 		status,
 		pageInfo.GetStartIdx(),
 		pageInfo.GetPageSize(),
-		c.Query("sort_by"),
-		c.Query("sort_order"),
+		model.NewUserSortOptions(c.Query("sort_by"), c.Query("sort_order")),
 	)
 	if err != nil {
 		common.ApiError(c, err)
@@ -533,11 +531,14 @@ func GetSelf(c *gin.Context) {
 // administrator-only remarks.
 func buildSelfUserData(user *model.User) map[string]interface{} {
 	userSetting := user.GetSetting()
+	permissions := calculateUserPermissions(user.Role)
+	permissions["admin_permissions"] = authz.Capabilities(user.Id, user.Role)
 
+	// 邀请人数实时统计失败时退回用户表上的计数，避免整个用户信息接口失败。
 	affCount, err := model.CountInvitedUsersByInviterId(user.Id)
 	if err != nil {
-		common.ApiError(c, err)
-		return
+		logger.LogError(context.Background(), fmt.Sprintf("统计邀请用户数失败 user_id=%d error=%q", user.Id, err.Error()))
+		affCount = int64(user.AffCount)
 	}
 
 	// 构建响应数据，包含用户信息和权限
@@ -568,6 +569,7 @@ func buildSelfUserData(user *model.User) map[string]interface{} {
 		"sidebar_modules":   userSetting.SidebarModules, // 正确提取sidebar_modules字段
 		"permissions":       permissions,
 	}
+	return responseData
 }
 
 // 计算用户权限的辅助函数
@@ -687,23 +689,27 @@ func GetUserModels(c *gin.Context) {
 			groupsToQuery = []string{group}
 		}
 	}
-	models, err = model.FilterModelNamesByMetaStatus(models)
+	models, err := model.FilterModelNamesByMetaStatus(service.GetGroupsEnabledModels(groupsToQuery))
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
-	sort.Slice(models, func(leftIndex, rightIndex int) bool {
-		left := strings.ToLower(models[leftIndex])
-		right := strings.ToLower(models[rightIndex])
-		if left == right {
-			return models[leftIndex] < models[rightIndex]
-		}
-		return left < right
-	})
+	// group=auto 需要保留自动分组的配置顺序（高优先分组的模型排在前面），
+	// 其余情况按模型名排序，方便前端直接展示。
+	if group != "auto" {
+		sort.Slice(models, func(leftIndex, rightIndex int) bool {
+			left := strings.ToLower(models[leftIndex])
+			right := strings.ToLower(models[rightIndex])
+			if left == right {
+				return models[leftIndex] < models[rightIndex]
+			}
+			return left < right
+		})
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    service.GetGroupsEnabledModels(groupsToQuery),
+		"data":    models,
 	})
 }
 

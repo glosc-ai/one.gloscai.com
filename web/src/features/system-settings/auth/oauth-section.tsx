@@ -73,6 +73,7 @@ const createOAuthSchema = (t: (key: string) => string) =>
     }),
     oidc: z.object({
       enabled: z.boolean(),
+      display_name: z.string(),
       client_id: z.string(),
       client_secret: z.string(),
       well_known: z.string(),
@@ -278,6 +279,27 @@ export function OAuthSection(props: OAuthSectionProps) {
   const updateOption = useUpdateOption()
   const [activeTab, setActiveTab] = useState('github')
   const oauthSchema = useMemo(() => createOAuthSchema(t), [t])
+  const siteUrl = resolveOAuthSiteUrl(props.serverAddress, t('Site URL'))
+  const githubCallbackUrl = buildOAuthCallbackUrl(
+    props.serverAddress,
+    'github',
+    t('Site URL')
+  )
+  const discordCallbackUrl = buildOAuthCallbackUrl(
+    props.serverAddress,
+    'discord',
+    t('Site URL')
+  )
+  const oidcCallbackUrl = buildOAuthCallbackUrl(
+    props.serverAddress,
+    'oidc',
+    t('Site URL')
+  )
+  const linuxDOCallbackUrl = buildOAuthCallbackUrl(
+    props.serverAddress,
+    'linuxdo',
+    t('Site URL')
+  )
 
   const formDefaults = useMemo(
     () => buildFormDefaults(props.defaultValues),

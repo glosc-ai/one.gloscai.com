@@ -133,8 +133,8 @@ func taskBillingOther(task *model.Task) map[string]interface{} {
 		if bc.BillingMode != "" {
 			other["billing_mode"] = bc.BillingMode
 		}
-		if len(bc.OtherRatios) > 0 {
-			for k, v := range bc.OtherRatios {
+		if priceData := taskBillingContextPriceData(bc); priceData != nil {
+			for k, v := range priceData.OtherRatios() {
 				other[k] = v
 			}
 		}

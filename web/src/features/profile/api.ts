@@ -135,6 +135,38 @@ export async function bindWeChat(
   return res.data
 }
 
+export interface TelegramBindFlow {
+  flow_token: string
+  callback_url: string
+  expires_at: number
+}
+
+export async function startTelegramBind(): Promise<
+  ApiResponse<TelegramBindFlow>
+> {
+  const res = await api.post('/api/oauth/telegram/bind/start')
+  return res.data
+}
+
+// ============================================================================
+// Login Session APIs
+// ============================================================================
+
+export async function getLoginSessions(): Promise<ApiResponse<LoginSession[]>> {
+  const res = await api.get('/api/user/sessions')
+  return res.data
+}
+
+export async function revokeLoginSession(sid: string): Promise<ApiResponse> {
+  const res = await api.delete(`/api/user/sessions/${encodeURIComponent(sid)}`)
+  return res.data
+}
+
+export async function revokeOtherLoginSessions(): Promise<ApiResponse> {
+  const res = await api.post('/api/user/sessions/revoke-others')
+  return res.data
+}
+
 // ============================================================================
 // Custom OAuth Binding APIs
 // ============================================================================

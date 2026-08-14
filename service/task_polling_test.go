@@ -31,6 +31,45 @@ type taskPollingFetchAdaptor struct {
 	blockOnce    sync.Once
 }
 
+type sunoFailurePollingAdaptor struct {
+	failReason string
+}
+
+func (a *sunoFailurePollingAdaptor) Init(_ *relaycommon.RelayInfo) {}
+
+func (a *sunoFailurePollingAdaptor) FetchTask(_ string, _ string, body map[string]any, _ string) (*http.Response, error) {
+	taskIDs, _ := body["ids"].([]string)
+	items := make([]taskdto.SunoDataResponse, 0, len(taskIDs))
+	for _, taskID := range taskIDs {
+		items = append(items, taskdto.SunoDataResponse{
+			TaskID:     taskID,
+			Status:     string(model.TaskStatusFailure),
+			FailReason: a.failReason,
+			FinishTime: time.Now().Unix(),
+		})
+	}
+
+	responseBody, err := common.Marshal(taskdto.TaskResponse[[]taskdto.SunoDataResponse]{
+		Code: taskdto.TaskSuccessCode,
+		Data: items,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(bytes.NewReader(responseBody)),
+	}, nil
+}
+
+func (a *sunoFailurePollingAdaptor) ParseTaskResult([]byte) (*relaycommon.TaskInfo, error) {
+	return nil, nil
+}
+
+func (a *sunoFailurePollingAdaptor) AdjustBillingOnComplete(_ *model.Task, _ *relaycommon.TaskInfo) int {
+	return 0
+}
+
 func (a *taskPollingFetchAdaptor) Init(info *relaycommon.RelayInfo) {
 	if info == nil || info.ChannelMeta == nil {
 		return

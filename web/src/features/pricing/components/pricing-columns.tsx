@@ -49,6 +49,7 @@ import {
 } from '../lib/price'
 import type { PricingModel, TokenUnit } from '../types'
 import { DiscountedPrice } from './discounted-price'
+import { ModelBillingModeBadge } from './model-billing-mode-badge'
 import { ModelDiscountBadge } from './model-discount-badge'
 
 // ----------------------------------------------------------------------------
@@ -249,6 +250,7 @@ export function usePricingColumns(
               showRechargePrice,
               priceRate,
               usdExchangeRate,
+              selectedGroup,
               false
             )
           )
@@ -260,6 +262,7 @@ export function usePricingColumns(
               showRechargePrice,
               priceRate,
               usdExchangeRate,
+              selectedGroup,
               false
             )
           )
@@ -303,6 +306,7 @@ export function usePricingColumns(
             showRechargePrice,
             priceRate,
             usdExchangeRate,
+            selectedGroup,
             false
           )
         )
@@ -418,6 +422,7 @@ export function usePricingColumns(
             showRechargePrice,
             priceRate,
             usdExchangeRate,
+            selectedGroup,
             false
           )
         )

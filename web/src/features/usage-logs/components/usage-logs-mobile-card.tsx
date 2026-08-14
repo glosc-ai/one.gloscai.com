@@ -40,7 +40,12 @@ import { cn } from '@/lib/utils'
 
 import { LOG_TYPE_ENUM } from '../constants'
 import type { UsageLog } from '../data/schema'
-import { getLogTypeConfig } from '../lib/utils'
+import { parseLogOther } from '../lib/format'
+import {
+  getLogTypeConfig,
+  isDisplayableLogType,
+  isTimingLogType,
+} from '../lib/utils'
 import type { LogCategory } from '../types'
 import { StreamTpsCell, TimingMetricsCell } from './timing-metrics-cell'
 import { useUsageLogsContext } from './usage-logs-provider'
@@ -312,10 +317,7 @@ function CommonLogsCard<TData>({
 
   const modelCell = cells.get('model_name')
   const quotaCell = cells.get('quota')
-  const rowData = cells.get('created_at')?.row.original as
-    | (Record<string, unknown> &
-        Partial<Pick<UsageLog, 'created_at' | 'type'>>)
-    | undefined
+  const rowData = cells.get('created_at')?.row.original as UsageLog | undefined
 
   return (
     <div className='space-y-2.5'>

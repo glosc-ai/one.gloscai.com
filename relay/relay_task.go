@@ -205,12 +205,7 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (*TaskSubmitRe
 
 		// 6. 将 OtherRatios 应用到基础额度（饱和转换，防止溢出成负数）
 		if !common.StringsContains(constant.TaskPricePatches, modelName) {
-			quotaWithRatios := float64(info.PriceData.Quota)
-			for _, ra := range info.PriceData.OtherRatios {
-				if ra != 1.0 {
-					quotaWithRatios *= ra
-				}
-			}
+			quotaWithRatios := info.PriceData.ApplyOtherRatiosToFloat(float64(info.PriceData.Quota))
 			quota, clamp := common.QuotaFromFloatChecked(quotaWithRatios)
 			info.PriceData.Quota = quota
 			noteTaskQuotaClamp(info, clamp)
@@ -260,9 +255,11 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (*TaskSubmitRe
 	if !info.PriceData.UseTieredBilling {
 		if adjustedRatios := adaptor.AdjustBillingOnSubmit(info, taskData); len(adjustedRatios) > 0 {
 			// 基于调整后的 ratios 重新计算 quota
-			finalQuota = recalcQuotaFromRatios(info, adjustedRatios)
-			info.PriceData.OtherRatios = adjustedRatios
-			info.PriceData.Quota = finalQuota
+			if recalculated, ok := recalcQuotaFromRatios(info, adjustedRatios); ok {
+				finalQuota = recalculated
+				info.PriceData.ReplaceOtherRatios(adjustedRatios)
+				info.PriceData.Quota = finalQuota
+			}
 		}
 	}
 
@@ -314,10 +311,8 @@ func applyPerSecondBilling(c *gin.Context, info *relaycommon.RelayInfo, modelNam
 	if model.GetModelBillingType(modelName) != model.BillingTypePerSecond {
 		return
 	}
-	if info.PriceData.OtherRatios != nil {
-		if s, ok := info.PriceData.OtherRatios["seconds"]; ok && s > 0 {
-			return
-		}
+	if info.PriceData.HasOtherRatio("seconds") {
+		return
 	}
 	seconds := extractRequestSeconds(c)
 	if seconds <= 0 {

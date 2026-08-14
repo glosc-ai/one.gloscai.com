@@ -31,18 +31,11 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { MarkdownEditorDialog } from '../components/markdown-editor-dialog'
 import { useDialogState } from '@/hooks/use-dialog'
+
 import { FormDirtyIndicator } from '../components/form-dirty-indicator'
 import { FormNavigationGuard } from '../components/form-navigation-guard'
+import { MarkdownEditorDialog } from '../components/markdown-editor-dialog'
 import {
   SettingsForm,
   SettingsFormGrid,

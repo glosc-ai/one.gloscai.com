@@ -26,6 +26,7 @@ import {
   calculateStripeAmount,
   calculateLinuxDOCreditAmount,
   calculateWeChatPayAmount,
+  calculateWaffoAmount,
   calculateWaffoPancakeAmount,
   requestPayment,
   requestAlipayPayment,
