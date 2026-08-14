@@ -562,6 +562,8 @@
     "Automatic failover": "Automatic failover",
     "Automatically choose the best model route with built-in load balancing and failover. When a provider is unavailable, traffic moves to a backup route without interrupting users.": "Automatically choose the best model route with built-in load balancing and failover. When a provider is unavailable, traffic moves to a backup route without interrupting users.",
     "Automatically disable channel on repeated failures": "Automatically disable channel on repeated failures",
+    "Automatically disable models after repeated failures": "Automatically disable models after repeated failures",
+    "Add models to the disabled list after repeated request failures": "Add models to the disabled list after repeated request failures",
     "Automatically disable channels exceeding this response time": "Automatically disable channels exceeding this response time",
     "Automatically disable channels when tests fail": "Automatically disable channels when tests fail",
     "Automatically probe all channels in the background": "Automatically probe all channels in the background",

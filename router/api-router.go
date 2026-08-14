@@ -299,6 +299,8 @@ func SetApiRouter(router *gin.Engine) {
 		disabledModelRoute := apiRouter.Group("/disabled_model")
 		disabledModelRoute.Use(middleware.AdminAuth())
 		{
+			disabledModelRoute.GET("/config", controller.GetDisabledModelConfig)
+			disabledModelRoute.PUT("/config", controller.UpdateDisabledModelConfig)
 			disabledModelRoute.GET("/", controller.ListDisabledModels)
 			disabledModelRoute.POST("/", controller.AddDisabledModel)
 			disabledModelRoute.DELETE("/:id", controller.DeleteDisabledModel)

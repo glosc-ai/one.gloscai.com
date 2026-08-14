@@ -29,6 +29,11 @@ func RecordModelCallSuccess(channelId int, modelName string) {
 func RecordModelCallFailure(channelId int, channelName string, modelName string, reason string) bool {
 	key := disabledModelFailureKey(channelId, modelName)
 	disabledModelFailureMu.Lock()
+	if !common.AutomaticDisableModelEnabled {
+		delete(disabledModelFailureCounts, key)
+		disabledModelFailureMu.Unlock()
+		return false
+	}
 	count := disabledModelFailureCounts[key] + 1
 	if count < 3 {
 		disabledModelFailureCounts[key] = count

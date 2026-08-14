@@ -154,6 +154,7 @@ var QuotaForInvitee = 0
 var AffiliateRebateRatio = 0.0
 var ChannelDisableThreshold = 5.0
 var AutomaticDisableChannelEnabled = false
+var AutomaticDisableModelEnabled = true
 var AutomaticEnableChannelEnabled = false
 var QuotaRemindThreshold = 1000
 var PreConsumedQuota = 500

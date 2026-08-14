@@ -16,6 +16,27 @@ type addDisabledModelRequest struct {
 	Remark    string `json:"remark"`
 }
 
+type updateDisabledModelConfigRequest struct {
+	Enabled bool `json:"enabled"`
+}
+
+func GetDisabledModelConfig(c *gin.Context) {
+	common.ApiSuccess(c, gin.H{"enabled": common.AutomaticDisableModelEnabled})
+}
+
+func UpdateDisabledModelConfig(c *gin.Context) {
+	var req updateDisabledModelConfigRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if err := model.UpdateOption("AutomaticDisableModelEnabled", strconv.FormatBool(req.Enabled)); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, gin.H{"enabled": req.Enabled})
+}
+
 func ListDisabledModels(c *gin.Context) {
 	_ = model.CleanExpiredDisabledModels()
 	pageInfo := common.GetPageQuery(c)

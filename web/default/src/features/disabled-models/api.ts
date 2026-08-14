@@ -1,9 +1,30 @@
-import { api } from '@/lib/api'
 import type { Channel, SearchChannelsResponse } from '@/features/channels/types'
+import { api } from '@/lib/api'
+
 import type {
   GetDisabledModelsParams,
   GetDisabledModelsResponse,
 } from './types'
+
+export async function getDisabledModelConfig(): Promise<{
+  success: boolean
+  message?: string
+  data?: { enabled: boolean }
+}> {
+  const res = await api.get('/api/disabled_model/config')
+  return res.data
+}
+
+export async function updateDisabledModelConfig(data: {
+  enabled: boolean
+}): Promise<{
+  success: boolean
+  message?: string
+  data?: { enabled: boolean }
+}> {
+  const res = await api.put('/api/disabled_model/config', data)
+  return res.data
+}
 
 export async function getDisabledModels(
   params: GetDisabledModelsParams

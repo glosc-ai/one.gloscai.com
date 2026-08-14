@@ -562,6 +562,8 @@
     "Automatic failover": "Автоматическое переключение",
     "Automatically choose the best model route with built-in load balancing and failover. When a provider is unavailable, traffic moves to a backup route without interrupting users.": "Автоматически выбирает лучший маршрут модели с встроенной балансировкой нагрузки и отказоустойчивостью. Если провайдер недоступен, трафик переходит на резервный маршрут без прерывания пользователей.",
     "Automatically disable channel on repeated failures": "Автоматически отключать канал при повторных неудачах",
+    "Automatically disable models after repeated failures": "Автоматически добавлять модели в список отключенных после повторных неудач",
+    "Add models to the disabled list after repeated request failures": "Добавлять модели в список отключенных после повторных ошибок запросов",
     "Automatically disable channels exceeding this response time": "Автоматически отключать каналы, превышающие это время ответа",
     "Automatically disable channels when tests fail": "Автоматически отключать каналы при сбое тестов",
     "Automatically probe all channels in the background": "Автоматически проверять все каналы в фоновом режиме",

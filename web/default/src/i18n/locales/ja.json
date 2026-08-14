@@ -562,6 +562,8 @@
     "Automatic failover": "自動フェイルオーバー",
     "Automatically choose the best model route with built-in load balancing and failover. When a provider is unavailable, traffic moves to a backup route without interrupting users.": "組み込みのロードバランシングとフェイルオーバーにより、最適なモデルルートを自動選択します。プロバイダーが利用できない場合、トラフィックはバックアップルートへ移動し、ユーザーの処理は中断されません。",
     "Automatically disable channel on repeated failures": "繰り返しの失敗でチャネルを自動的に無効にする",
+    "Automatically disable models after repeated failures": "繰り返しの失敗でモデルを自動的に無効化リストへ追加する",
+    "Add models to the disabled list after repeated request failures": "リクエストが繰り返し失敗したモデルを無効化リストに追加します",
     "Automatically disable channels exceeding this response time": "この応答時間を超えるチャネルを自動的に無効にする",
     "Automatically disable channels when tests fail": "テストが失敗したときにチャネルを自動的に無効にする",
     "Automatically probe all channels in the background": "バックグラウンドですべてのチャネルを自動的にプローブする",

@@ -444,6 +444,10 @@ export const STATIC_I18N_KEYS = [
   'Loading failed',
   'Please select a subscription plan',
   'Added successfully',
+
+  // Disabled models
+  'Automatically disable models after repeated failures',
+  'Add models to the disabled list after repeated request failures',
   'Has been invalidated',
   'Deleted',
   'Validity',

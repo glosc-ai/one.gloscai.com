@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+
+import { SectionPageLayout } from '@/components/layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import {
   Table,
   TableBody,
@@ -24,13 +27,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { SectionPageLayout } from '@/components/layout'
+
 import {
   addDisabledModel,
   deleteDisabledModel,
+  getDisabledModelConfig,
   getDisabledModels,
   getEnabledChannelsByModel,
   getEnabledModels,
+  updateDisabledModelConfig,
 } from './api'
 
 function formatTime(value: number) {
@@ -76,6 +81,23 @@ export function DisabledModels() {
   const query = useQuery({
     queryKey: ['disabled-models', params],
     queryFn: () => getDisabledModels(params),
+  })
+
+  const configQuery = useQuery({
+    queryKey: ['disabled-model-config'],
+    queryFn: getDisabledModelConfig,
+  })
+
+  const configMutation = useMutation({
+    mutationFn: updateDisabledModelConfig,
+    onSuccess: (res) => {
+      if (!res.success) return
+      queryClient.invalidateQueries({ queryKey: ['disabled-model-config'] })
+      toast.success(t('Setting updated successfully'))
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || t('Failed to update setting'))
+    },
   })
 
   const enabledModelsQuery = useQuery({
@@ -135,6 +157,31 @@ export function DisabledModels() {
       <SectionPageLayout.Title>{t('Disabled Models')}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
         <div className='flex flex-col gap-4'>
+          <Card>
+            <CardContent className='flex items-center justify-between gap-4 py-4'>
+              <div className='min-w-0 space-y-0.5'>
+                <div className='text-sm font-medium'>
+                  {t('Automatically disable models after repeated failures')}
+                </div>
+                <p className='text-muted-foreground text-xs'>
+                  {t(
+                    'Add models to the disabled list after repeated request failures'
+                  )}
+                </p>
+              </div>
+              <Switch
+                checked={configQuery.data?.data?.enabled ?? true}
+                disabled={configQuery.isLoading || configMutation.isPending}
+                onCheckedChange={(enabled) =>
+                  configMutation.mutate({ enabled })
+                }
+                aria-label={t(
+                  'Automatically disable models after repeated failures'
+                )}
+              />
+            </CardContent>
+          </Card>
+
           <Card className='relative z-10 overflow-visible'>
             <CardHeader>
               <CardTitle>{t('Add')}</CardTitle>

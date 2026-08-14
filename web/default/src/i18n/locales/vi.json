@@ -562,6 +562,8 @@
     "Automatic failover": "Tự động chuyển dự phòng",
     "Automatically choose the best model route with built-in load balancing and failover. When a provider is unavailable, traffic moves to a backup route without interrupting users.": "Tự động chọn tuyến mô hình tốt nhất với cân bằng tải và chuyển dự phòng tích hợp. Khi nhà cung cấp không khả dụng, lưu lượng sẽ chuyển sang tuyến dự phòng mà không làm gián đoạn người dùng.",
     "Automatically disable channel on repeated failures": "Tự động vô hiệu hóa kênh khi xảy ra lỗi lặp lại",
+    "Automatically disable models after repeated failures": "Tự động thêm mô hình vào danh sách vô hiệu hóa sau các lỗi lặp lại",
+    "Add models to the disabled list after repeated request failures": "Thêm mô hình vào danh sách vô hiệu hóa sau các yêu cầu thất bại liên tiếp",
     "Automatically disable channels exceeding this response time": "Tự động vô hiệu hóa các kênh vượt quá thời gian phản hồi này",
     "Automatically disable channels when tests fail": "Tự động vô hiệu hóa các kênh khi kiểm thử thất bại",
     "Automatically probe all channels in the background": "Tự động dò tất cả các kênh trong nền",

@@ -562,6 +562,8 @@
     "Automatic failover": "Basculement automatique",
     "Automatically choose the best model route with built-in load balancing and failover. When a provider is unavailable, traffic moves to a backup route without interrupting users.": "Choisit automatiquement la meilleure route de modèle avec équilibrage de charge et basculement intégrés. Lorsqu un fournisseur est indisponible, le trafic passe sur une route de secours sans interrompre les utilisateurs.",
     "Automatically disable channel on repeated failures": "Désactiver automatiquement le canal en cas d'échecs répétés",
+    "Automatically disable models after repeated failures": "Désactiver automatiquement les modèles après des échecs répétés",
+    "Add models to the disabled list after repeated request failures": "Ajouter les modèles à la liste des modèles désactivés après des échecs répétés des requêtes",
     "Automatically disable channels exceeding this response time": "Désactiver automatiquement les canaux dépassant ce temps de réponse",
     "Automatically disable channels when tests fail": "Désactiver automatiquement les canaux lorsque les tests échouent",
     "Automatically probe all channels in the background": "Sonder automatiquement tous les canaux en arrière-plan",
