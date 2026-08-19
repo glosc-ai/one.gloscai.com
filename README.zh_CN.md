@@ -112,7 +112,7 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/glosc-ai/one.gloscai.com.git
+git clone https://github.com/Glosc/one.gloscai.com.git
 cd new-api
 
 # 编辑 docker-compose.yml 配置
